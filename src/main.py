@@ -6,7 +6,7 @@ from matplotlib import animation
 G = 1.0          # constante gravitationnelle arbitraire
 M_sun = 2.0      # masse du Soleil
 mu = 0.05        # friction
-dt = 0.01
+dt = 0.01        
 steps = 4000
 
 # Soleil et drap
@@ -17,25 +17,25 @@ depth = k_depth * M_sun
 sigma = k_sigma * sun_radius
 
 # --- drap ---
-def h(x, y):
+def h(x, y) -> float: 
     r2 = x**2 + y**2
     return -depth * np.exp(-r2 / (2*sigma**2))
 
 # --- simulation gravitationnelle ---
-x, y = 2.0, 0.0
-vx, vy = 0.0, 1.0
-xs, ys, zs = [], [], []
+x, y = 2.0, 0.0 # position initiale de la bille
+vx, vy = 0.0, 1.0 # vitesse initiale de la bille
+xs, ys, zs = [], [], [] # listes de positions 
 
 for i in range(steps):
-    r = np.sqrt(x**2 + y**2)
+    r = np.sqrt(x**2 + y**2) # distance bille-Soleil
     if r < sun_radius:  # contact avec le Soleil
         break
-    ax = -G * M_sun * x / r**3 - mu * vx
-    ay = -G * M_sun * y / r**3 - mu * vy
-    vx += ax * dt
-    vy += ay * dt
-    x += vx * dt
-    y += vy * dt
+    ax = -G * M_sun * x / r**3 - mu * vx # accélération en x
+    ay = -G * M_sun * y / r**3 - mu * vy # accélération en y
+    vx += ax * dt # mise à jour de la vitesse en x
+    vy += ay * dt # mise à jour de la vitesse en y
+    x += vx * dt # mise à jour de la position en x
+    y += vy * dt # mise à jour de la position en y
     xs.append(x)
     ys.append(y)
     zs.append(h(x, y))

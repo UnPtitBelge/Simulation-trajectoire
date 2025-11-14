@@ -1,0 +1,247 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[french]{babel}
+\usepackage[a4paper,left=2cm,right=2cm,top=2cm,bottom=2cm]{geometry}
+\usepackage{indentfirst}
+\usepackage{appendix}
+\usepackage{libertine}
+\usepackage{titlesec}
+\usepackage{eso-pic}
+\usepackage{fancyhdr}
+\usepackage{graphicx}
+\usepackage{wrapfig}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{color}
+\usepackage{setspace}
+\usepackage[T1]{fontenc}
+\usepackage[hyphens]{url}
+\usepackage[backend=bibtex,style=alphabetic]{biblatex}
+\addbibresource{source.bib}\usepackage[linkbordercolor=white]{hyperref}
+\usepackage{hyperref}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{bm}
+\usepackage{enumitem}
+\usepackage{siunitx}
+\usepackage{textcomp}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage{amsthm}
+\usepackage{commath}
+\usepackage{cancel}
+\usepackage{pdflscape}
+\usepackage{svg}
+\usepackage[linesnumbered,ruled,vlined]{algorithm2e} % Retain only one package
+\usepackage{comment}
+\usepackage{placeins}
+\usepackage{listings}
+\lstset{literate=%
+    {à}{{\`a}}1 {â}{{\^a}}1 {é}{{\'e}}1 {è}{{\`e}}1 {ê}{{\^e}}1 {ë}{{\"e}}1 {î}{{\^i}}1 {ï}{{\"i}}1 {ô}{{\^o}}1 {ö}{{\"o}}1 {ù}{{\`u}}1 {û}{{\^u}}1 {ü}{{\"u}}1 {ç}{{\c{c}}}1 {Ç}{{\c{C}}}1{―}{{\textemdash}}1
+    {’}{{'}}1 {‘}{{`}}1 {“}{{``}}1 {”}{{''}}1
+}
+\urlstyle{same}
+\pagestyle{fancy}
+\fancyhead[L]{\leftmark}
+\fancyhead[R]{}
+\renewcommand{\subsectionmark}[1]{}
+
+
+\usepackage{titlesec}
+\usepackage{hyperref}
+
+\titleclass{\subsubsubsection}{straight}[\subsection]
+
+
+\newcounter{subsubsubsection}[subsubsection]
+\renewcommand\thesubsubsubsection{\thesubsubsection.\arabic{subsubsubsection}}
+\renewcommand\theparagraph{\thesubsubsubsection.\arabic{paragraph}} % optional; useful if paragraphs are to be numbered
+
+
+\titleformat{\subsubsubsection}
+  {\normalfont\normalsize\bfseries}{\thesubsubsubsection}{1em}{}
+\titlespacing*{\subsubsubsection}
+{0pt}{3.25ex plus 1ex minus .2ex}{1.5ex plus .2ex}
+\makeatletter
+\renewcommand\paragraph{\@startsection{paragraph}{5}{\z@}%
+  {3.25ex \@plus1ex \@minus.2ex}%
+  {-1em}%
+  {\normalfont\normalsize\bfseries}}
+\renewcommand\subparagraph{\@startsection{subparagraph}{6}{\parindent}%
+  {3.25ex \@plus1ex \@minus .2ex}%
+  {-1em}%
+  {\normalfont\normalsize\bfseries}}
+\def\toclevel@subsubsubsection{4}
+\def\toclevel@paragraph{5}
+\def\toclevel@paragraph{6}
+\def\l@subsubsubsection{\@dottedtocline{4}{7em}{4em}}
+\def\l@paragraph{\@dottedtocline{5}{10em}{5em}}
+\def\l@subparagraph{\@dottedtocline{6}{14em}{6em}}
+\makeatother
+\setcounter{secnumdepth}{4}
+\setcounter{tocdepth}{4}
+
+\setlength{\headheight}{14.5pt}
+\setlength{\parskip}{1em}
+\renewcommand{\baselinestretch}{0.6}
+\renewcommand{\headrulewidth}{1pt}
+\newcommand{\HRule}{\rule{\linewidth}{0.3mm}}
+\newcommand\BackgroundPic{%
+        \put(0,0){%
+                \parbox[b][\paperheight]{\paperwidth}{%
+                        \vfill
+                        \centering
+                        \includegraphics[width=\paperwidth,height=\paperheight,%
+                        keepaspectratio]{background.png}%
+                        \vfill}}}
+
+% -----------------------------------------------------
+
+\begin{document}
+\AddToShipoutPicture*{\BackgroundPic}
+\begin{titlepage}
+  \begin{sffamily}
+  \begin{flushleft} \large
+    \includegraphics[height=2.0cm]{logo_ulb.jpg}
+    \vspace{5cm}
+   \end{flushleft}
+  \begin{center}
+
+    %Title
+        \textsc{\huge INFO-F308 - Projet d'année}\\[1cm]
+
+    \HRule \\[0.7cm]
+
+        \textsc {\Huge Simulation de la réalité}\\[0.4cm]
+
+    \HRule \\[1.2cm]
+
+% Author and supervisor
+\begin{minipage}{0.5\textwidth}
+\begin{flushleft} \large
+\emph{Auteurs:}\\
+Romain \textsc{Liefferinckx} - 000591790\\
+Manuel \textsc{Rocca} - 000\\
+Matteo \textsc{Morbée} - 000\\
+Denise \textsc{} - 000\\
+Martin \textsc{Gouverneur} - 000\\
+
+
+\end{flushleft}
+\end{minipage}
+
+
+\begin{minipage}{0.4\textwidth}
+\begin{flushright} \large
+\emph{Professeurs:} \\
+Gilles  \textsc{Geraerts}\\
+\emph{Promoteur:} \\
+Pascal \textsc{Tribel}
+\end{flushright}
+\end{minipage}
+
+
+    \vfill
+
+    %Bottom of the page
+    {\large Année académique 2025-2026}
+  \end{center}
+
+  \end{sffamily}
+\end{titlepage}
+
+
+\clearpage
+
+
+\tableofcontents
+\newpage
+
+% -----------------------------------------------------
+\section{Introduction}
+Dans le cadre de notre cours de projet d'année, nous avons choisi comme sujet la simulation de la réalité. 
+Nous en sommes ainsi venus à développer un simulateur physique capable de représenter\dots
+
+\section{Equations utilisées}
+Dans cette section, nous détaillons les équations qui nous ont permises de modéliser les différents phénomènes physiques dans notre simulateur.
+
+fonction représentant notre drap:
+\[
+f(x, y) = A \exp\left(-\frac{(x - x_0)^2 + (y - y_0)^2}{2\sigma^2}\right)
+\]
+
+\begin{itemize}
+    \item $A$ : amplitude = $-depth$ (négative puisqu'on veut un puit)
+    \item $(x_0, y_0)$ : centre de la gaussienne = $(0, 0)$
+    \item $\sigma$ : écart-type = ``largeur'' de la cloche
+\end{itemize}
+
+après simplification, nous arrivons à la fonction qui modélise notre puit:
+\[
+f(x, y) = -depth \exp\left(-\frac{x^2 + y^2}{2\sigma^2}\right)
+\]
+
+Passons maintenant aux équations de la physique newtonienne que nous avons utilisées dans notre simulateur.
+
+En deux dimensions, on utilise la deuxième loi de Newton pour modéliser le mouvement des objets comme ceci:
+\[
+F = ma
+\]
+où
+\begin{align*}
+F &= \text{la force} \\
+m &= \text{la masse de l'objet} \\
+a &= \text{l'accélération de l'objet}
+\end{align*}
+
+
+\[
+F_{grav} = -G \frac{M m}{r^2}
+\]
+où
+\begin{align*}
+F_{grav} &= \text{la force gravitationnelle} \\
+G &= \text{la constante gravitationnelle} \\
+M &= \text{la masse de la source de gravité} \\
+m &= \text{la masse de l'objet attiré par la source} \\
+r &= \text{la distance entre les deux masses}
+\end{align*}
+
+Ces deux équations sont à la base de la physique newtonienne en deux dimensions, or comme nous le savons, 
+notre univers est en trois dimensions. Nous devons donc adapter ces équations pour qu'elles fonctionnent dans un espace 
+tridimensionnel pour coller avec notre thème: la simulation de la réalité. 
+
+Nous allons donc repartir de la loi de la gravitation universelle et y ajouter la notion de vecteurs pour obtenir une version de cette loi nous permettant de simuler en 3D.
+\[
+\hat{\textbf{r}} = \frac{\textbf{r}}{\norm{\textbf{r}}} = \frac{(x, y)}{r} \\
+\]
+
+puisque:
+
+\[
+r = \sqrt{x^2 + y^2}
+\]
+\[
+\textbf{r} = (x, y)
+\]
+
+ceci nous permet d'obtenir les composantes de la force gravitationnelle dans chaque direction et ainsi d'obtenir la version vectorielle de la loi de la gravitation universelle:
+\[
+{F}_{grav} = -G \frac{M_{soleil} m_{bille}}{r^2} \hat{\textbf{r}} = -G \frac{M_{soleil} m_{bille}}{r^2} \frac{(x, y)}{r} = -G \frac{M_{soleil} m_{bille}}{r^3} (x, y)
+\]
+
+maintenant que nous avons notre formule de la force gravitationnelle vectorielle, nous pouvons l'intégrer dans la deuxième loi de Newton pour obtenir 
+l'accélération de notre bille dans chaque direction:
+
+\[
+F_{grav} = ma = -G \frac{M_{soleil} m_{bille}}{r^3} (x, y)
+\]
+
+donc:
+
+\[
+a = -G \frac{M_{soleil}}{r^3} (x, y)
+\]
+
+\end{document}
