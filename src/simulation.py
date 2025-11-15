@@ -46,7 +46,7 @@ class Simulation:
         ani = animation.FuncAnimation(fig, update, frames=len(self._bille.get_positions_history[0]), interval=10, blit=True)
         ax.set_xlabel('x'); ax.set_ylabel('y'); ax.set_zlabel('z')
         ax.set_title("Bille orbitant et tombant vers le Soleil")
-        self.set_axes_equal(ax)
+        self._set_axes_equal(ax)
         plt.show()
 
         
