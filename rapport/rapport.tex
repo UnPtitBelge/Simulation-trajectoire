@@ -166,23 +166,7 @@ Nous en sommes ainsi venus à développer un simulateur physique capable de repr
 \section{Equations utilisées}
 Dans cette section, nous détaillons les équations qui nous ont permises de modéliser les différents phénomènes physiques dans notre simulateur.
 
-fonction représentant notre drap:
-\[
-f(x, y) = A \exp\left(-\frac{(x - x_0)^2 + (y - y_0)^2}{2\sigma^2}\right)
-\]
-
-\begin{itemize}
-    \item $A$ : amplitude = $-depth$ (négative puisqu'on veut un puit)
-    \item $(x_0, y_0)$ : centre de la gaussienne = $(0, 0)$
-    \item $\sigma$ : écart-type = ``largeur'' de la cloche
-\end{itemize}
-
-après simplification, nous arrivons à la fonction qui modélise notre puit:
-\[
-f(x, y) = -depth \exp\left(-\frac{x^2 + y^2}{2\sigma^2}\right)
-\]
-
-Passons maintenant aux équations de la physique newtonienne que nous avons utilisées dans notre simulateur.
+Nous allons commencer par les équations de la physique newtonienne que nous avons utilisées dans notre simulateur.
 
 En deux dimensions, on utilise la deuxième loi de Newton pour modéliser le mouvement des objets comme ceci:
 \[
@@ -226,10 +210,14 @@ r = \sqrt{x^2 + y^2}
 \textbf{r} = (x, y)
 \]
 
-ceci nous permet d'obtenir les composantes de la force gravitationnelle dans chaque direction et ainsi d'obtenir la version vectorielle de la loi de la gravitation universelle:
+A noter que r part de la source (0, 0) donc le soleil vers l'objet (x, y), la bille.\\
+\\
+Ceci nous permet d'obtenir les composantes de la force gravitationnelle dans chaque direction et ainsi d'obtenir la version vectorielle de la loi de la gravitation universelle:
 \[
 {F}_{grav} = -G \frac{M_{soleil} m_{bille}}{r^2} \hat{\textbf{r}} = -G \frac{M_{soleil} m_{bille}}{r^2} \frac{(x, y)}{r} = -G \frac{M_{soleil} m_{bille}}{r^3} (x, y)
 \]
+Attention, le signe négatif indique que la force est attractive, donc dirigée vers le soleil. Puisque comme dit plus haut, r part du soleil vers la bille,
+nous devons inverser le sens de la force pour qu'elle pointe bien vers le soleil.
 
 Maintenant que nous avons notre formule de la force gravitationnelle vectorielle, nous pouvons l'intégrer dans la deuxième loi de Newton pour obtenir 
 l'accélération de notre bille dans chaque direction:
@@ -245,7 +233,7 @@ a = -G \frac{M_{soleil}}{r^3} (x, y)
 \]
 
 A partir de ce moment la, nous pourrions nous dire que nous avons tout ce qu'il nous faut pour simuler le mouvement de notre bille dans le champ gravitationnel du soleil, 
-cependant, il ne faut pas oublier les frottements de l'air car comme dit plus haut, nous voulons simuler la réalité.
+cependant, il ne faut pas oublier les frottements comme dit plus haut, car nous voulons simuler la réalité.
 
 Formule générale de la friction:
 \[
@@ -298,9 +286,37 @@ a_x(t) &= \text{l'accélération à l'instant t}
 
 Ceci nous permet de mettre à jour la position et la vitesse de notre bille à chaque itération de la simulation.
 
-La dernière étape, consiste à regarder pour chaque itération avec notre x et y mis à jour, ou se trouve notre z grâce à la fonction de notre drap cité plus haut.
+Maintenant que nous avons vu les équations de la physique newtonienne, nous allons nous pencher sur comment nous allons modéliser le drap avec un puit de gravité au centre.
+Pour modéliser le drap, nous avons choisi d'utiliser une fonction gaussienne bidimensionnelle centrée en (0, 0) (le centre du drap) qui va représenter la déformation du drap due à la présence du soleil, ou en tout cas une masse.
+
+La fonction représentant notre drap:
+\[
+f(x, y) = A \exp\left(-\frac{(x - x_0)^2 + (y - y_0)^2}{2\sigma^2}\right)
+\]
+
+\begin{itemize}
+    \item $A$ : amplitude = $-depth$ (négative puisqu'on veut un puit)
+    \item $(x_0, y_0)$ : centre de la gaussienne = $(0, 0)$
+    \item $\sigma$ : écart-type = ``largeur'' de la cloche
+\end{itemize}
+
+après simplification, nous arrivons à la fonction qui modélise notre puit:
+\[
+f(x, y) = -depth \exp\left(-\frac{x^2 + y^2}{2\sigma^2}\right)
+\]
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.4\textwidth]{drap.png}
+  \caption{Représentation graphique de notre fonction de drap avec puit de gravité au centre.}
+  \label{fig:figure1}
+\end{figure}
+
+La dernière étape, consiste à regarder pour chaque itération avec notre x et y mis à jour, ou se trouve notre z grâce à la fonction de notre drap.
 \[
 z = f(x, y) = -depth \exp\left(-\frac{x^2 + y^2}{2\sigma^2}\right)
 \]
+
+Nous avons ainsi notre position en 3D (x, y, z) pour chaque itération de notre simulation.
 
 \end{document}
