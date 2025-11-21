@@ -1,45 +1,16 @@
-import os
 import cv2
 import numpy as np
+import os
+from scipy import interpolate as interp
+
+from utils import *
+import time
 
 RESOURCES_DIR = "src/tracking/resources/"
 DEFAULT_TRACKING_DIR = "src/tracking/outputs/" # path to tracking directory from root
 OUTPUT_VIDEO_DIR = "output_videos/"
 OUTPUT_IMAGES_DIR = "output_images/"
 
-def findLastDirNumber(path: str, dirName: str) -> int:
-    lastNumber = -1
-    for item in os.listdir(path):
-        if os.path.isdir(os.path.join(path, item)) and item.startswith(dirName):
-            try:
-                number = int(item[len(dirName):])
-                if number > lastNumber:
-                    lastNumber = number
-            except ValueError:
-                continue
-    return lastNumber
-
-def findLastFileNumber(path: str, filePrefix: str, fileSuffix: str) -> int:
-    lastNumber = -1
-    for item in os.listdir(path):
-        if os.path.isfile(os.path.join(path, item)) and item.startswith(filePrefix) and item.endswith(fileSuffix):
-            try:
-                number = int(item[len(filePrefix):-len(fileSuffix)])
-                if number > lastNumber:
-                    lastNumber = number
-            except ValueError:
-                continue
-    return lastNumber
-
-def set_video_filename(path: str, filePrefix: str, fileSuffix: str) -> str:
-    lastNumber = findLastFileNumber(path, filePrefix + '_', fileSuffix)
-    newNumber = lastNumber + 1
-    return f"{filePrefix}_{newNumber}{fileSuffix}"
-
-def create_necessary_dirs(path: str) -> None:
-    os.makedirs(path, exist_ok=True)
-    os.makedirs(os.path.join(path, OUTPUT_VIDEO_DIR), exist_ok=True)
-    os.makedirs(os.path.join(path, OUTPUT_IMAGES_DIR), exist_ok=True)
 
 
 """
@@ -63,7 +34,8 @@ class TrackBall:
         self.tracker = []
         self.frames = []
         self.path = os.getcwd() + "/" + DEFAULT_TRACKING_DIR
-        create_necessary_dirs(self.path)
+        create_necessary_dirs(self.path, OUTPUT_IMAGES_DIR)
+        create_necessary_dirs(self.path, OUTPUT_VIDEO_DIR)
         self.outputDir = os.path.join(self.path + OUTPUT_IMAGES_DIR , "images_" + str(findLastDirNumber(self.path + OUTPUT_IMAGES_DIR, "images_") + 1))
         self.output_video = os.path.join(self.path + OUTPUT_VIDEO_DIR , set_video_filename(self.path + OUTPUT_VIDEO_DIR, output_video.split(".")[0], ".mp4"))
 
@@ -99,10 +71,6 @@ class TrackBall:
         """
         Track the ball in the video frames and create an output video showing the trajectory.
         """
-        height, width, _ = self.frames[0].shape
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        out = cv2.VideoWriter(self.output_video, fourcc, 30, (width, height))
-
         hsv_color = cv2.cvtColor(self.ballColor, cv2.COLOR_BGR2HSV)[0][0]
         lower, upper = self._set_hue_range(hsv_color)
         positions = []
@@ -112,9 +80,9 @@ class TrackBall:
             mask = cv2.inRange(hsv, lower, upper)
             # mask = cv2.medianBlur(mask, 5) # To test if needed
             self._add_center_ball(mask, positions)
-            self._draw_image(out, canvas, positions)
 
-        out.release()
+        positions = self._interpolate_positions(positions, smoothing=250)
+        self._create_video(canvas, positions, fps=60)
 
     def _set_hue_range(self, hsv_color):
         """
@@ -135,25 +103,51 @@ class TrackBall:
             cy = int(M["m01"] / M["m00"])
             positions.append((cx, cy))
 
-    def _draw_image(self, out, canvas, positions):
+    def _create_video(self, canvas: np.array, positions: np.array, fps:int =30):
         """
-        Draw the trajectory of the ball on the canvas and write it to the output video.
+        Draw the trajectory of the ball on the canvas.
         """
+        height, width, _ = self.frames[0].shape
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter(self.output_video, fourcc, fps, (width, height))
+
         if len(positions) == 0:
             out.write(canvas)
             return
+        green = (0, 255, 0)
+        red = (0, 0, 255)
+        trajectory = canvas.copy()
+        for i in range(1, len(positions)):
+            cv2.line(trajectory, positions[i-1], positions[i], green, 2)
 
-        cv2.circle(canvas, (positions[-1][0], positions[-1][1]), 6, (0, 0, 255), -1)
-        for j in range(1, len(positions)):
-            cv2.line(canvas, positions[j - 1], positions[j], (0, 255, 0), 2)
+            frame = trajectory.copy()
+            x, y = positions[i]
+            cv2.circle(frame, (x, y), 8, red, -1)
 
-        out.write(canvas)
+            out.write(frame)
+
+        out.release()
+
+    def _interpolate_positions(self, positions: np.array, smoothing: int = 0) -> np.array:
+        """
+        Interpolate the ball positions using spline interpolation.
+        """
+        positions = np.array(positions)
+        x, y = positions[:,0], positions[:,1]
+
+        tck, u = interp.splprep([x, y], s=smoothing)
+
+        unew = np.linspace(0, 1, 240)
+        x_new, y_new = interp.splev(unew, tck)
+
+        return list(zip(np.array(x_new, dtype=int), np.array(y_new, dtype=int)))
+
 
 
 if __name__ == "__main__":
     RESOURCE_PATH = os.path.join(os.getcwd(), RESOURCES_DIR)
     # np.set_printoptions(threshold=np.inf)
     experiment = TrackBall(ballColor=[63, 25, 37])
-    experiment.convertVideoToImages(RESOURCE_PATH + "/first/big_blue.mp4", saveImages=True)
+    experiment.convertVideoToImages(RESOURCE_PATH + "/first/big_blue.mp4", saveImages=False)
     experiment.trackBall()
 
