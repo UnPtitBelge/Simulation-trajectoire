@@ -10,6 +10,7 @@
 \usepackage{fancyhdr}
 \usepackage{graphicx}
 \usepackage{wrapfig}
+
 \usepackage{float}
 \usepackage{caption}
 \usepackage{color}
@@ -230,25 +231,11 @@ Ces deux équations sont à la base de la physique newtonienne en deux dimension
 notre univers est en trois dimensions. Nous devons donc adapter ces équations pour qu'elles fonctionnent dans un espace 
 tridimensionnel pour coller avec notre thème: la simulation de la réalité. 
 
-Nous allons donc repartir de la loi de la gravitation universelle et y ajouter la notion de vecteurs pour obtenir une version de cette loi nous permettant de simuler en 3D.
-\[
-\hat{\mathbf{r}} = \frac{\mathbf{r}}{\norm{\mathbf{r}}} = \frac{(x, y)}{r}
-\]
-
-puisque:
-
-\[
-r = \sqrt{x^2 + y^2}
-\]
-\[
-\textbf{r} = (x, y)
-\]
-
 A noter que r part de la source (0, 0) donc le soleil vers l'objet (x, y), la bille.\\
 \\
 Ceci nous permet d'obtenir les composantes de la force gravitationnelle dans chaque direction et ainsi d'obtenir la version vectorielle de la loi de la gravitation universelle:
 \[
-{F}_{grav} = -G \frac{M_{soleil} m_{bille}}{r^2} \hat{\textbf{r}} = -G \frac{M_{soleil} m_{bille}}{r^2} \frac{(x, y)}{r} = -G \frac{M_{soleil} m_{bille}}{r^3} (x, y)
+{F}_{grav} = -G \frac{M_{soleil} m_{bille}}{r^2} (x, y)
 \]
 Attention, le signe négatif indique que la force est attractive, donc dirigée vers le soleil. Puisque comme dit plus haut, r part du soleil vers la bille,
 nous devons inverser le sens de la force pour qu'elle pointe bien vers le soleil.
@@ -257,13 +244,13 @@ Maintenant que nous avons notre formule de la force gravitationnelle vectorielle
 l'accélération de notre bille dans chaque direction:
 
 \[
-F_{grav} = ma = -G \frac{M_{soleil} m_{bille}}{r^3} (x, y)
+F_{grav} = ma = -G \frac{M_{soleil} m_{bille}}{r^2} (x, y)
 \]
 
 donc:
 
 \[
-a = -G \frac{M_{soleil}}{r^3} (x, y)
+a = -G \frac{M_{soleil}}{r^2} (x, y)
 \]
 
 A partir de ce moment la, nous pourrions nous dire que nous avons tout ce qu'il nous faut pour simuler le mouvement de notre bille dans le champ gravitationnel du soleil, 
@@ -288,7 +275,7 @@ a_{friction} = -\mu v
 
 Nous pouvons maintenant combiner les deux accélérations pour obtenir l'accélération totale de notre bille pour chaque composantes:
 \[
-a_{total} = a_{grav} + a_{friction} = -G \frac{M_{soleil}}{r^3} (x, y) - \mu v
+a_{total} = a_{grav} + a_{friction} = -G \frac{M_{soleil}}{r^2} (x, y) - \mu v
 \]  
 
 Pour terminer, regardons comment nous utilisons cette accélération pour mettre à jour la position et la vitesse de notre bille à chaque itération.
@@ -367,5 +354,55 @@ En somme, ce projet sensationnel conclut avec panache notre troisième et derni�
 au sein de l'ULB. Nous souhaitons également remercier Tribel Pascal, notre assistant assigné pour ce projet qui, tout au long
 de ce projet, répondait présent (sauf sur teams si on ne le tague pas :) ) et nous a aidé et conseillé de manière particulièrement
 pertinente.
+
+
+% -----------------------------------------------------
+% Slide Pour presentation orale
+
+\subsection{test}
+\begin{center}
+  \textbf{Modèle physique — Formules clés}\\
+\end{center}
+
+\noindent\begin{minipage}[t]{0.55\textwidth}
+  \textbf{Gravité (vectorielle)}
+  \[
+    \vec{F}_{grav} = G\frac{M m}{r^2} (x, y)
+  \]
+
+
+  \vspace{0.6em}
+  \textbf{Accélération due à la gravité}
+  \[
+    F = ma \quad\Rightarrow\quad
+  \vec a_{grav} = G\frac{M}{r^2} (x, y)
+  \]
+
+  \vspace{0.6em}
+  \textbf{Frottements}
+  \[
+    \vec F_{fric} = -\mu m \vec v
+    \quad\Rightarrow\quad
+    \vec a_{fric} = -\mu \vec v
+  \]
+
+  \vspace{0.6em}
+  \textbf{Accélération totale}
+  \[
+    \vec a = \vec a_{grav} + \vec a_{fric}
+    = G\frac{M}{r^2} (x, y) - \mu \vec v
+  \]
+\end{minipage}\hfill
+\begin{minipage}[t]{0.42\textwidth}
+  \vspace{0.6em}
+  \textbf{Drap}
+  \[
+    z = f(x,y) = -\text{depth}\,\exp\!\Big(-\frac{x^2+y^2}{2\sigma^2}\Big)
+  \]
+  Donne la coordonnée $z$ pour chaque $(x,y)$.
+\end{minipage}
+
+\vspace{0.6em}
+% -----------------------------------------------------
 
 \end{document}
