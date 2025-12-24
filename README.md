@@ -20,11 +20,18 @@ Installer les dépendances nécessaires, exécuter:
 pip install -r requirements.txt
 ```
 
-## Lancement de la simulation
+## Lancement de la simulation Newtonienne
 
 Dans la racine du projet, exécuter:
 
 ```bash/zsh
-cd src && python3 main.py
+cd src/simu_newtonienne && python3 main.py
 ```
 
+## Lancement de la simulation avec machine learning
+
+Dans la racine du projet, exécuter:
+
+```bash/zsh
+cd src/simu_machine_learning && python3 main.py
+```
