@@ -4,7 +4,10 @@ import os
 from scipy import interpolate as interp
 
 from utils import *
-import time
+
+"""
+Module for tracking a single colored ball in a video and creating an output video showing its trajectory.
+"""
 
 RESOURCES_DIR = "src/tracking/resources/"
 DEFAULT_TRACKING_DIR = "src/tracking/outputs/" # path to tracking directory from root
@@ -13,22 +16,8 @@ OUTPUT_IMAGES_DIR = "output_images/"
 
 
 
-"""
-balls = {
-    ball_id: {
-        'color': [], # RGB
-        'positions': [],
-        'hsv': [], # HSV
-        'lower_hsv': [],
-        'upper_hsv': [],
-        'draw_color': [] # RGB color for drawing line
-    }
-    ...
-}
-or class
-"""
 class TrackBall:
-    def __init__(self, backgroundColor: list = [0, 0, 0], ballColor: list = [255, 255, 255], output_video: str = "trajectory.mp4" ) -> None:
+    def __init__(self, backgroundColor: list = [0, 0, 0], ballColor: list = [255, 255, 255], output_video: str = "trajectory.mp4" ):
         self.backgroundColor = backgroundColor
         self.ballColor = np.uint8([[ballColor]]) # RGB -> BGR
         self.tracker = []
@@ -148,6 +137,6 @@ if __name__ == "__main__":
     RESOURCE_PATH = os.path.join(os.getcwd(), RESOURCES_DIR)
     # np.set_printoptions(threshold=np.inf)
     experiment = TrackBall(ballColor=[63, 25, 37])
-    experiment.convertVideoToImages(RESOURCE_PATH + "/first/big_blue.mp4", saveImages=False)
+    experiment.convertVideoToImages(RESOURCE_PATH + "/first/big_blue.mp4", saveImages=True)
     experiment.trackBall()
 
