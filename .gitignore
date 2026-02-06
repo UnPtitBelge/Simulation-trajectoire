@@ -208,6 +208,7 @@ __marimo__/
 
 # outputs images + videos
 /src/tracking/outputs/
+/src/tracking/resources/
 
 # LaTeX auxiliary files
 *.aux
@@ -228,4 +229,5 @@ __marimo__/
 *.toc
 
 # MacOS file folder
+.DS_Store
 **/.DS_Store

@@ -52,3 +52,12 @@ Où:
 - `[SAVE IMAGES]` est un booléen (True/False) indiquant s'il faut sauvegarder les images extraites de la vidéo. Par défaut, il est réglé sur False.
 
 ### Nettoyage des images sauvegardées
+
+Si vous avez choisi de sauvegarder les images extraites de la vidéo, elles seront stockées dans le dossier `src/tracking/outputs/outputs_images`.
+Pareil pour les vidéos traitées, elles seront stockées dans le dossier `src/tracking/outputs/outputs_videos`.
+Pour nettoyer ces dossiers et supprimer tout ce qui est sauvegardé, vous pouvez exécuter la commande suivante dans la racine du projet:
+
+```bash/zsh
+./src/tracking/cleanOutputs.sh
+```
+
