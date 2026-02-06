@@ -226,3 +226,6 @@ __marimo__/
 *.bib
 *.run.xml
 *.toc
+
+# MacOS file folder
+**/.DS_Store

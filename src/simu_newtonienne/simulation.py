@@ -16,11 +16,11 @@ class Simulation:
         
     def _run(self):
         for i in range(steps):
-            r = np.sqrt(self._bille.get_x**2 + self._bille.get_y**2) # distance bille-Soleil
+            r = np.sqrt(self._bille.get_x ** 2 + self._bille.get_y ** 2) # distance bille-Soleil
             if r < self._sun.get_radius:  # contact avec le Soleil
                 break
-            self._bille.set_ax = -G * self._sun.get_mass * self._bille.get_x / r**3 - self._drap.get_mu * self._bille.get_velocity[0] # accélération en x
-            self._bille.set_ay = -G * self._sun.get_mass * self._bille.get_y / r**3 - self._drap.get_mu * self._bille.get_velocity[1] # accélération en y
+            self._bille.set_ax = -G * self._sun.get_mass * self._bille.get_x / r ** 2 - self._drap.get_mu * self._bille.get_velocity[0] # accélération en x
+            self._bille.set_ay = -G * self._sun.get_mass * self._bille.get_y / r ** 2 - self._drap.get_mu * self._bille.get_velocity[1] # accélération en y
             self._bille.update_velocity(self._bille.get_acceleration[0], self._bille.get_acceleration[1], dt) # mise à jour de la vitesse
             self._bille.update_position(dt) # mise à jour de la position
             self._bille._xs.append(self._bille.get_x)
@@ -36,7 +36,7 @@ class Simulation:
         Z = self._drap.h(X, Y)
         ax.plot_surface(X, Y, Z, cmap='plasma', alpha=0.8)
         ax.plot_surface(self._sun.get_X_sun, self._sun.get_Y_sun, self._sun.get_Z_sun, color='gold', shade=True)
-        animated_bille, = ax.plot([self._bille.get_positions_history[0][0]], [self._bille.get_positions_history[1][0]], [self._bille.get_positions_history[2][0]+0.05], 'o', color='blue')
+        animated_bille, = ax.plot([self._bille.get_positions_history[0][0]], [self._bille.get_positions_history[1][0]], [self._bille.get_positions_history[2][0] + 0.05], 'o', color='blue')
         
         def update(i):
             animated_bille.set_data([self._bille.get_positions_history[0][i]], [self._bille.get_positions_history[1][i]])
@@ -52,9 +52,9 @@ class Simulation:
         
     def _set_axes_equal(self, ax):
         x_limits, y_limits, z_limits = ax.get_xlim3d(), ax.get_ylim3d(), ax.get_zlim3d()
-        x_range, y_range, z_range = [abs(l[1]-l[0]) for l in (x_limits, y_limits, z_limits)]
+        x_range, y_range, z_range = [abs(l[1] - l[0]) for l in (x_limits, y_limits, z_limits)]
         max_range = max(x_range, y_range, z_range)
         centers = [np.mean(l) for l in (x_limits, y_limits, z_limits)]
-        ax.set_xlim3d([centers[0]-max_range/2, centers[0]+max_range/2])
-        ax.set_ylim3d([centers[1]-max_range/2, centers[1]+max_range/2])
-        ax.set_zlim3d([centers[2]-max_range/2, centers[2]+max_range/2])
+        ax.set_xlim3d([centers[0] - max_range / 2, centers[0] + max_range / 2])
+        ax.set_ylim3d([centers[1] - max_range / 2, centers[1] + max_range / 2])
+        ax.set_zlim3d([centers[2] - max_range / 2, centers[2] + max_range / 2])
