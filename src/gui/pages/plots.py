@@ -7,30 +7,8 @@ for consistent theming with the selected Bootstrap theme.
 """
 
 import dash_bootstrap_components as dbc
-from dash import dcc
-
-# Pure-Python default figure (only native dict/list types)
-DEFAULT_FIGURE = {
-    "data": [
-        {
-            "type": "scatter",
-            "mode": "lines+markers",
-            "x": list(range(0, 11)),
-            "y": [i * i for i in range(0, 11)],
-            "name": "y = x^2",
-            "marker": {"size": 6},
-            "line": {"width": 2},
-        }
-    ],
-    "layout": {
-        "title": {"text": "Simple Quadratic", "x": 0.5},
-        "xaxis": {"title": {"text": "x"}},
-        "yaxis": {"title": {"text": "y = x^2"}},
-        "margin": {"l": 50, "r": 20, "t": 50, "b": 50},
-        "template": "plotly_white",
-        "height": 420,
-    },
-}
+from dash import dcc, html
+from components.plot import plot as build_plot
 
 
 def layout():
@@ -41,25 +19,33 @@ def layout():
     All props are native Python types (dict/list) to ensure they work seamlessly
     with Dash component properties and callbacks.
     """
-    # Wrap content in Bootstrap components and use a Card around the Graph
+    fig = build_plot()
     return dbc.Container(
-        id="plots-page",
-        fluid=True,
-        children=[
+        [
             dbc.Row(
                 dbc.Col(
                     dbc.Card(
                         [
-                            dbc.CardHeader("Plot 1"),
+                            dbc.CardHeader("Plots"),
                             dbc.CardBody(
-                                dcc.Graph(id="plot-graph", figure=DEFAULT_FIGURE)
+                                [
+                                    html.P(
+                                        "A hypothetical surface curved by a central sphere using simple Newtonian-like equations."
+                                    ),
+                                    dcc.Graph(
+                                        id="curved-surface-graph",
+                                        figure=fig,
+                                    ),
+                                ]
                             ),
                         ],
-                        class_name="my-3",
+                        class_name="mb-3",
                     ),
                     width=12,
                 )
             )
         ],
+        fluid=True,
         class_name="p-3",
+        id="plots-page",
     )
