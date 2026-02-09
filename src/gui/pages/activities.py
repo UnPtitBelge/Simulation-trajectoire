@@ -23,16 +23,18 @@ def layout() -> dbc.Container:
                     dbc.CardHeader("Activity 1"),
                     dbc.CardBody(
                         [
-                            html.P("Description of Activity 1..."),
+                            html.P("Description of Activity 1...", className="card-text"),
                             dbc.Button(
                                 "Start Activity",
                                 id="start-activity-1",
-                                color="primary",
+                                color="secondary",
                             ),
                         ]
                     ),
                 ],
-                className="mb-3",
+                color="primary",
+                outline="true",
+                class_name="mb-3",
                 id="activity-1",
             ),
         ],

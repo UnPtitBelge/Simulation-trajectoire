@@ -22,7 +22,7 @@ def layout() -> dbc.Container:
         [
             dbc.Card(
                 id="welcome-card",
-                className="my-3",
+                class_name="my-3",
                 children=[
                     dbc.CardHeader("Welcome"),
                     dbc.CardBody(

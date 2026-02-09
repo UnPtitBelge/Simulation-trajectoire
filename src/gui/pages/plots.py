@@ -55,11 +55,11 @@ def layout():
                                 dcc.Graph(id="plot-graph", figure=DEFAULT_FIGURE)
                             ),
                         ],
-                        className="my-3",
+                        class_name="my-3",
                     ),
                     width=12,
                 )
             )
         ],
-        className="p-3",
+        class_name="p-3",
     )
