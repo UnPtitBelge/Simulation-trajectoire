@@ -7,6 +7,7 @@ Bootstrap theme (e.g., FLATLY). Keep this page light and fast to render.
 
 import dash_bootstrap_components as dbc
 from dash import html
+from utils.ui import page_container
 
 
 def layout() -> dbc.Container:
@@ -18,8 +19,9 @@ def layout() -> dbc.Container:
         welcome card. This function avoids heavy computations to ensure
         snappy page transitions.
     """
-    return dbc.Container(
-        [
+    pc = page_container(
+        title="Home",
+        body_children=[
             dbc.Card(
                 id="welcome-card",
                 class_name="my-3",
@@ -34,8 +36,11 @@ def layout() -> dbc.Container:
                         ]
                     ),
                 ],
-            ),
+            )
         ],
+    )
+    return dbc.Container(
+        [pc["body"]],
         fluid=True,
         id="home-page",
     )

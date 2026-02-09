@@ -8,6 +8,7 @@ All figures are defined using native Python types (dict/list) for Dash props com
 
 import dash_bootstrap_components as dbc
 from dash import dcc, html
+from utils.ui import build_layout, page_container
 
 
 def _default_simulation_figure():
@@ -28,14 +29,10 @@ def _default_simulation_figure():
                 "name": "y = x^2",
             }
         ],
-        "layout": {
-            "title": {"text": "Default Simulation"},
-            "xaxis": {"title": {"text": "x"}},
-            "yaxis": {"title": {"text": "y"}},
-            "margin": {"l": 40, "r": 10, "t": 40, "b": 40},
-            "template": "plotly_white",
-            "height": 400,
-        },
+        "layout": build_layout(
+            title="Default Simulation",
+            height=400,
+        ),
     }
 
 
@@ -50,8 +47,9 @@ def layout():
     Returns:
         dash.development.base_component.Component: The Dash component tree for the page.
     """
-    return dbc.Container(
-        [
+    pc = page_container(
+        title="Simulations",
+        body_children=[
             dbc.Row(
                 dbc.Col(
                     dbc.Card(
@@ -75,6 +73,9 @@ def layout():
                 )
             )
         ],
+    )
+    return dbc.Container(
+        [pc["body"]],
         fluid=True,
         class_name="p-3",
     )

@@ -7,6 +7,7 @@ theme (e.g., FLATLY) and keep styling consistent.
 
 import dash_bootstrap_components as dbc
 from dash import html
+from utils.ui import page_container
 
 
 def layout() -> dbc.Container:
@@ -16,14 +17,17 @@ def layout() -> dbc.Container:
         dbc.Container: A fluid Bootstrap container with a card describing an activity
         and a themed button to start it.
     """
-    return dbc.Container(
-        [
+    pc = page_container(
+        title="Activities",
+        body_children=[
             dbc.Card(
                 [
                     dbc.CardHeader("Activity 1"),
                     dbc.CardBody(
                         [
-                            html.P("Description of Activity 1...", className="card-text"),
+                            html.P(
+                                "Description of Activity 1...", className="card-text"
+                            ),
                             dbc.Button(
                                 "Start Activity",
                                 id="start-activity-1",
@@ -33,11 +37,14 @@ def layout() -> dbc.Container:
                     ),
                 ],
                 color="primary",
-                outline="true",
+                outline=True,
                 class_name="mb-3",
                 id="activity-1",
             ),
         ],
+    )
+    return dbc.Container(
+        [pc["body"]],
         id="activities-page",
         fluid=True,
     )

@@ -28,63 +28,34 @@ def register_all(app: dash.Dash):
     - Example server-side no-op callback.
     """
 
-    # 1) Compute which section to render based on navbar button clicks.
-    @app.callback(
-        Output("page-store", "data"),
-        [
-            Input("btn-home", "n_clicks"),
-            Input("btn-activities", "n_clicks"),
-            Input("btn-simulations", "n_clicks"),
-            Input("btn-plots", "n_clicks"),
-        ],
-    )
-    def compute_page_store(n_home, n_activities, n_simulations, n_plots):
-        """
-        Determine which section should render based on the most recent navbar button click.
+    # 1) URL-based routing: render content from the current pathname.
 
-        Returns:
-            dict: {"page": str} where str is one of "/", "/activities", "/simulations", "/plots".
-                  Defaults to "/" (home) if nothing has triggered yet.
+    # 2) Render content based on the current URL pathname (multipage routing).
+    @app.callback(Output("page-content", "children"), Input("url", "pathname"))
+    def render_page(pathname):
         """
-        ctx = dash.callback_context
-        if not ctx.triggered:
-            page = "/"
-        else:
-            trig_id = ctx.triggered[0]["prop_id"].split(".")[0]
-            if trig_id == "btn-home":
-                page = "/"
-            elif trig_id == "btn-activities":
-                page = "/activities"
-            elif trig_id == "btn-simulations":
-                page = "/simulations"
-            elif trig_id == "btn-plots":
-                page = "/plots"
-            else:
-                page = "/"
-        return {"page": page}
-
-    # 2) Render content based on the selected page.
-    @app.callback(Output("page-content", "children"), Input("page-store", "data"))
-    def render_page(data):
-        """
-        Render the content area based on `page-store`.
+        Render the content area based on the current URL pathname.
 
         Args:
-            data (dict | None): A dict with key "page" indicating which section to render.
+            pathname (str | None): The current path (e.g., "/", "/activities", "/simulations", "/plots").
 
         Returns:
             Dash component: The layout for the selected section.
                             Defaults to Home when absent or unknown.
         """
-        page = (data or {}).get("page", "/")
+        page = pathname or "/"
         if page == "/activities":
             return activities.layout()
         elif page == "/simulations":
             return simulations.layout()
         elif page == "/plots":
             return plots.layout()
-        else:
+        elif page == "/":
             return home.layout()
+        else:
+            from utils.ui import friendly_404
+
+            return friendly_404(pathname)
 
     # 3) Clientside callback for color mode switch (light/dark).
     # Uses a harmless no-op Output to avoid changing component props.

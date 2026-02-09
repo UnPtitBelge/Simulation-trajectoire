@@ -2,7 +2,7 @@
 Geometry package: export primary classes for convenience.
 """
 
+from .circle import Circle, DynamicCircle
 from .surface import Surface
-from .sphere import Sphere, DynamicSphere
 
-__all__ = ["Surface", "Sphere", "DynamicSphere"]
+__all__ = ["Surface", "Circle", "DynamicCircle"]

@@ -7,8 +7,9 @@ for consistent theming with the selected Bootstrap theme.
 """
 
 import dash_bootstrap_components as dbc
-from dash import dcc, html
 from components.plot import plot as build_plot
+from dash import dcc, html
+from utils.ui import page_container
 
 
 def layout():
@@ -20,8 +21,9 @@ def layout():
     with Dash component properties and callbacks.
     """
     fig = build_plot()
-    return dbc.Container(
-        [
+    pc = page_container(
+        title="Plots",
+        body_children=[
             dbc.Row(
                 dbc.Col(
                     dbc.Card(
@@ -29,9 +31,7 @@ def layout():
                             dbc.CardHeader("Plots"),
                             dbc.CardBody(
                                 [
-                                    html.P(
-                                        "A hypothetical surface curved by a central sphere using simple Newtonian-like equations."
-                                    ),
+                                    html.P("A 2D representation of the physical model"),
                                     dcc.Graph(
                                         id="curved-surface-graph",
                                         figure=fig,
@@ -45,6 +45,9 @@ def layout():
                 )
             )
         ],
+    )
+    return dbc.Container(
+        [pc["body"]],
         fluid=True,
         class_name="p-3",
         id="plots-page",

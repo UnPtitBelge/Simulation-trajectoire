@@ -6,16 +6,15 @@ It exposes a static `render()` method so it can be used directly in layouts with
 """
 
 import dash_bootstrap_components as dbc
-from dash import html
+from utils.ui import NAVBAR_PADDING_CLASS, color_mode_control, nav_group
 
 
 class Navbar:
     """
-    Bootstrap-based navbar for a single-page Dash app.
+    Bootstrap-based navbar for a multipage Dash app.
 
     - Uses dbc.Navbar for proper Bootstrap semantics.
-    - Navigation is implemented via dbc.Nav with dbc.NavItem entries; each item contains a dbc.Button
-      to trigger content changes via callbacks (single-page behavior, no URL changes).
+    - Navigation uses dbc.NavLink (or dcc.Link) entries pointing to URL paths to enable multipage routing.
     - Includes a color mode switch (dbc.Switch) that toggles Bootstrap’s `data-bs-theme` (light/dark).
     """
 
@@ -25,80 +24,31 @@ class Navbar:
         Return the navbar layout as a Dash component tree (dbc.Navbar + dbc.Nav).
 
         Contents:
-        - Navigation items (Home highlighted, others outline style)
+        - Navigation items (Home highlighted via active="exact")
         - Color mode switch (moon/sun labels + dbc.Switch)
         """
         return dbc.Navbar(
             dbc.Container(
                 [
                     # Navigation group
-                    dbc.Nav(
+                    nav_group(
                         [
-                            dbc.NavItem(
-                                dbc.Button(
-                                    "Home",
-                                    id="btn-home",
-                                    n_clicks=0,
-                                    color="primary",
-                                    size="sm",
-                                )
-                            ),
-                            dbc.NavItem(
-                                dbc.Button(
-                                    "Activities",
-                                    id="btn-activities",
-                                    n_clicks=0,
-                                    color="secondary",
-                                    outline=True,
-                                    size="sm",
-                                )
-                            ),
-                            dbc.NavItem(
-                                dbc.Button(
-                                    "Simulations",
-                                    id="btn-simulations",
-                                    n_clicks=0,
-                                    color="secondary",
-                                    outline=True,
-                                    size="sm",
-                                )
-                            ),
-                            dbc.NavItem(
-                                dbc.Button(
-                                    "Plots",
-                                    id="btn-plots",
-                                    n_clicks=0,
-                                    color="secondary",
-                                    outline=True,
-                                    size="sm",
-                                )
-                            ),
+                            ("Home", "/"),
+                            ("Activities", "/activities"),
+                            ("Simulations", "/simulations"),
+                            ("Plots", "/plots"),
                         ],
-                        navbar=True,
-                        class_name="gap-2",
                         pills=True,
                     ),
                     # Color mode switch (moon / sun) using dbc.Switch
-                    html.Span(
-                        id="color-mode-switch",
-                        className="ms-auto d-flex align-items-center gap-2",
-                        children=[
-                            dbc.Label(class_name="fa fa-moon"),
-                            dbc.Switch(
-                                id="switch",
-                                value=True,
-                                class_name="d-inline-block",
-                            ),
-                            dbc.Label(class_name="fa fa-sun"),
-                        ],
-                    ),
+                    color_mode_control(),
                 ],
                 fluid=True,
             ),
             color="primary",
             dark=True,
             id="main-navbar",
-            class_name="px-3",
+            class_name=NAVBAR_PADDING_CLASS,
         )
 
 
