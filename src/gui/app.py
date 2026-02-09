@@ -108,7 +108,7 @@ def compute_page_store(n_home, n_activities, n_simulations, n_plots):
     return {"page": page}
 
 
-# Second step: render from the store; show a small skeleton when data is None
+# Second step: render from the store
 @app.callback(dash.Output("page-content", "children"), dash.Input("page-store", "data"))
 def render_page(data):
     """

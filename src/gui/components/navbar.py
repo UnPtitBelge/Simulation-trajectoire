@@ -75,21 +75,21 @@ class Navbar:
                             ),
                         ],
                         navbar=True,
-                        className="gap-2",
+                        class_name="gap-2",
+                        pills=True,
                     ),
                     # Color mode switch (moon / sun) using dbc.Switch
                     html.Span(
                         id="color-mode-switch",
                         className="ms-auto d-flex align-items-center gap-2",
                         children=[
-                            dbc.Label(className="fa fa-moon", html_for="switch"),
+                            dbc.Label(class_name="fa fa-moon"),
                             dbc.Switch(
                                 id="switch",
                                 value=True,
-                                className="d-inline-block",
-                                persistence=True,
+                                class_name="d-inline-block",
                             ),
-                            dbc.Label(className="fa fa-sun", html_for="switch"),
+                            dbc.Label(class_name="fa fa-sun"),
                         ],
                     ),
                 ],
@@ -98,7 +98,7 @@ class Navbar:
             color="primary",
             dark=True,
             id="main-navbar",
-            className="px-3",
+            class_name="px-3",
         )
 
 

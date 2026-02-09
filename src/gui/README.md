@@ -59,7 +59,7 @@ This document outlines the structure, conventions, and how to run and develop th
 
 - Components:
   - Prefer `dbc` components over raw `html` when UI styling should follow the Bootstrap theme.
-  - Use `className` (not `class_name`) for CSS classes on Dash components.
+  - Use `class_name` (not `className`) for CSS classes on Dash components.
 
 - Figures:
   - Use pure Python dict/list structures for `dcc.Graph(figure=...)` to avoid non-serializable objects in props.
