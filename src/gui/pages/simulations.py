@@ -7,33 +7,20 @@ All figures are defined using native Python types (dict/list) for Dash props com
 """
 
 import dash_bootstrap_components as dbc
+from components.simulation import plot as simulation_plot
 from dash import dcc, html
-from utils.ui import build_layout, page_container
+from utils.ui import page_container
 
 
 def _default_simulation_figure():
     """
-    Build a simple default figure for the simulations page.
+    Build the simulation figure using the components simulation module.
 
     Returns:
         dict: A Plotly figure represented as a plain dict with data/layout keys.
               Uses native Python types (lists/dicts) to remain compatible with Dash props.
     """
-    return {
-        "data": [
-            {
-                "type": "scatter",
-                "mode": "lines+markers",
-                "x": list(range(0, 11)),
-                "y": [i * i for i in range(0, 11)],
-                "name": "y = x^2",
-            }
-        ],
-        "layout": build_layout(
-            title="Default Simulation",
-            height=400,
-        ),
-    }
+    return simulation_plot()
 
 
 def layout():
@@ -58,7 +45,102 @@ def layout():
                             dbc.CardBody(
                                 [
                                     html.P(
-                                        "A basic demo figure so the page renders without callbacks."
+                                        "Configure the simulation parameters and run to update the trajectory."
+                                    ),
+                                    dbc.Row(
+                                        [
+                                            dbc.Col(
+                                                [
+                                                    dbc.Label("Big sphere mass (kg)"),
+                                                    dbc.Input(
+                                                        id="mass-input",
+                                                        type="number",
+                                                        step=0.1,
+                                                        min=0.0,
+                                                    ),
+                                                ],
+                                                md=2,
+                                            ),
+                                            dbc.Col(
+                                                [
+                                                    dbc.Label(
+                                                        "Angle of launch (degrees)"
+                                                    ),
+                                                    dbc.Input(
+                                                        id="angle-input",
+                                                        type="number",
+                                                        step=1.0,
+                                                        min=0.0,
+                                                        max=90.0,
+                                                    ),
+                                                ],
+                                                md=2,
+                                            ),
+                                            dbc.Col(
+                                                [
+                                                    dbc.Label("Initial speed (m/s)"),
+                                                    dbc.Input(
+                                                        id="speed-input",
+                                                        type="number",
+                                                        step=0.1,
+                                                        min=0.0,
+                                                    ),
+                                                ],
+                                                md=2,
+                                            ),
+                                            dbc.Col(
+                                                [
+                                                    dbc.Label("Big sphere radius (m)"),
+                                                    dbc.Input(
+                                                        id="radius-input",
+                                                        type="number",
+                                                        step=0.1,
+                                                        min=0.0,
+                                                    ),
+                                                ],
+                                                md=2,
+                                            ),
+                                            dbc.Col(
+                                                [
+                                                    dbc.Label("Surface depth (m)"),
+                                                    dbc.Input(
+                                                        id="depth-input",
+                                                        type="number",
+                                                        step=0.001,
+                                                        min=0.0,
+                                                    ),
+                                                ],
+                                                md=2,
+                                            ),
+                                            dbc.Col(
+                                                [
+                                                    dbc.Label("Surface sigma (m)"),
+                                                    dbc.Input(
+                                                        id="sigma-input",
+                                                        type="number",
+                                                        step=0.001,
+                                                        min=0.0,
+                                                    ),
+                                                ],
+                                                md=2,
+                                            ),
+                                        ],
+                                        class_name="mb-3",
+                                    ),
+                                    dbc.Button(
+                                        "Run simulation",
+                                        id="run-simulation-btn",
+                                        color="primary",
+                                        class_name="mb-3",
+                                        n_clicks=0,
+                                    ),
+                                    dbc.Alert(
+                                        id="simulation-warning",
+                                        children="",
+                                        color="warning",
+                                        is_open=False,
+                                        dismissable=True,
+                                        class_name="mb-2",
                                     ),
                                     dcc.Graph(
                                         id="simulation-graph",
