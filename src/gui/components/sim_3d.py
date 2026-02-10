@@ -96,13 +96,6 @@ def _base_traces(
         showscale=False,
     )
 
-    # Full trajectory (lines) – offset Z by particle radius for visual adhesion
-    xs: List[float] = list(results.get("xs", []))
-    ys: List[float] = list(results.get("ys", []))
-    zs: List[float] = list(results.get("zs", []))
-    particle_radius = float(getattr(params, "particle_radius", center_radius))
-    traj_zs = [z + particle_radius for z in zs]
-
     return [surface, rim, center_sphere]
 
 
