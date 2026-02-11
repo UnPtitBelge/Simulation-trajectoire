@@ -50,6 +50,7 @@ def iterations(params: SimulationParams) -> Dict[str, Any]:
     g = float(params.g)
     dt = float(params.time_step)
     steps = int(params.num_steps)
+    print(g, " ", steps, " ", dt)
 
     R = float(params.surface_radius)
     T = float(params.surface_tension)
@@ -101,7 +102,7 @@ def iterations(params: SimulationParams) -> Dict[str, Any]:
 
     steps_run = 0
 
-    for _ in range(steps):
+    while True:
         # Height and gradient at current position
         z, dz_dx, dz_dy = surface_height_and_gradient((x, y))
 

@@ -65,7 +65,7 @@ class SimulationParams:
     )
 
     # Dissipation
-    friction_coef: float = 0.2  # Friction coefficient (dimensionless; scaled in model)
+    friction_coef: float = 0.3  # Friction coefficient (dimensionless; scaled in model)
 
     # Plotting preferences (convenience; used by figure builders)
     plot_title: str = "3D Simulation"
@@ -80,7 +80,7 @@ class SimulationParams:
     plot_traj_line_width: float = 2.0
     plot_traj_marker_size: float = 2.0
     # Animation preferences
-    plot_step_interval_ms: int = 16
+    plot_step_interval_ms: int = 30
     plot_traj_color: str = "rgba(50,50,180,1.0)"
     plot_surface_colorscale: str = "Viridis"
     plot_surface_opacity: float = 0.9

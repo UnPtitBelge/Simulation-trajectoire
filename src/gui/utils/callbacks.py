@@ -18,6 +18,7 @@ from components.plot_3D import build_figure_3d
 from components.plot_3d.simulation_params import (
     SimulationParams as Plot3DSimulationParams,
 )
+from components.sim_3d import build_animated_figure_3d
 from dash import Input, Output, State
 from pages import activities, home, plots, simulations
 
@@ -75,17 +76,42 @@ def register_all(app: dash.Dash):
         Input("switch", "value"),
     )
 
-    # 3) Update 3D simulation figure only when the confirm button is clicked.
+    # 3) Update both static and animated 3D simulation figures when the confirm button is clicked.
     @app.callback(
-        Output("simulation-graph", "figure"),
+        [
+            Output("simulation-graph-static", "figure"),
+            Output("simulation-graph", "figure"),
+        ],
         Input("apply-simulation-inputs", "n_clicks"),
         State("input-initial-speed", "value"),
         State("input-theta-degrees", "value"),
         State("input-initial-x0", "value"),
         State("input-initial-y0", "value"),
+        State("input-surface-tension", "value"),
+        State("input-friction-coef", "value"),
+        State("input-center-radius", "value"),
+        State("input-surface-radius", "value"),
+        State("input-center-mass", "value"),
+        State("input-gravity-g", "value"),
+        State("input-time-step", "value"),
+        State("input-num-steps", "value"),
         prevent_initial_call=True,
     )
-    def update_simulation_figure(n_clicks, v_i, theta_deg, x0, y0):
+    def update_simulation_figure(
+        n_clicks,
+        v_i,
+        theta_deg,
+        x0,
+        y0,
+        surface_tension,
+        friction_coef,
+        center_radius,
+        surface_radius,
+        center_mass,
+        gravity_g,
+        time_step,
+        num_steps,
+    ):
         """
         Update 3D simulation figure when user clicks the 'Apply inputs' button.
         Inputs:
@@ -97,7 +123,78 @@ def register_all(app: dash.Dash):
         theta_val = 0.0 if theta_deg is None else float(theta_deg)
         x0_val = 0.0 if x0 is None else float(x0)
         y0_val = 0.0 if y0 is None else float(y0)
+        T_val = 10.0 if surface_tension is None else float(surface_tension)
+        fric_val = 0.3 if friction_coef is None else float(friction_coef)
+        center_r_val = 0.05 if center_radius is None else float(center_radius)
+        surface_r_val = 0.5 if surface_radius is None else float(surface_radius)
+        g_val = 9.81 if gravity_g is None else float(gravity_g)
+        m_val = 0.5 if center_mass is None else float(center_mass)
+        F_val = m_val * g_val
+        dt_val = 0.001 if time_step is None else float(time_step)
+        steps_val = 800 if num_steps is None else int(num_steps)
+
         params = Plot3DSimulationParams(
-            v_i=v_i_val, theta=theta_val, x0=x0_val, y0=y0_val
+            v_i=v_i_val,
+            theta=theta_val,
+            x0=x0_val,
+            y0=y0_val,
+            surface_tension=T_val,
+            friction_coef=fric_val,
+            center_radius=center_r_val,
+            surface_radius=surface_r_val,
+            center_weight=F_val,
+            g=g_val,
+            time_step=dt_val,
+            num_steps=steps_val,
         )
-        return build_figure_3d(params)
+
+        # Directly build figures without cache
+        static_fig = build_figure_3d(params)
+        animated_fig = build_animated_figure_3d(params, step_interval_ms=16)
+        return (static_fig, animated_fig)
+
+    # 4) Reset inputs to defaults and refresh both figures.
+    @app.callback(
+        [
+            Output("input-initial-speed", "value"),
+            Output("input-theta-degrees", "value"),
+            Output("input-initial-x0", "value"),
+            Output("input-initial-y0", "value"),
+            Output("input-surface-tension", "value"),
+            Output("input-friction-coef", "value"),
+            Output("input-center-radius", "value"),
+            Output("input-surface-radius", "value"),
+            Output("input-center-mass", "value"),
+            Output("input-gravity-g", "value"),
+            Output("input-time-step", "value"),
+            Output("input-num-steps", "value"),
+            Output("simulation-graph-static", "figure", allow_duplicate=True),
+            Output("simulation-graph", "figure", allow_duplicate=True),
+        ],
+        Input("reset-simulation-inputs", "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def reset_simulation_inputs(n_clicks):
+        defaults = Plot3DSimulationParams()
+        # Convert weight (N) back to mass (kg) for the input field
+        default_mass = (
+            float(defaults.center_weight) / float(defaults.g)
+            if float(defaults.g) != 0.0
+            else 0.0
+        )
+        return (
+            float(defaults.v_i),
+            float(defaults.theta),
+            float(defaults.x0),
+            float(defaults.y0),
+            float(defaults.surface_tension),
+            float(defaults.friction_coef),
+            float(defaults.center_radius),
+            float(defaults.surface_radius),
+            float(default_mass),
+            float(defaults.g),
+            float(defaults.time_step),
+            int(defaults.num_steps),
+            build_figure_3d(defaults),
+            build_animated_figure_3d(defaults, step_interval_ms=16),
+        )
