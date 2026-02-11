@@ -144,16 +144,18 @@ def build_animated_figure_3d(
         size=float(getattr(params, "plot_traj_marker_size", 6.0)) + 2.0,
     )
 
-    # Build frames: each updates the moving particle position
+    # Build frames: adapt stride so total frames <= max_frames
+    max_frames = int(getattr(params, "plot_max_frames", 600))
+    n_points = len(xs)
+    stride = max(1, n_points // max_frames)  # at least 1
     frames: List[Dict[str, Any]] = []
-    for i in range(0, len(xs), 2):
+    for i in range(0, n_points, stride):
         fx = xs[i]
         fy = ys[i]
         fz = zs[i] + particle_radius
         frame = {
             "name": f"f{i}",
             "data": [
-                # Only update the moving particle trace (last trace in 'data')
                 _moving_particle_trace(
                     fx,
                     fy,
@@ -163,7 +165,7 @@ def build_animated_figure_3d(
                     size=float(getattr(params, "plot_traj_marker_size", 6.0)) + 2.0,
                 )
             ],
-            "traces": [len(base_traces)],  # index where moving particle will be placed
+            "traces": [len(base_traces)],
         }
         frames.append(frame)
 
