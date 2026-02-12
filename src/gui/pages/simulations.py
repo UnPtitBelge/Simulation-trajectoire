@@ -23,240 +23,150 @@ def layout():
     Return a standardized layout containing only the simulation graph,
     using utils.ui.page_container for consistent styling.
     """
-    pc = page_container(
-        title="Simulations",
-        body_children=[
-            html.H4("Simulations"),
-            dbc.Row(
+    
+    # --- Left panel ---
+    control_panel = html.Div(
+        [
+            html.H5("Paramètres", className="mb-3"),
+            
+            # Group 1: Initial Conditions
+            dbc.Card(
                 [
-                    dbc.Col(
+                    dbc.CardHeader("Conditions Initiales"),
+                    dbc.CardBody(
                         [
-                            dbc.Label("Initial speed v (m/s)"),
-                            dbc.Input(
+                            dbc.Label("Vitesse initiale (m/s)"),
+                            dcc.Slider(
                                 id="input-initial-speed",
-                                type="number",
-                                step=0.001,
-                                min=0.0,
-                                value=0.6,
-                                persistence=True,
+                                min=0.1, max=5.0, step=0.1, value=0.6,
+                                marks={0: '0', 1: '1', 2: '2', 3: '3', 5: '5'},
+                                tooltip={"placement": "bottom", "always_visible": True}
                             ),
-                        ],
-                        md=3,
-                    ),
-                    dbc.Col(
-                        [
-                            dbc.Label("Angle θ (degrees)"),
-                            dbc.Input(
+                            html.Br(),
+                            dbc.Label("Angle de tir θ (degrés)"),
+                            dcc.Slider(
                                 id="input-theta-degrees",
-                                type="number",
-                                step=1.0,
-                                min=0.0,
-                                max=360.0,
-                                value=45,
-                                persistence=True,
+                                min=0, max=360, step=5, value=45,
+                                marks={0: '0°', 90: '90°', 180: '180°', 270: '270°', 360: '360°'},
+                                tooltip={"placement": "bottom", "always_visible": True}
                             ),
-                        ],
-                        md=3,
-                    ),
-                    dbc.Col(
-                        [
-                            dbc.Label("Initial x position (m)"),
-                            dbc.Input(
-                                id="input-initial-x0",
-                                type="number",
-                                step=0.001,
-                                value=0.490,
-                                persistence=True,
+                            html.Br(),
+                            dbc.Label("Position de départ (X, Y)"),
+                            dbc.Row(
+                                [
+                                    dbc.Col(dbc.Input(id="input-initial-x0", type="number", placeholder="X", value=0.490, step=0.01), width=6),
+                                    dbc.Col(dbc.Input(id="input-initial-y0", type="number", placeholder="Y", value=0.00, step=0.01), width=6),
+                                ]
                             ),
-                        ],
-                        md=3,
-                    ),
-                    dbc.Col(
-                        [
-                            dbc.Label("Initial y position (m)"),
-                            dbc.Input(
-                                id="input-initial-y0",
-                                type="number",
-                                step=0.001,
-                                value=0.00,
-                                persistence=True,
-                            ),
-                        ],
-                        md=3,
+                        ]
                     ),
                 ],
                 class_name="mb-3",
             ),
-            dbc.Row(
+
+            # Group 2: Environment Parameters
+            dbc.Card(
                 [
-                    dbc.Col(
+                    dbc.CardHeader("Environnement"),
+                    dbc.CardBody(
                         [
-                            dbc.Label("Surface tension T"),
-                            dbc.Input(
-                                id="input-surface-tension",
-                                type="number",
-                                step=0.1,
-                                value=10.0,
-                                persistence=True,
-                            ),
-                        ],
-                        md=3,
-                    ),
-                    dbc.Col(
-                        [
-                            dbc.Label("Friction coefficient"),
-                            dbc.Input(
+                            dbc.Label("Frottements"),
+                            dcc.Slider(
                                 id="input-friction-coef",
-                                type="number",
-                                step=0.01,
-                                min=0.0,
-                                value=0.3,
-                                persistence=True,
+                                min=0.0, max=1.0, step=0.05, value=0.3,
+                                marks={0: 'Nul', 0.5: 'Moyen', 1: 'Fort'},
+                                tooltip={"placement": "bottom", "always_visible": True}
                             ),
-                        ],
-                        md=3,
-                    ),
-                    dbc.Col(
-                        [
-                            dbc.Label("Center sphere radius (m)"),
-                            dbc.Input(
-                                id="input-center-radius",
-                                type="number",
-                                step=0.001,
-                                min=0.0,
-                                value=0.05,
-                                persistence=True,
-                            ),
-                        ],
-                        md=3,
-                    ),
-                    dbc.Col(
-                        [
-                            dbc.Label("Surface radius R (m)"),
-                            dbc.Input(
-                                id="input-surface-radius",
-                                type="number",
-                                step=0.001,
-                                min=0.01,
-                                value=0.5,
-                                persistence=True,
-                            ),
-                        ],
-                        md=3,
+                            html.Br(),
+                            dbc.Row(
+                                [
+                                    dbc.Col(
+                                        [dbc.Label("Gravité (m/s²)"), dbc.Input(id="input-gravity-g", type="number", value=9.81)], 
+                                        width=6
+                                    ),
+                                    dbc.Col(
+                                        [dbc.Label("Masse centrale (kg)"), dbc.Input(id="input-center-mass", type="number", value=0.5)], 
+                                        width=6
+                                    ),
+                                ]
+                            )
+                        ]
                     ),
                 ],
                 class_name="mb-3",
             ),
-            dbc.Row(
+
+            # Group 3: Advanced Parameters (Hidden by default for simplicity)
+            dbc.Accordion(
                 [
-                    dbc.Col(
+                    dbc.AccordionItem(
                         [
-                            dbc.Label("Center sphere mass m (kg)"),
-                            dbc.Input(
-                                id="input-center-mass",
-                                type="number",
-                                step=0.01,
-                                min=0.0,
-                                value=0.5,
-                                persistence=True,
-                            ),
+                            dbc.Row([
+                                dbc.Col([dbc.Label("Tension surface"), dbc.Input(id="input-surface-tension", type="number", value=10.0)], width=6),
+                                dbc.Col([dbc.Label("Rayon Centre"), dbc.Input(id="input-center-radius", type="number", value=0.05)], width=6),
+                            ], class_name="mb-2"),
+                            dbc.Row([
+                                dbc.Col([dbc.Label("Rayon Surface"), dbc.Input(id="input-surface-radius", type="number", value=0.5)], width=6),
+                                dbc.Col([dbc.Label("Pas de temps (dt)"), dbc.Input(id="input-time-step", type="number", value=0.01)], width=6),
+                            ], class_name="mb-2"),
+                            dbc.Label("Nombre de steps max"),
+                            dbc.Input(id="input-num-steps", type="number", value=800),
                         ],
-                        md=3,
-                    ),
-                    dbc.Col(
-                        [
-                            dbc.Label("Gravity g (m/s²)"),
-                            dbc.Input(
-                                id="input-gravity-g",
-                                type="number",
-                                step=0.01,
-                                min=0.0,
-                                value=9.81,
-                                persistence=True,
-                            ),
-                        ],
-                        md=3,
-                    ),
-                    dbc.Col(
-                        [
-                            dbc.Label("Integration dt (s)"),
-                            dbc.Input(
-                                id="input-time-step",
-                                type="number",
-                                step=0.001,
-                                min=0.0001,
-                                value=0.01,
-                                persistence=True,
-                            ),
-                        ],
-                        md=3,
-                    ),
-                    dbc.Col(
-                        [
-                            dbc.Label("Max steps"),
-                            dbc.Input(
-                                id="input-num-steps",
-                                type="number",
-                                step=1,
-                                min=1,
-                                value=800,
-                                persistence=True,
-                            ),
-                        ],
-                        md=3,
+                        title="Paramètres Avancés (Drap & Calcul)"
                     ),
                 ],
+                start_collapsed=True,
                 class_name="mb-3",
             ),
+
             dbc.Row(
                 [
-                    dbc.Col(
-                        dbc.Button(
-                            "Apply inputs",
-                            id="apply-simulation-inputs",
-                            color="primary",
-                            n_clicks=0,
-                            class_name="w-100 py-2",
-                        ),
-                        md=3,
-                    ),
-                    dbc.Col(
-                        dbc.Button(
-                            "Reset",
-                            id="reset-simulation-inputs",
-                            color="secondary",
-                            n_clicks=0,
-                            class_name="w-100 py-2",
-                        ),
-                        md=3,
-                    ),
+                    dbc.Col(dbc.Button("Lancer Simulation", id="apply-simulation-inputs", color="primary", class_name="w-100"), width=8),
+                    dbc.Col(dbc.Button("Reset", id="reset-simulation-inputs", color="outline-secondary", class_name="w-100"), width=4),
                 ],
-                class_name="mb-3",
+                class_name="mb-4"
             ),
-            html.Div(),
-            dbc.Row(
+        ]
+    )
+
+    # --- Visualization Zone (Right) ---
+    visualization_panel = dbc.Card(
+        dbc.CardBody(
+            dbc.Tabs(
                 [
-                    dbc.Col(
-                        dcc.Graph(
-                            id="simulation-graph-static",
-                            figure=_default_simulation_figure(),
-                            config={"responsive": True, "displayModeBar": False},
-                            style={"height": "50vh"},
-                        ),
-                        md=6,
-                    ),
-                    dbc.Col(
+                    dbc.Tab(
                         dcc.Graph(
                             id="simulation-graph",
                             figure=plot_sim_3d(),
-                            config={"responsive": True, "displayModeBar": False},
-                            style={"height": "50vh"},
+                            config={"responsive": True, "displayModeBar": True},
+                            style={"height": "75vh"},
                         ),
-                        md=6,
+                        label="Trajectoire 3D Dynamique",
                     ),
-                ],
-                class_name="mb-3",
-            ),
+                    dbc.Tab(
+                        dcc.Graph(
+                            id="simulation-graph-static",
+                            figure=_default_simulation_figure(),
+                            config={"responsive": True},
+                            style={"height": "75vh"},
+                        ),
+                        label="Vue Statique (Drap)",
+                    ),
+                ]
+            )
+        )
+    )
+
+    # Page container
+    pc = page_container(
+        title="Simulateur de Trajectoire",
+        body_children=[
+            dbc.Row(
+                [
+                    dbc.Col(control_panel, md=4, lg=3, style={"maxHeight": "calc(100vh - 100px)", "overflowY": "auto"}),
+                    dbc.Col(visualization_panel, md=8, lg=9),
+                ]
+            )
         ],
     )
     return pc["body"]
