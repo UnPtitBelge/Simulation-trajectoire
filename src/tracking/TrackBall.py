@@ -67,10 +67,12 @@ class TrackBall:
         for frame in self.frames:
             hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
             mask = cv2.inRange(hsv, lower, upper)
-            # mask = cv2.medianBlur(mask, 5) # To test if needed
+            mask = cv2.medianBlur(mask, 5) # To test if needed
+
             self._add_center_ball(mask, positions)
 
-        positions = self._interpolate_positions(positions, smoothing=250)
+        positions = self._interpolate_positions(positions, smoothing=5)
+        self.tracker = positions
         self._create_video(canvas, positions, fps=60)
 
     def _set_hue_range(self, hsv_color):
@@ -78,8 +80,8 @@ class TrackBall:
         Set the hue range for color detection.
         """
         hue = hsv_color[0]
-        lower = np.array([hue - 15, 50, 10])
-        upper = np.array([hue + 15, 255, 255])
+        lower = np.array([hue - 10, 50, 10])
+        upper = np.array([hue + 10, 255, 255])
         return lower, upper
 
     def _add_center_ball(self, mask, positions):
@@ -121,7 +123,20 @@ class TrackBall:
         """
         Interpolate the ball positions using spline interpolation.
         """
-        positions = np.array(positions)
+        def remove_consecutive_duplicates(points, eps=1e-6):
+            cleaned = [points[0]]
+            for p in points[1:]:
+                if abs(p[0] - cleaned[-1][0]) > eps or abs(p[1] - cleaned[-1][1]) > eps:
+                    cleaned.append(p)
+            return cleaned
+        if not positions or len(positions) < 2:
+                return positions
+
+        clean = remove_consecutive_duplicates(positions)
+        if len(clean) < 2:
+            return clean
+
+        positions = np.array(clean)
         x, y = positions[:,0], positions[:,1]
 
         tck, u = interp.splprep([x, y], s=smoothing)
@@ -130,3 +145,7 @@ class TrackBall:
         x_new, y_new = interp.splev(unew, tck)
 
         return list(zip(np.array(x_new, dtype=int), np.array(y_new, dtype=int)))
+
+    @property
+    def getPositions(self):
+        return self.tracker

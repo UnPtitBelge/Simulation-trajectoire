@@ -2,6 +2,7 @@ import sys
 import os
 
 from TrackBall import TrackBall
+from DataWriter import DataWriter
 from path import *
 
 def main(filePath: str = "", saveImages: bool = False):
@@ -9,6 +10,9 @@ def main(filePath: str = "", saveImages: bool = False):
     experiment = TrackBall(ballColor=[63, 25, 37])
     experiment.convertVideoToImages(RESOURCE_PATH + filePath, saveImages=saveImages)
     experiment.trackBall()
+    dw = DataWriter("tracking_data.csv")
+    dw.appendData(experiment.tracker)
+
 
 def getArguments() -> tuple[str, bool]:
     """

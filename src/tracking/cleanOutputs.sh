@@ -15,3 +15,7 @@ for d in "${dirs[@]}"; do
     echo "⚠️  Dossier absent, ignoré: $p"
   fi
 done
+
+
+echo "Début du nettoyage des fichiers à la racine de $base"
+find $base/* -maxdepth 1 -type f -print -delete 2>/dev/null || true
