@@ -216,6 +216,7 @@ def layout():
                             id="apply-simulation-inputs",
                             color="primary",
                             n_clicks=0,
+                            class_name="w-100 py-2",
                         ),
                         md=3,
                     ),
@@ -225,6 +226,7 @@ def layout():
                             id="reset-simulation-inputs",
                             color="secondary",
                             n_clicks=0,
+                            class_name="w-100 py-2",
                         ),
                         md=3,
                     ),
@@ -238,6 +240,8 @@ def layout():
                         dcc.Graph(
                             id="simulation-graph-static",
                             figure=_default_simulation_figure(),
+                            config={"responsive": True, "displayModeBar": False},
+                            style={"height": "50vh"},
                         ),
                         md=6,
                     ),
@@ -245,6 +249,8 @@ def layout():
                         dcc.Graph(
                             id="simulation-graph",
                             figure=plot_sim_3d(),
+                            config={"responsive": True, "displayModeBar": False},
+                            style={"height": "50vh"},
                         ),
                         md=6,
                     ),

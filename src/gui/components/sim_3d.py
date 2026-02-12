@@ -187,6 +187,8 @@ def build_animated_figure_3d(
             "b": int(getattr(params, "plot_margin_bottom", 0)),
         },
     )
+    # Preserve user camera/zoom/rotation across updates
+    layout["uirevision"] = "keep"
     layout["scene"] = {
         "xaxis": {"title": {"text": "x"}},
         "yaxis": {"title": {"text": "y"}},
@@ -222,6 +224,7 @@ def build_animated_figure_3d(
                         {
                             "frame": {"duration": 0, "redraw": False},
                             "mode": "immediate",
+                            "transition": {"duration": 0},
                         },
                     ],
                 },
@@ -229,26 +232,8 @@ def build_animated_figure_3d(
         }
     ]
 
-    layout["sliders"] = [
-        {
-            "active": 0,
-            "steps": [
-                {
-                    "label": str(i),
-                    "method": "animate",
-                    "args": [
-                        [f"f{i}"],
-                        {
-                            "frame": {"duration": 0, "redraw": True},
-                            "mode": "immediate",
-                            "transition": {"duration": 0},
-                        },
-                    ],
-                }
-                for i in range(len(frames))
-            ],
-        }
-    ]
+    # Remove steps slider for cleaner UI; keep play/pause controls
+    layout["sliders"] = []
 
     # Assemble final figure dict
     figure = {
