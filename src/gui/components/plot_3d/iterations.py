@@ -50,7 +50,6 @@ def iterations(params: SimulationParams) -> Dict[str, Any]:
     g = float(params.g)
     dt = float(params.time_step)
     steps = int(params.num_steps)
-    print(g, " ", steps, " ", dt)
 
     R = float(params.surface_radius)
     T = float(params.surface_tension)
@@ -135,6 +134,9 @@ def iterations(params: SimulationParams) -> Dict[str, Any]:
             print(
                 "[WARNING] Simulation stopped: collision with central sphere (r <= center_radius)."
             )
+            break
+        if steps_run >= steps:
+            print("[INFO] Simulation stopped: reached maximum number of steps.")
             break
 
     final_state = {"x": x, "y": y, "vx": vx, "vy": vy}

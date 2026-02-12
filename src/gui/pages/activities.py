@@ -32,6 +32,7 @@ def layout() -> dbc.Container:
                                 "Start Activity",
                                 id="start-activity-1",
                                 color="secondary",
+                                class_name="w-100 py-2",
                             ),
                         ]
                     ),

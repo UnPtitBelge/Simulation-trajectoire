@@ -80,6 +80,7 @@ def page_shell(
             dcc.Loading(children=html.Div(id=content_id), type=loader_type),
         ],
         fluid=fluid,
+        style={"paddingTop": "4rem"},
     )
 
 

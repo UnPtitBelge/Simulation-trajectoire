@@ -2,7 +2,7 @@
 Plots page: minimal placeholder
 
 This module provides a standardized minimal layout using utils.ui.page_container.
-It renders only a heading and a short description as a placeholder.
+It renders a heading, short description, and a responsive graph placeholder.
 """
 
 from dash import html

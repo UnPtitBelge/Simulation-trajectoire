@@ -76,11 +76,26 @@ def register_all(app: dash.Dash):
         Input("switch", "value"),
     )
 
+    # Navbar mobile toggler: collapse/expand the nav links on small screens
+    app.clientside_callback(
+        """
+        function(nClicks, isOpen) {
+            if (!nClicks) return isOpen;
+            return !isOpen;
+        }
+        """,
+        Output("navbar-collapse", "is_open"),
+        Input("navbar-toggler", "n_clicks"),
+        State("navbar-collapse", "is_open"),
+    )
+
     # 3) Update both static and animated 3D simulation figures when the confirm button is clicked.
     @app.callback(
         [
             Output("simulation-graph-static", "figure"),
             Output("simulation-graph", "figure"),
+            Output("simulation-graph-static", "config"),
+            Output("simulation-graph", "config"),
         ],
         Input("apply-simulation-inputs", "n_clicks"),
         State("input-initial-speed", "value"),
@@ -130,7 +145,7 @@ def register_all(app: dash.Dash):
         g_val = 9.81 if gravity_g is None else float(gravity_g)
         m_val = 0.5 if center_mass is None else float(center_mass)
         F_val = m_val * g_val
-        dt_val = 0.001 if time_step is None else float(time_step)
+        dt_val = 0.1 if time_step is None else float(time_step)
         steps_val = 800 if num_steps is None else int(num_steps)
 
         params = Plot3DSimulationParams(
@@ -150,8 +165,10 @@ def register_all(app: dash.Dash):
 
         # Directly build figures without cache
         static_fig = build_figure_3d(params)
-        animated_fig = build_animated_figure_3d(params, step_interval_ms=16)
-        return (static_fig, animated_fig)
+        animated_fig = build_animated_figure_3d(params, step_interval_ms=33)
+        static_config = {"responsive": True, "displayModeBar": False}
+        animated_config = {"responsive": True, "displayModeBar": False}
+        return (static_fig, animated_fig, static_config, animated_config)
 
     # 4) Reset inputs to defaults and refresh both figures.
     @app.callback(
@@ -170,6 +187,8 @@ def register_all(app: dash.Dash):
             Output("input-num-steps", "value"),
             Output("simulation-graph-static", "figure", allow_duplicate=True),
             Output("simulation-graph", "figure", allow_duplicate=True),
+            Output("simulation-graph-static", "config", allow_duplicate=True),
+            Output("simulation-graph", "config", allow_duplicate=True),
         ],
         Input("reset-simulation-inputs", "n_clicks"),
         prevent_initial_call=True,
@@ -196,5 +215,7 @@ def register_all(app: dash.Dash):
             float(defaults.time_step),
             int(defaults.num_steps),
             build_figure_3d(defaults),
-            build_animated_figure_3d(defaults, step_interval_ms=16),
+            build_animated_figure_3d(defaults, step_interval_ms=33),
+            {"responsive": True, "displayModeBar": False},
+            {"responsive": True, "displayModeBar": False},
         )
