@@ -138,33 +138,49 @@ def layout():
                         dcc.Graph(
                             id="simulation-graph",
                             figure=plot_sim_3d(),
-                            config={"responsive": True, "displayModeBar": True},
-                            style={"height": "75vh"},
+                            config={"responsive": True, "displayModeBar": False},
+                            className="sim-graph",
                         ),
-                        label="Trajectoire 3D Dynamique",
+                        label="Dynamique (3D)",
+                        label_class_name="small-tab-label",
                     ),
                     dbc.Tab(
                         dcc.Graph(
                             id="simulation-graph-static",
                             figure=_default_simulation_figure(),
-                            config={"responsive": True},
-                            style={"height": "75vh"},
+                            config={"responsive": True, "displayModeBar": False},
+                            className="sim-graph",
                         ),
-                        label="Vue Statique (Drap)",
+                        label="Statique (Drap)",
+                        label_class_name="small-tab-label",
                     ),
-                ]
+                ],
+                className="nav-fill" # Ensures tabs take all of the free width
             )
         )
     )
 
     # Page container
+    # Responsive: Graph first on mobile (order=1), Controls second (order=2).
+    # On Desktop: Controls first (order=1), Graph second (order=2).
     pc = page_container(
         title="Simulateur de Trajectoire",
         body_children=[
             dbc.Row(
                 [
-                    dbc.Col(control_panel, md=4, lg=3, style={"maxHeight": "calc(100vh - 100px)", "overflowY": "auto"}),
-                    dbc.Col(visualization_panel, md=8, lg=9),
+                    dbc.Col(
+                        control_panel, 
+                        xs={"size": 12, "order": 2}, 
+                        md={"size": 4, "order": 1}, 
+                        lg={"size": 3, "order": 1},
+                        className="control-panel-scroll"
+                    ),
+                    dbc.Col(
+                        visualization_panel, 
+                        xs={"size": 12, "order": 1}, 
+                        md={"size": 8, "order": 2}, 
+                        lg={"size": 9, "order": 2}
+                    ),
                 ]
             )
         ],

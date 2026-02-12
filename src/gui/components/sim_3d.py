@@ -196,28 +196,45 @@ def build_animated_figure_3d(
         "aspectmode": "data",
     }
     # Add animation controls (updatemenus and sliders)
+    # Using separate updatemenus to avoid the group border.
+    # We use pixel-based positioning (xanchor="left", x=0) combined with 'pad' in pixels
+    # to control the gap precisely, rather than %-based spacing which varies with screen size.
     layout["updatemenus"] = [
         {
             "type": "buttons",
             "showactive": False,
+            "x": 0,             # Leftmost
+            "y": 1,
+            "xanchor": "left",
+            "yanchor": "top",
+            "pad": {"r": 10, "t": 10},
             "buttons": [
                 {
-                    "label": "Play",
+                    "label": "▶",  # Play
                     "method": "animate",
                     "args": [
                         None,
                         {
-                            "frame": {
-                                "duration": frame_ms,
-                                "redraw": True,
-                            },
+                            "frame": {"duration": frame_ms, "redraw": True},
                             "fromcurrent": True,
                             "transition": {"duration": 0},
+                            "mode": "immediate",
                         },
                     ],
-                },
+                }
+            ],
+        },
+        {
+            "type": "buttons",
+            "showactive": False,
+            "x": 0,             # Also anchored at left 0
+            "y": 1,
+            "xanchor": "left",
+            "yanchor": "top",
+            "pad": {"l": 50, "t": 10}, # Shifted RIGHT by 50px using padding instead of x-percentage
+            "buttons": [
                 {
-                    "label": "Pause",
+                    "label": "⏸",  # Pause
                     "method": "animate",
                     "args": [
                         [None],
@@ -227,9 +244,9 @@ def build_animated_figure_3d(
                             "transition": {"duration": 0},
                         },
                     ],
-                },
+                }
             ],
-        }
+        },
     ]
 
     # Remove steps slider for cleaner UI; keep play/pause controls
