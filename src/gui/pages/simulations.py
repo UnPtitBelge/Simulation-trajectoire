@@ -112,7 +112,7 @@ def layout():
                             dbc.Label("Nombre de steps max"),
                             dbc.Input(id="input-num-steps", type="number", value=800),
                         ],
-                        title="Paramètres Avancés (Drap & Calcul)"
+                        title="Paramètres Avancés (Surface)"
                     ),
                 ],
                 start_collapsed=True,
