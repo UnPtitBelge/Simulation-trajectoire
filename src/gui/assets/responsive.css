@@ -1,0 +1,30 @@
+/* Responsive adjustments for Simulations page */
+
+/* Mobile first defaults (xs) */
+
+/* Control panel scrolls naturally on mobile and sits below graph */
+.control-panel-scroll {
+    max-height: none !important;
+    overflow-y: visible !important;
+    margin-top: 1rem;
+}
+
+/* Graph takes less height on mobile to allow scrolling */
+.sim-graph {
+    height: 60vh !important;
+}
+
+/* Desktop overrides (md and up) */
+@media (min-width: 768px) {
+    /* Control panel becomes a sticky/scrollable sidebar */
+    .control-panel-scroll {
+        max-height: calc(100vh - 100px) !important;
+        overflow-y: auto !important;
+        margin-top: 0;
+    }
+
+    /* Graph takes standard height */
+    .sim-graph {
+        height: 75vh !important;
+    }
+}
