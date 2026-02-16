@@ -19,7 +19,9 @@ from components.plot_3d.simulation_params import (
     SimulationParams as Plot3DSimulationParams,
 )
 from components.sim_3d import build_animated_figure_3d
-from dash import Input, Output, State
+from components.control_panel import control_panel_3D, control_panel_2D
+from dash import Input, Output, State, html
+from components.plot_2d.sim_mcu import plot as plot_mcu
 from pages import activities, home, plots, simulations
 
 
@@ -218,4 +220,59 @@ def register_all(app: dash.Dash):
             build_animated_figure_3d(defaults, step_interval_ms=33),
             {"responsive": True, "displayModeBar": False},
             {"responsive": True, "displayModeBar": False},
+        )
+
+    # ------ control panel callbacks ------
+    @app.callback(
+        Output("control-panel-wrapper", "children"),
+        Input("simulation-tabs", "active_tab"),
+    )
+    def switch_control_panel(active_tab):
+        """
+        Switch the control panel content based on the active simulation tab.
+
+        Args:
+            active_tab (str | None): The ID of the currently active tab.
+
+        Returns:
+            Dash component: The appropriate control panel for the selected tab.
+        """
+        if active_tab == "dynamic-3d-tab":
+            return control_panel_3D()
+        elif active_tab == "static-3d-tab":
+            return control_panel_3D()  # Reuse same controls for static view
+        elif active_tab == "mcu-2d-tab":
+            return control_panel_2D()
+        else:
+            return html.Div("Sélectionnez un onglet pour afficher les contrôles.")
+
+    # ------ MCU callbacks ------
+
+    @app.callback(
+        Output("simulation-mcu", "figure"),
+        Input("apply-simulation-MCU-inputs", "n_clicks"),
+        State("input-initial-speed-rotation-mcu", "value"),
+        State("input-distance-boule-mcu", "value"),
+        prevent_initial_call=True,
+    )
+    def update_mcu(n_clicks, omega, radius):
+        return plot_mcu(omega=omega, R=radius)
+
+
+    @app.callback(
+        [
+            Output("input-initial-speed-rotation-mcu", "value"),
+            Output("input-distance-boule-mcu", "value"),
+            Output("simulation-mcu", "figure", allow_duplicate=True),
+        ],
+        Input("reset-simulation-MCU-inputs", "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def reset_2d(n_clicks):
+        default_R = 50.0
+        default_omega = 2.0
+        return (
+            default_omega,
+            default_R,
+            plot_mcu(omega=default_omega, R=default_R),
         )
