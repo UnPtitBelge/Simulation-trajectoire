@@ -45,11 +45,12 @@ cd src/simu_machine_learning && python3 main.py
 Dans la racine du projet, exécuter:
 
 ```bash/zsh
-python3 src/tracking/main.py [PATH_VIDEO] [SAVE IMAGES]
+python src/tracking/main.py [--path_video PATH_VIDEO] [--save_images SAVE_IMAGES] [--save_data SAVE_DATA]
 ```
-Où:
-- `[PATH_VIDEO]` est le chemin à partir du dossier `src/tracking/resources` vers la vidéo à traiter. Par défaut, il est réglé sur `/first/big_blue.mp4`.
-- `[SAVE IMAGES]` est un booléen (True/False) indiquant s'il faut sauvegarder les images extraites de la vidéo. Par défaut, il est réglé sur False.
+Où [] indique que les arguments sont optionnels, et:
+- `--path_video PATH_VIDEO` : chemin vers la vidéo à traiter à partir du dossier `src/tracking/resources/`, par défaut `src/tracking/resources/big_blue.mp4`
+- `--save_images SAVE_IMAGES` : indique si les images extraites de la vidéo doivent être sauvegardées, par défaut `False`
+- `--save_data SAVE_DATA` : indique si les positions de la balle extraites de la vidéo doivent être sauvegardées dans un fichier CSV, par défaut `False`
 
 ### Nettoyage des images sauvegardées
 
