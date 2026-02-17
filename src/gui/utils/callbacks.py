@@ -19,9 +19,10 @@ from components.plot_3d.simulation_params import (
     SimulationParams as Plot3DSimulationParams,
 )
 from components.sim_3d import build_animated_figure_3d
-from components.control_panel import control_panel_3D, control_panel_2D
+from components.control_panel import control_panel_3D, control_panel_2D_newton
 from dash import Input, Output, State, html
 from components.plot_2d.sim_mcu import plot as plot_mcu
+from components.plot_2d.sim_newton import plot as plot_newton
 from pages import activities, home, plots, simulations
 
 
@@ -241,38 +242,72 @@ def register_all(app: dash.Dash):
             return control_panel_3D()
         elif active_tab == "static-3d-tab":
             return control_panel_3D()  # Reuse same controls for static view
-        elif active_tab == "mcu-2d-tab":
-            return control_panel_2D()
+        elif active_tab == "newton-2d-tab":
+            return control_panel_2D_newton()
         else:
             return html.Div("Sélectionnez un onglet pour afficher les contrôles.")
 
-    # ------ MCU callbacks ------
 
+    # ------ NEWTON 2D callbacks ------
     @app.callback(
-        Output("simulation-mcu", "figure"),
-        Input("apply-simulation-MCU-inputs", "n_clicks"),
-        State("input-initial-speed-rotation-mcu", "value"),
-        State("input-distance-boule-mcu", "value"),
-        prevent_initial_call=True,
-    )
-    def update_mcu(n_clicks, omega, radius):
-        return plot_mcu(omega=omega, R=radius)
-
-
-    @app.callback(
-        [
-            Output("input-initial-speed-rotation-mcu", "value"),
-            Output("input-distance-boule-mcu", "value"),
-            Output("simulation-mcu", "figure", allow_duplicate=True),
-        ],
-        Input("reset-simulation-MCU-inputs", "n_clicks"),
-        prevent_initial_call=True,
-    )
-    def reset_2d(n_clicks):
-        default_R = 50.0
-        default_omega = 2.0
-        return (
-            default_omega,
-            default_R,
-            plot_mcu(omega=default_omega, R=default_R),
+            Output("simulation-newton-2d", "figure"),
+            Input("apply-simulation-newton-inputs", "n_clicks"),
+            State("input-initial-speed-newton", "value"),
+            State("input-theta-degrees-newton", "value"),
+            State("input-distance-boule-newton", "value"),
+            State("input-friction-coef-newton", "value"),
+            State("input-show-full-trajectory-newton", "value"),
+            prevent_initial_call=True,
         )
+    def update_newton_2d(n_clicks, v0, theta_deg, radius, friction_coef, show_full_trajectory):
+        n_frames = 10000
+        trail = n_frames if show_full_trajectory else 50
+        return plot_newton(
+        G=1,
+        M=1000,
+        r0=radius,
+        v0=v0,
+        theta_deg=theta_deg,
+        gamma=friction_coef/10,
+        trail=trail,
+        n_frames=n_frames,
+        duration_ms=10,
+    )
+
+    @app.callback(
+            Output("input-initial-speed-newton", "value"),
+            Output("input-theta-degrees-newton", "value"),
+            Output("input-distance-boule-newton", "value"),
+            Output("input-friction-coef-newton", "value"),
+            Output("input-show-full-trajectory-newton", "value"),
+            Output("simulation-newton-2d", "figure", allow_duplicate=True),
+        Input("reset-simulation-newton-inputs", "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def reset_newton_2d(n_clicks):
+        default_v0 = 4.0
+        default_theta = 90
+        default_radius = 45.0
+        default_friction = 0.05
+        default_show_full_trajectory = True
+        n_frames = 10000
+        trail = n_frames if default_show_full_trajectory else 50
+        return (
+            default_v0,
+            default_theta,
+            default_radius,
+            default_friction,
+            default_show_full_trajectory,
+            plot_newton(
+                G=1,
+                M=1000,
+                r0=default_radius,
+                v0=default_v0,
+                theta_deg=default_theta,
+                gamma=default_friction/10,
+                trail=trail,
+                n_frames=n_frames,
+                duration_ms=10,
+            ),
+        )
+
