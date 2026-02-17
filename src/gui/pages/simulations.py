@@ -8,7 +8,7 @@ import dash_bootstrap_components as dbc
 from components.plot_3D import plot as plot_3d
 from components.sim_3d import plot as plot_sim_3d
 from components.plot_2d.sim_mcu import plot as plot_mcu
-from components.control_panel import control_panel_3D
+from components.plot_2d.sim_newton import plot as plot_newton
 from dash import dcc, html
 from utils.ui import page_container
 
@@ -59,14 +59,14 @@ def layout():
                         label_class_name="small-tab-label",
                     ),
                     dbc.Tab(
-                        tab_id="mcu-2d-tab",
-                        label="MCU (2D)",
+                        tab_id="newton-2d-tab",
+                        label="Newton (2D)",
                         label_class_name="small-tab-label",
                         children=
                         html.Div(
                             dcc.Graph(
-                                id="simulation-mcu",
-                                figure=plot_mcu(),
+                                id="simulation-newton-2d",
+                                figure=plot_newton(),
                                 config={"responsive": True, "displayModeBar": False},
                                 className="sim-graph",
                             ),
