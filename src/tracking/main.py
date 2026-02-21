@@ -4,10 +4,11 @@ import argparse
 from TrackBall import TrackBall
 from DataWriter import DataWriter
 from path import *
+from gui import Window
 
 def main(filePath: str = "", saveImages: bool = False, saveData: bool = False) -> None:
     RESOURCE_PATH = os.path.join(os.getcwd(), RESOURCES_DIR)
-    experiment = TrackBall(ballColor=[63, 25, 37])
+    experiment = TrackBall(ballColor=[15, 4, 127])
     experiment.convertVideoToImages(RESOURCE_PATH + filePath, saveImages=saveImages)
     experiment.trackBall()
 
@@ -47,5 +48,8 @@ def getArguments() -> dict:
 
 
 if __name__ == "__main__":
-    args = list(getArguments().values())
-    main(*args)
+    app = Window.Window()
+    app.mainloop()
+
+    # args = list(getArguments().values())
+    # main(*args)

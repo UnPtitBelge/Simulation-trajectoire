@@ -11,9 +11,10 @@ Module for tracking a single colored ball in a video and creating an output vide
 """
 
 class TrackBall:
-    def __init__(self, backgroundColor: list = [0, 0, 0], ballColor: list = [255, 255, 255], output_video: str = "trajectory.mp4" ):
-        self.backgroundColor = backgroundColor
-        self.ballColor = np.uint8([[ballColor]]) # RGB -> BGR
+    # ballColor argument is taken with BGR color
+    def __init__(self, ballColor: list = [255, 255, 255], output_video: str = "trajectory.mp4" ):
+        self.ballColor = np.uint8([[ballColor]])
+        self.lower, self.upper = self._set_hue_range(cv2.cvtColor(self.ballColor, cv2.COLOR_BGR2HSV)[0][0])
         self.ballPositions = []
         self.tracker = []
         self.frames = []
@@ -61,40 +62,51 @@ class TrackBall:
         """
         Track the ball in the video frames and create an output video showing the trajectory.
         """
-        hsv_color = cv2.cvtColor(self.ballColor, cv2.COLOR_BGR2HSV)[0][0]
-        lower, upper = self._set_hue_range(hsv_color)
         positions = []
         canvas = np.zeros_like(self.frames[0])
         for frame in self.frames:
-            hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-            mask = cv2.inRange(hsv, lower, upper)
-            mask = cv2.medianBlur(mask, 5) # To test if needed
-
-            self._add_center_ball(mask, positions)
+            center = self.findBallFrame(frame)
+            if center is not None:
+                positions.append(center)
 
         self.ballPositions = positions
         positions = self._interpolate_positions(positions, smoothing=5)
         self.tracker = positions
         self._create_video(canvas, positions, fps=60)
 
-    def _set_hue_range(self, hsv_color):
+    def findBallFrame(self, frame: np.ndarray) -> tuple or None:
         """
-        Set the hue range for color detection.
+        Find the position of the ball in a single frame.
         """
-        hue = hsv_color[0]
-        lower = np.array([hue - 10, 50, 10])
-        upper = np.array([hue + 10, 255, 255])
-        return lower, upper
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        mask = cv2.inRange(hsv, self.lower, self.upper)
+        mask = cv2.medianBlur(mask, 5) # To test if needed
 
-    def _add_center_ball(self, mask, positions):
-        """
-         Get the center of the ball from the mask and add it to the positions list.
-        """
         M = cv2.moments(mask)
         if M["m00"] > 0:
             cx = int(M["m10"] / M["m00"])
             cy = int(M["m01"] / M["m00"])
-            positions.append((cx, cy))
+            return (cx, cy)
+        return None
+
+
+    def _set_hue_range(self, hsv_color, hue_range: int = 10) -> tuple:
+        """
+        Set the hue range for color detection.
+        """
+        H_MAX = 179
+        S_MAX = 255
+        V_MAX = 255
+
+        h, s, v = int(hsv_color[0]), int(hsv_color[1]), int(hsv_color[2])
+
+        color = { 'max': min(H_MAX, h + hue_range * 5), 'min': max(0, h - hue_range * 5) }
+        saturation = { 'max': min(S_MAX, s + hue_range * 5), 'min': max(0, s - hue_range * 5) }
+        luminance = { 'max': min(V_MAX, v + hue_range * 5), 'min': max(0, v - hue_range * 5) }
+
+        lower = np.array([color['min'], saturation['min'], luminance['min']])
+        upper = np.array([color['max'], saturation['max'], luminance['max']])
+        return lower, upper
 
     def _create_video(self, canvas: np.array, positions: np.array, fps:int =30):
         """
