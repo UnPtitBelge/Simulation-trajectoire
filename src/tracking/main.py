@@ -24,6 +24,7 @@ def main(filePath: str = "", saveImages: bool = False, saveData: bool = False) -
         realHeight=90
     )
     pa.calculateSpeed()
+    pa.setInitialSpeed(6969) # Assuming the ball starts from rest, set initial speed to 0.
 
     dw = DataWriter("tracking_data.csv")
     dw.appendData(pa.getBallPositionsWithSpeed)

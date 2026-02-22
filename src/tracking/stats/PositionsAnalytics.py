@@ -26,7 +26,15 @@ class PositionsAnalytics:
             speed = realDistance / timeElapsed if timeElapsed > 0 else 0
             speeds.append(speed)
             self.ballPosSpeed.append((t2, x2, y2, speed))
+        # Insert the first position with same speed as the second position (approximation)
+        self.ballPosSpeed.insert(0, (self.ballPositions[0][0], self.ballPositions[0][1][0], self.ballPositions[0][1][1], speeds[0] if speeds else 0))
         return speeds
+
+    def setInitialSpeed(self, initialSpeed: float) -> None:
+        if self.ballPosSpeed:
+            self.ballPosSpeed[0] = (self.ballPosSpeed[0][0], self.ballPosSpeed[0][1], self.ballPosSpeed[0][2], initialSpeed)
+        else:
+            self.intialSpeed = initialSpeed
 
     @property
     def getBallPositionsWithSpeed(self):
