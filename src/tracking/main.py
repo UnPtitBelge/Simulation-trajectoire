@@ -60,8 +60,8 @@ def getArguments() -> dict:
 
 
 if __name__ == "__main__":
-    # app = Window.Window()
-    # app.mainloop()
+    app = Window.Window()
+    app.mainloop()
 
-    args = list(getArguments().values())
-    main(*args)
+    # args = list(getArguments().values())
+    # main(*args)
