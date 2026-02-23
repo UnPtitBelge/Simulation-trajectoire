@@ -1,43 +1,11 @@
-"""
-Navbar components and utilities.
-
-Mobile-friendly Bootstrap Navbar using dash_bootstrap_components (dbc):
-- Includes a brand/title.
-- Adds a NavbarToggler and Collapse for small screens.
-- Keeps the color mode control aligned to the right.
-- Exposes a static `render()` method for easy use in layouts.
-
-Note:
-- The toggling behavior (open/close of the Collapse) should be wired via a callback.
-  A simple clientside callback can toggle `navbar-collapse.is_open` when `navbar-toggler` is clicked.
-"""
-
 import dash_bootstrap_components as dbc
 from dash import html
 from utils.ui import NAVBAR_PADDING_CLASS, color_mode_control, nav_group
 
 
 class Navbar:
-    """
-    Bootstrap-based navbar for a multipage Dash app.
-
-    Features:
-    - Proper Bootstrap semantics via dbc.Navbar and dbc.Container.
-    - Collapsible navigation links on mobile via NavbarToggler + Collapse.
-    - Color mode switch (light/dark) aligned to the right.
-    """
-
     @staticmethod
     def render():
-        """
-        Return the navbar layout as a Dash component tree (dbc.Navbar + dbc.Container).
-
-        Structure:
-        - NavbarBrand (optional)
-        - NavbarToggler (mobile menu trigger)
-        - Collapse containing navigation links (mobile-friendly)
-        - Right-aligned color mode control
-        """
         return dbc.Navbar(
             dbc.Container(
                 [

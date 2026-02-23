@@ -1,24 +1,3 @@
-"""
-utils.ui.css
-
-Bootstrap utility class constants for consistent styling across the Dash app.
-
-This submodule centralizes frequently used Bootstrap utility classes so they can be
-changed in one place and applied consistently throughout the UI.
-
-Exports:
-- NAV_GAP_CLASS: Horizontal spacing between navbar items.
-- NAVBAR_PADDING_CLASS: Horizontal padding for the navbar container.
-- NAV_RIGHT_UTILS_CLASS: Right-aligned (ms-auto) flex container with centered items and gaps.
-
-Usage:
-    from utils.ui.css import NAV_GAP_CLASS, NAVBAR_PADDING_CLASS, NAV_RIGHT_UTILS_CLASS
-
-    dbc.Nav(..., class_name=NAV_GAP_CLASS)
-    dbc.Navbar(..., class_name=NAVBAR_PADDING_CLASS)
-    html.Span(..., className=NAV_RIGHT_UTILS_CLASS)
-"""
-
 from __future__ import annotations
 
 # Spacing between navbar items (uses Bootstrap gap utility)

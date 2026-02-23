@@ -1,15 +1,3 @@
-"""
-utils.ui.errors
-
-Friendly error components for the Dash app.
-Currently provides:
-- friendly_404(pathname): a user-friendly 404 page for unknown routes.
-
-Usage:
-    from utils.ui.errors import friendly_404
-    app.layout = friendly_404("/bad-path")
-"""
-
 from __future__ import annotations
 
 from typing import Optional
@@ -18,15 +6,6 @@ from dash import dcc, html
 
 
 def friendly_404(pathname: Optional[str]) -> html.Div:
-    """
-    Return a friendly 404 component for unknown routes.
-
-    Args:
-        pathname: The current URL pathname (e.g., "/unknown").
-
-    Returns:
-        A styled Div suggesting valid navigation paths.
-    """
     p = pathname or "(unknown)"
     return html.Div(
         className="p-4",

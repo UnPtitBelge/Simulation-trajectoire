@@ -1,15 +1,3 @@
-"""
-components package
-
-Convenient exports for geometry primitives, simulation utilities, and 3D plotting helpers.
-All figures and utilities return plain Python dicts/lists compatible with Dash/Plotly.
-
-Usage:
-    from components import (
-        plot_sim_3d,
-    )
-"""
-
 # Navbar
 from .navbar import navbar
 

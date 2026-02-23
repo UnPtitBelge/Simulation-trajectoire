@@ -1,12 +1,3 @@
-"""
-utils.ui package
-
-Clean, explicit re-exports from the split UI standardization submodules.
-
-Usage (recommended):
-    from utils.ui import THEME, ICONS_CDN, nav_group, color_mode_control, page_shell, friendly_404
-"""
-
 from __future__ import annotations
 
 # Clientside utilities

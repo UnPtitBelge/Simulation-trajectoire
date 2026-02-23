@@ -1,17 +1,3 @@
-"""
-utils.ui.plots
-
-Plot-related defaults and layout builder for the Dash app.
-
-Exports:
-- PLOT_DEFAULTS: Shared defaults used by figure builders.
-- build_layout: Helper to produce a Plotly-compatible layout dict with sensible defaults.
-
-Notes:
-- Returns plain Python dicts/lists for easy Dash JSON prop compatibility.
-- Centralizing defaults here allows consistent styling across all figures.
-"""
-
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
@@ -39,20 +25,6 @@ def build_layout(
     template: Optional[str] = None,
     margin: Optional[Dict[str, int]] = None,
 ) -> Dict[str, Any]:
-    """
-    Build a standardized Plotly layout dict with sensible defaults.
-
-    Args:
-        title: Title text.
-        width, height: Optional size; falls back to PLOT_DEFAULTS when None.
-        showlegend: Toggle legend visibility; falls back to PLOT_DEFAULTS.
-        xaxis, yaxis: Axis config; falls back to PLOT_DEFAULTS when None.
-        template: Plotly template name; falls back to PLOT_DEFAULTS.
-        margin: Dict with "l","r","t","b" (ints); falls back to PLOT_DEFAULTS.
-
-    Returns:
-        A dict ready to assign to figure["layout"].
-    """
     layout: Dict[str, Any] = {
         "title": {"text": title},
         "xaxis": xaxis if xaxis is not None else PLOT_DEFAULTS["xaxis"],
