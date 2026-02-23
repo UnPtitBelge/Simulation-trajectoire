@@ -235,3 +235,6 @@ __marimo__/
 
 # Personal useless files
 loop.sh
+
+# Personal venv file
+.venvQt
