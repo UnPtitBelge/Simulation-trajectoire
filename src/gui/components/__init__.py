@@ -6,8 +6,7 @@ All figures and utilities return plain Python dicts/lists compatible with Dash/P
 
 Usage:
     from components import (
-        SimulationParams, iterations,
-        build_figure_3d, plot_3d,
+        plot_sim_3d,
     )
 """
 
@@ -15,14 +14,10 @@ Usage:
 from .navbar import navbar
 
 # 3D plotting helpers
-from .plot_3D import build_figure_3d as build_figure_3d
-from .plot_3D import plot as plot_3d
-from .sim_3d import plot as plot_sim_3d
+from .plot_3d import plot as plot_sim_3d
 
 __all__ = [
     # Plotting
-    "build_figure_3d",
-    "plot_3d",
     "plot_sim_3d",
     # Nav
     "navbar",
