@@ -231,3 +231,6 @@ __marimo__/
 # MacOS file folder
 .DS_Store
 **/.DS_Store
+
+# Personal venv file
+.venvQt
