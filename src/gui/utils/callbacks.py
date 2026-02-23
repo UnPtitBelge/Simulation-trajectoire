@@ -95,9 +95,7 @@ def register_all(app: dash.Dash):
     # 3) Update both static and animated 3D simulation figures when the confirm button is clicked.
     @app.callback(
         [
-            Output("simulation-graph-static", "figure"),
             Output("simulation-graph", "figure"),
-            Output("simulation-graph-static", "config"),
             Output("simulation-graph", "config"),
         ],
         Input("apply-simulation-inputs", "n_clicks"),
@@ -167,11 +165,9 @@ def register_all(app: dash.Dash):
         )
 
         # Directly build figures without cache
-        static_fig = build_figure_3d(params)
         animated_fig = build_animated_figure_3d(params, step_interval_ms=33)
-        static_config = {"responsive": True, "displayModeBar": False}
         animated_config = {"responsive": True, "displayModeBar": False}
-        return (static_fig, animated_fig, static_config, animated_config)
+        return (animated_fig, animated_config)
 
     # 4) Reset inputs to defaults and refresh both figures.
     @app.callback(
@@ -188,9 +184,7 @@ def register_all(app: dash.Dash):
             Output("input-gravity-g", "value"),
             Output("input-time-step", "value"),
             Output("input-num-steps", "value"),
-            Output("simulation-graph-static", "figure", allow_duplicate=True),
             Output("simulation-graph", "figure", allow_duplicate=True),
-            Output("simulation-graph-static", "config", allow_duplicate=True),
             Output("simulation-graph", "config", allow_duplicate=True),
         ],
         Input("reset-simulation-inputs", "n_clicks"),
@@ -217,9 +211,7 @@ def register_all(app: dash.Dash):
             float(defaults.g),
             float(defaults.time_step),
             int(defaults.num_steps),
-            build_figure_3d(defaults),
             build_animated_figure_3d(defaults, step_interval_ms=33),
-            {"responsive": True, "displayModeBar": False},
             {"responsive": True, "displayModeBar": False},
         )
 
