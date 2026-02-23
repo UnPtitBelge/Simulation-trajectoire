@@ -1,16 +1,3 @@
-"""
-sim_3d.py
-
-Animated 3D simulation figure (Plotly-compatible dict) using frames.
-
-Keeps the API similar to plot_2d modules:
-- build_animated_figure_3d(...) builds and returns a figure dict
-- plot(...) is a convenience wrapper using default parameters
-
-Rendering traces (surface / rim / center sphere / moving particle) are built locally
-to avoid spreading the 3D plotting logic across many small modules.
-"""
-
 from __future__ import annotations
 
 from math import cos, pi, sin, sqrt
@@ -337,18 +324,7 @@ def build_animated_figure_3d(
                             "mode": "immediate",
                         },
                     ],
-                }
-            ],
-        },
-        {
-            "type": "buttons",
-            "showactive": False,
-            "x": 0,
-            "y": 1,
-            "xanchor": "left",
-            "yanchor": "top",
-            "pad": {"l": 50, "t": 10},
-            "buttons": [
+                },
                 {
                     "label": "⏸",
                     "method": "animate",
@@ -360,7 +336,7 @@ def build_animated_figure_3d(
                             "transition": {"duration": 0},
                         },
                     ],
-                }
+                },
             ],
         },
     ]
@@ -373,7 +349,7 @@ def build_animated_figure_3d(
     }
 
 
-def plot(step_interval_ms: Optional[int] = None) -> Dict[str, Any]:
+def plot(step_interval_ms: Optional[int] = 10) -> Dict[str, Any]:
     return build_animated_figure_3d(
         SimulationParams(),
         step_interval_ms=30 if step_interval_ms is None else int(step_interval_ms),

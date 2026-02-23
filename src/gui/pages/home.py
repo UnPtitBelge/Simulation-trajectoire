@@ -1,24 +1,9 @@
-"""Home page layout.
-
-This module defines the Home page content for the single-page Dash app.
-The layout uses dash_bootstrap_components (dbc) so it inherits the active
-Bootstrap theme (e.g., FLATLY). Keep this page light and fast to render.
-"""
-
 import dash_bootstrap_components as dbc
 from dash import html
 from utils.ui import page_container
 
 
 def layout() -> dbc.Container:
-    """
-    Build and return the Home page layout.
-
-    Returns:
-        dbc.Container: A fluid Bootstrap container containing a simple
-        welcome card. This function avoids heavy computations to ensure
-        snappy page transitions.
-    """
     pc = page_container(
         title="Home",
         body_children=[

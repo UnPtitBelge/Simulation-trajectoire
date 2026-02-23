@@ -1,35 +1,3 @@
-"""
-Multipage Dash application shell.
-
-- Uses a Bootstrap-themed navbar (dbc.themes.FLATLY).
-- URL-based routing via `dcc.Location(id="url")` to enable proper page links.
-- A small in-file "README" (below) explains how teammates can extend this app.
-
-Team README:
-1) Architecture
-   - Multipage app: the URL (from `dcc.Location`) determines which page layout is rendered.
-   - Pages are implemented in `src/gui/pages/*.py` as functions returning Dash components.
-   - The navbar should use link components (e.g., `dcc.Link` or `dbc.NavLink`) to navigate and update the URL.
-
-2) Adding a new section
-   - Create a function `layout()` in `src/gui/pages/<new>.py`.
-   - Add a new navbar link to the target path (e.g., "/new").
-   - Update the routing callback to map the new path to your page.
-
-3) Callbacks
-   - All global callbacks (e.g., theme toggles) are registered in `utils/helpers.py`.
-   - URL routing callback is defined in `utils/callbacks.py` (reads `dcc.Location` instead of an in-memory store).
-
-4) Styling
-   - Use dash_bootstrap_components (dbc) to get theme-aware components.
-   - Avoid custom CSS unless absolutely required; prefer dbc components.
-
-5) Debugging
-   - If content shows "Loading" indefinitely, check for exceptions in page layout functions.
-   - Use `suppress_callback_exceptions=True` to allow components not in the initial layout.
-
-"""
-
 import dash
 from components import navbar
 

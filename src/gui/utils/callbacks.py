@@ -1,16 +1,3 @@
-"""
-callbacks.py
-
-Centralized callbacks for the Dash app.
-
-This module registers:
-- URL-based routing for pages
-- Color mode clientside toggle (light/dark)
-- Simulation parameter-change callbacks:
-  - Builds SimulationParams from UI inputs
-  - Runs the 3D simulation and constructs an animated 3D figure
-"""
-
 import dash
 from components.control_panel import control_panel_2D_newton, control_panel_3D
 from components.plot_2d.sim_newton import plot as plot_newton

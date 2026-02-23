@@ -1,9 +1,3 @@
-"""
-Simulations page
-
-Minimal simulations view: render only the 3D simulation graph.
-"""
-
 import dash_bootstrap_components as dbc
 from components.plot_2d.sim_newton import plot as plot_newton
 from components.plot_3d.sim_membrane import plot as plot_sim_3d
@@ -12,11 +6,6 @@ from utils.ui import page_container
 
 
 def layout():
-    """
-    Return a standardized layout containing only the simulation graph,
-    using utils.ui.page_container for consistent styling.
-    """
-
     # --- 1. 3D Simulation View ---
     card_3d = dbc.Card(
         [
