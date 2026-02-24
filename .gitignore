@@ -1,4 +1,5 @@
 # Byte-compiled / optimized / DLL files
+
 __pycache__/
 *.py[codz]
 *$py.class
@@ -231,3 +232,6 @@ __marimo__/
 # MacOS file folder
 .DS_Store
 **/.DS_Store
+
+# Personal useless files
+loop.sh
