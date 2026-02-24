@@ -21,20 +21,30 @@ class PositionsAnalytics:
             x2, y2 = p2
             dx = (x2 - x1) * scaleX
             dy = (y2 - y1) * scaleY
-            realDistance = (dx ** 2 + dy ** 2) ** 0.5
+            # realDistance = (dx ** 2 + dy ** 2) ** 0.5
             timeElapsed = (t2 - t1) / self.fps
-            speed = realDistance / timeElapsed if timeElapsed > 0 else 0
-            speeds.append(speed)
-            self.ballPosSpeed.append((t2, x2, y2, speed))
+            # speed = realDistance / timeElapsed if timeElapsed > 0 else 0
+            speedX = dx / timeElapsed if timeElapsed > 0 else 0
+            speedY = dy / timeElapsed if timeElapsed > 0 else 0
+            speeds.append((speedX, speedY))
+            self.ballPosSpeed.append((t2, x2, y2, speedX, speedY))
         # Insert the first position with same speed as the second position (approximation)
-        self.ballPosSpeed.insert(0, (self.ballPositions[0][0], self.ballPositions[0][1][0], self.ballPositions[0][1][1], speeds[0] if speeds else 0))
+        if speeds:
+            self.ballPosSpeed.insert(
+                0,
+                (
+                    self.ballPositions[0][0],
+                    self.ballPositions[0][1][0],
+                    self.ballPositions[0][1][1],
+                    speeds[0][0],
+                    speeds[0][1],
+                )
+            )
         return speeds
 
-    def setInitialSpeed(self, initialSpeed: float) -> None:
+    def setInitialSpeed(self, initialSpeed: tuple[int, int]) -> None:
         if self.ballPosSpeed:
-            self.ballPosSpeed[0] = (self.ballPosSpeed[0][0], self.ballPosSpeed[0][1], self.ballPosSpeed[0][2], initialSpeed)
-        else:
-            self.intialSpeed = initialSpeed
+            self.ballPosSpeed[0] = (self.ballPosSpeed[0][0], self.ballPosSpeed[0][1], self.ballPosSpeed[0][2], *initialSpeed)
 
     @property
     def getBallPositionsWithSpeed(self):

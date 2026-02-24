@@ -21,16 +21,14 @@ class TrackBall:
         self.path = os.getcwd() + "/" + DEFAULT_TRACKING_DIR
         create_necessary_dirs(self.path, OUTPUT_IMAGES_DIR)
         create_necessary_dirs(self.path, OUTPUT_VIDEO_DIR)
-        self.outputDir = os.path.join(
-            self.path + OUTPUT_IMAGES_DIR,
-            "images_" + str(findLastDirNumber(self.path + OUTPUT_IMAGES_DIR, "images_") + 1)
-        )
+        self.outputImagesDir = os.path.join(self.path, OUTPUT_IMAGES_DIR)
         self.output_video_name = os.path.join(
             self.path + OUTPUT_VIDEO_DIR,
             set_video_filename(self.path + OUTPUT_VIDEO_DIR, output_video.split(".")[0], ".mp4")
         )
+        self.numVideo = self.output_video_name.split("/")[-1].split(".")[0].split("_")[-1]
 
-    def convertVideoToImages(self, path: str, saveImages: bool=True) -> bool:
+    def convertVideoToImages(self, path: str) -> bool:
         """
         Convert a video file into individual image frames and save them in the output directory.
         Args:
@@ -40,8 +38,7 @@ class TrackBall:
         video = cv2.VideoCapture(path)
         if not video.isOpened():
             return False
-        if saveImages:
-            os.makedirs(self.outputDir, exist_ok=True)
+        os.makedirs(self.outputImagesDir, exist_ok=True)
 
         frameIndex = 0
         while True:
@@ -49,9 +46,6 @@ class TrackBall:
             if not ret:
                 break
             self.frames.append(frame)
-            if saveImages:
-                imagePath = os.path.join(self.outputDir, f"frame_{frameIndex:04d}.png")
-                cv2.imwrite(imagePath, frame)
             frameIndex += 1
 
         video.release()
@@ -70,7 +64,7 @@ class TrackBall:
                 positions.append(center)
                 self.ballPositions.append((idx, center))
 
-        positions = self._interpolate_positions(positions, smoothing=5)
+        positions = self._interpolate_positions(positions, smoothing=2000)
         self.tracker = positions
         self._create_video(canvas, positions, fps=60)
 
@@ -131,6 +125,8 @@ class TrackBall:
 
             out.write(frame)
 
+        imagePath = os.path.join(self.outputImagesDir, f"frame_{self.numVideo}.png")
+        cv2.imwrite(imagePath, trajectory)
         out.release()
 
     def _interpolate_positions(self, positions: np.array, smoothing: int = 0) -> np.array:

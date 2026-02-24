@@ -7,10 +7,11 @@ from stats.PositionsAnalytics import PositionsAnalytics
 from path import *
 from gui import Window
 
-def main(filePath: str = "", saveImages: bool = False, saveData: bool = False) -> None:
+def main(filePath: str = "", saveData: bool = False) -> None:
     RESOURCE_PATH = os.path.join(os.getcwd(), RESOURCES_DIR)
-    experiment = TrackBall(ballColor=[127, 4, 15])
-    experiment.convertVideoToImages(RESOURCE_PATH + filePath, saveImages=saveImages)
+
+    experiment = TrackBall(ballColor=[204, 114, 234])
+    experiment.convertVideoToImages(RESOURCE_PATH + filePath)
     experiment.trackBall()
 
     if not saveData:
@@ -20,11 +21,11 @@ def main(filePath: str = "", saveImages: bool = False, saveData: bool = False) -
         width=experiment.frames[0].shape[1],
         height=experiment.frames[0].shape[0],
         fps=30, # hypothesis, 30 frames per second uniformly.
-        realWidth=90,
-        realHeight=90
+        realWidth=172,
+        realHeight=100
     )
     pa.calculateSpeed()
-    pa.setInitialSpeed(6969) # Assuming the ball starts from rest, set initial speed to 0.
+    # pa.setInitialSpeed() # Assuming the ball starts from rest, set initial speed to 0.
 
     dw = DataWriter("tracking_data.csv")
     dw.appendData(pa.getBallPositionsWithSpeed)
@@ -45,12 +46,6 @@ def getArguments() -> dict:
         help="The path to the video file to be processed. Should be relative to the resources directory."
     )
     parser.add_argument(
-        "--save_images", "-save_images",
-        action="store_true",
-        default=False,
-        help="Flag to indicate whether to save the individual image frames. Default is False."
-    )
-    parser.add_argument(
         "--save_data", "-save_data",
         action="store_true",
         default=False,
@@ -60,8 +55,8 @@ def getArguments() -> dict:
 
 
 if __name__ == "__main__":
-    app = Window.Window()
-    app.mainloop()
+    # app = Window.Window()
+    # app.mainloop()
 
-    # args = list(getArguments().values())
-    # main(*args)
+    args = list(getArguments().values())
+    main(*args)

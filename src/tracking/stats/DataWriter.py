@@ -4,14 +4,14 @@
     The expID is a unique identifier for each experiment, it is incremented by 1 for each new experiment.
     The temps is the frame number of the video, it is incremented by 1 for each new frame.
     The x and y are the coordinates of the ball in the frame.
-    The speed is the speed of the ball calculated from the positions.
+    speedX and speedY are the speed of the ball in the x and y direction respectively, calculated from the PositionsAnalytics class.
 """
 
 import os
 
 from path import DEFAULT_TRACKING_DIR
 
-FIRST_LINE = "expID; temps; x; y; speed"
+FIRST_LINE = "expID; temps; x; y; speedX; speedY"
 
 class DataWriter:
     finalFile = ""
@@ -25,7 +25,7 @@ class DataWriter:
         self._writeHeader()
         with open(self.finalFile, "a") as f:
             for entry in data:
-                line = f"{self.expID}; {entry[0]}; {entry[1]}; {entry[2]}; {entry[3]}"
+                line = f"{self.expID}; {entry[0]}; {entry[1]}; {entry[2]}; {entry[3]}; {entry[4]}"
                 f.write(line + "\n")
 
 
