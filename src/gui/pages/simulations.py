@@ -50,8 +50,15 @@ def layout():
                 html.Div(
                     [
                         html.I(className="bi bi-play-circle display-4 text-muted"),
-                        html.P(
-                            "Vidéo de l'expérience ici", className="mt-2 text-muted"
+                        html.Video(
+                            src="/assets/trajectory_0_h264.mp4",
+                            controls=True,
+                            style={
+                                "width": "100%", 
+                                "height": "400px", 
+                                "objectFit": "contain", 
+                                "backgroundColor": "black"
+                            }
                         ),
                     ],
                     className="d-flex flex-column align-items-center justify-content-center h-100 bg-light",
