@@ -238,3 +238,7 @@ loop.sh
 
 # Personal venv file
 .venvQt
+.venv
+
+# Personal useless files
+loop.sh
