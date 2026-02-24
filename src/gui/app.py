@@ -1,3 +1,4 @@
+import os
 import dash
 from components import navbar
 
@@ -9,6 +10,7 @@ app = dash.Dash(
     __name__,
     external_stylesheets=EXTERNAL_STYLESHEETS,
     suppress_callback_exceptions=True,
+    assets_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets')
 )
 server = app.server
 
