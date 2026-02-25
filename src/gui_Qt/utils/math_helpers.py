@@ -34,3 +34,15 @@ def gradient_xy(x: float, y: float, R: float, T: float, F: float, center_radius:
         dz_dy = 0.0
 
     return z, dz_dx, dz_dy
+
+
+def disk_xy(
+    cx: float, cy: float, radius: float, n: int = 60
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Get the (x, y) coordinates of points forming a circle (disk) centered at (cx, cy) with the given radius.
+    """
+    ang = np.linspace(0, 2 * np.pi, n, endpoint=True)
+    x = cx + radius * np.cos(ang)
+    y = cy + radius * np.sin(ang)
+    return x, y

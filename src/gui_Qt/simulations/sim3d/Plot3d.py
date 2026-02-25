@@ -6,14 +6,14 @@ from PySide6.QtCore import QTimer
 
 from simulations.sim3d.simulate_trajectory import simulate_trajectory
 from utils.math_helpers import deformation
-from utils.params import PlotParams, SimulationParams
+from utils.params import PlotParams, Simulation3dParams
 
 
 class Plot3d:
     def __init__(self, params: PlotParams = PlotParams()) -> None:
         self.params = params
-        self.view = gl.GLViewWidget()
-        self.view.setCameraPosition(distance=2, elevation=2, azimuth=2)
+        self.widget = gl.GLViewWidget()
+        self.widget.setCameraPosition(distance=2, elevation=2, azimuth=2)
 
         # Animation state
         self.particle_trace = None
@@ -26,12 +26,12 @@ class Plot3d:
 
     def setup_animation(
         self,
-        sim_params: Optional[SimulationParams] = None,
+        sim_params: Optional[Simulation3dParams] = None,
         *,
         frame_interval_ms: int = 30,
     ) -> None:
         """Set up and start the animation."""
-        self.sim_params = sim_params or SimulationParams()
+        self.sim_params = sim_params or Simulation3dParams()
         results = simulate_trajectory(self.sim_params, self.params)
 
         self.trajectory_xs = results["xs"]
@@ -64,7 +64,7 @@ class Plot3d:
     def _draw_particle(self, x: float, y: float, z: float) -> None:
         """Draw or update the particle at the given position."""
         if self.particle_trace is not None:
-            self.view.removeItem(self.particle_trace)
+            self.widget.removeItem(self.particle_trace)
 
         self.particle_trace = gl.GLScatterPlotItem(
             pos=np.array([[x, y, z]]),
@@ -72,17 +72,28 @@ class Plot3d:
             size=0.05,
             pxMode=False,
         )
-        self.view.addItem(self.particle_trace)
+        self.widget.addItem(self.particle_trace)
 
     def stop_animation(self) -> None:
         """Stop the animation."""
         self.animation_timer.stop()
 
+    def reset_animation(self) -> None:
+        """Reset the animation to the start."""
+        self.stop_animation()
+        self.current_frame = 0
+        if self.trajectory_xs:
+            self._draw_particle(
+                self.trajectory_xs[0],
+                self.trajectory_ys[0],
+                self.trajectory_zs[0],
+            )
+
     def redraw(self) -> None:
         """Redraw the surface and sphere."""
-        for item in self.view.items:
+        for item in self.widget.items:
             if not isinstance(item, gl.GLGridItem):
-                self.view.removeItem(item)
+                self.widget.removeItem(item)
 
         self._draw_surface()
         self._draw_center_sphere()
@@ -113,7 +124,7 @@ class Plot3d:
             shader="shaded",
             smooth=True,
         )
-        self.view.addItem(surface)
+        self.widget.addItem(surface)
 
         self._add_surface_grid(X, Y, Z, 10)
 
@@ -129,7 +140,7 @@ class Plot3d:
                 width=0.5,
                 antialias=True,
             )
-            self.view.addItem(line)
+            self.widget.addItem(line)
         for j in range(0, cols, step):
             line = gl.GLLinePlotItem(
                 pos=np.column_stack((X[:, j], Y[:, j], Z[:, j])),
@@ -137,7 +148,7 @@ class Plot3d:
                 width=0.5,
                 antialias=True,
             )
-            self.view.addItem(line)
+            self.widget.addItem(line)
 
     def _draw_center_sphere(self) -> None:
         """Draw the center sphere."""
@@ -168,7 +179,7 @@ class Plot3d:
             shader="balloon",
             smooth=True,
         )
-        self.view.addItem(sphere)
+        self.widget.addItem(sphere)
 
     def _generate_sphere_faces(
         self, samples_theta: int, samples_phi: int

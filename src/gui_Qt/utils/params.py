@@ -13,7 +13,7 @@ class PlotParams:
 
 
 @dataclass
-class SimulationParams:
+class Simulation3dParams:
     # Time integration
     time_step: float = 0.01
     num_steps: int = 800
@@ -60,3 +60,18 @@ class SimulationParams:
             ry, ty = 0.0, 1.0
         th = radians(self.theta)
         return self.v_i * (cos(th) * ry + sin(th) * ty)
+
+
+@dataclass
+class Simulation2dParams:
+    G = 1.0
+    M = 1000.0
+    r0 = 50.0
+    v0 = 4.0
+    theta_deg = 90
+    gamma = 0.001
+    trail = 50
+    n_frames = 2000
+    duration_ms = 20
+    center_radius = 6.0
+    particle_radius = 2.0
