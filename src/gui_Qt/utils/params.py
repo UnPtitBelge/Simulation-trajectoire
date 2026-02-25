@@ -64,14 +64,14 @@ class Simulation3dParams:
 
 @dataclass
 class Simulation2dParams:
-    G = 1.0
+    G = 9.81
     M = 1000.0
     r0 = 50.0
-    v0 = 4.0
+    v0 = 10.0
     theta_deg = 90
     gamma = 0.001
     trail = 50
-    n_frames = 2000
-    duration_ms = 20
     center_radius = 6.0
     particle_radius = 2.0
+    frame_ms = 5
+    dt = 0.02

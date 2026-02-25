@@ -45,4 +45,7 @@ def disk_xy(
     ang = np.linspace(0, 2 * np.pi, n, endpoint=True)
     x = cx + radius * np.cos(ang)
     y = cy + radius * np.sin(ang)
+    # Append the first point to the end to close the loop
+    x = np.append(x, x[0])
+    y = np.append(y, y[0])
     return x, y
