@@ -1,26 +1,25 @@
 from pyqtgraph.Qt.QtWidgets import (
-    QDoubleSpinBox,
     QHBoxLayout,
-    QLabel,
     QPushButton,
     QVBoxLayout,
+    QWidget,
 )
+from simulations.sim2d.Plot2d import Plot2d
+from simulations.sim3d.Plot3d import Plot3d
+from utils.params import PlotParams, Simulation2dParams, Simulation3dParams
+from utils.params_controller import ParamControl2dWidget, ParamControl3dWidget
 
 
-class SimWidget:
-    def __init__(self, plot) -> None:
-        self.layout = QVBoxLayout()
+class SimWidget(QWidget):
+    def __init__(self, plot: Plot2d | Plot3d) -> None:
+        super().__init__()
+        self.plot_layout = QVBoxLayout()
 
         self.plot = plot
-        self.layout.addWidget(self.plot.widget)
+        self.plot_layout.addWidget(self.plot.widget)
 
         # Parameters layout
-        params_layout = QHBoxLayout()
-        # self.param_y = QDoubleSpinBox()
-        # self.param_y.setRange(0, 10)
-        # self.param_y.setValue(1)
-        # params_layout.addWidget(QLabel("Parameter Y:"))
-        # params_layout.addWidget(self.param_y)
+        self.params_layout = QHBoxLayout()
 
         # Buttons layout
         buttons_layout = QHBoxLayout()
@@ -40,16 +39,16 @@ class SimWidget:
         self.reset_button.clicked.connect(self.reset_animation)
         buttons_layout.addWidget(self.reset_button)
 
-        params_layout.addLayout(buttons_layout)
-        self.layout.addLayout(params_layout)
+        self.params_layout.addLayout(buttons_layout)
 
         # Initial plot (without animation)
-        self.plot.redraw()
+        self.plot.setup_animation()
 
     def start_animation(self) -> None:
         """Start the animation."""
         self.plot.stop_animation()
         self.plot.setup_animation()
+        self.plot.start_animation()
         self.pause_button.setText("Pause")
 
     def toggle_pause_animation(self) -> None:
@@ -65,3 +64,38 @@ class SimWidget:
         """Reset the animation to the start."""
         self.plot.reset_animation()
         self.pause_button.setText("Pause")
+
+
+class SimWidget3d(SimWidget):
+    def __init__(self, plot: Plot3d) -> None:
+        super().__init__(plot)
+
+        self.plot_params = PlotParams()
+        self.sim_params = Simulation3dParams()
+
+        self.param_control = ParamControl3dWidget(
+            self.plot_params, self.sim_params, plot
+        )
+
+        self.params_layout.addWidget(self.param_control)
+        self.plot_layout.addLayout(self.params_layout)
+
+        self.setLayout(self.plot_layout)
+
+
+class SimWidget2d(SimWidget):
+    def __init__(self, plot: Plot2d) -> None:
+        super().__init__(plot)
+
+        # Initialize 2D simulation parameters
+        sim_params = Simulation2dParams()
+
+        # Create the parameter control widget for 2D
+        self.param_control = ParamControl2dWidget(sim_params, plot)
+
+        # Add the parameter control widget to the params layout
+        self.params_layout.addWidget(self.param_control)
+
+        # Set the main layout
+        self.plot_layout.addLayout(self.params_layout)
+        self.setLayout(self.plot_layout)

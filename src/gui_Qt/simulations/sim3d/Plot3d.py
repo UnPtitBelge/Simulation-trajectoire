@@ -1,37 +1,34 @@
-from typing import List, Optional
+from typing import Optional
 
 import numpy as np
 import pyqtgraph.opengl as gl
 from PySide6.QtCore import QTimer
-
 from simulations.sim3d.simulate_trajectory import simulate_trajectory
 from utils.math_helpers import deformation
 from utils.params import PlotParams, Simulation3dParams
 
 
 class Plot3d:
-    def __init__(self, params: PlotParams = PlotParams()) -> None:
+    def __init__(
+        self,
+        params: PlotParams = PlotParams(),
+        sim_params: Simulation3dParams = Simulation3dParams(),
+    ) -> None:
         self.params = params
+        self.sim_params = sim_params
         self.widget = gl.GLViewWidget()
-        self.widget.setCameraPosition(distance=2, elevation=2, azimuth=2)
+        self.widget.setCameraPosition(distance=10, elevation=10, azimuth=10)
 
         # Animation state
         self.particle_trace = None
-        self.trajectory_xs: List[float] = []
-        self.trajectory_ys: List[float] = []
-        self.trajectory_zs: List[float] = []
+        self.surface = None
+        self.center_sphere = None
         self.current_frame = 0
         self.animation_timer = QTimer()
         self.animation_timer.timeout.connect(self._update_animation_frame)
 
-    def setup_animation(
-        self,
-        sim_params: Optional[Simulation3dParams] = None,
-        *,
-        frame_interval_ms: int = 30,
-    ) -> None:
+    def setup_animation(self) -> None:
         """Set up and start the animation."""
-        self.sim_params = sim_params or Simulation3dParams()
         results = simulate_trajectory(self.sim_params, self.params)
 
         self.trajectory_xs = results["xs"]
@@ -41,10 +38,12 @@ class Plot3d:
         if not self.trajectory_xs:
             return
 
+        self._draw_center_sphere()
+        self._draw_surface()
+
         # Start the animation
         self.current_frame = 0
         self._update_animation_frame()  # Draw the first frame immediately
-        self.animation_timer.start(frame_interval_ms)
 
     def _update_animation_frame(self) -> None:
         """Update the particle position for the current frame."""
@@ -74,6 +73,10 @@ class Plot3d:
         )
         self.widget.addItem(self.particle_trace)
 
+    def start_animation(self, frame_interval_ms: int = 30) -> None:
+        """Start the animation"""
+        self.animation_timer.start(frame_interval_ms)
+
     def stop_animation(self) -> None:
         """Stop the animation."""
         self.animation_timer.stop()
@@ -86,20 +89,15 @@ class Plot3d:
             self._draw_particle(
                 self.trajectory_xs[0],
                 self.trajectory_ys[0],
-                self.trajectory_zs[0],
+                self.trajectory_zs[0] + self.sim_params.particle_radius / 2,
             )
-
-    def redraw(self) -> None:
-        """Redraw the surface and sphere."""
-        for item in self.widget.items:
-            if not isinstance(item, gl.GLGridItem):
-                self.widget.removeItem(item)
-
         self._draw_surface()
         self._draw_center_sphere()
 
     def _draw_surface(self) -> None:
         """Draw the 3D surface."""
+        if self.surface is not None:
+            self.widget.removeItem(self.surface)
         R = float(self.params.surface_radius)
         T = float(self.params.surface_tension)
         F = float(self.params.center_weight)
@@ -116,7 +114,7 @@ class Plot3d:
             r <= R, deformation(r, R=R, T=T, F=F, center_radius=center_radius), np.nan
         )
 
-        surface = gl.GLSurfacePlotItem(
+        self.surface = gl.GLSurfacePlotItem(
             x=xs,
             y=ys,
             z=Z,
@@ -124,9 +122,9 @@ class Plot3d:
             shader="shaded",
             smooth=True,
         )
-        self.widget.addItem(surface)
+        self.widget.addItem(self.surface)
 
-        self._add_surface_grid(X, Y, Z, 10)
+        # self._add_surface_grid(X, Y, Z, 10)
 
     def _add_surface_grid(
         self, X: np.ndarray, Y: np.ndarray, Z: np.ndarray, step: int = 5
@@ -157,6 +155,9 @@ class Plot3d:
         F = self.params.center_weight
         center_radius = self.params.center_radius
 
+        if self.center_sphere is not None:
+            self.widget.removeItem(self.center_sphere)
+
         z_offset = (
             deformation(center_radius, R=R, T=T, F=F, center_radius=center_radius)
             + center_radius / 2
@@ -172,14 +173,14 @@ class Plot3d:
         Y = center_radius * np.sin(Theta) * np.sin(Phi)
         Z = z_offset + center_radius * np.cos(Theta)
 
-        sphere = gl.GLMeshItem(
+        self.center_sphere = gl.GLMeshItem(
             vertexes=np.column_stack((X.ravel(), Y.ravel(), Z.ravel())),
             faces=self._generate_sphere_faces(samples_theta, samples_phi),
             color=(0, 0, 0, 1),
             shader="balloon",
             smooth=True,
         )
-        self.widget.addItem(sphere)
+        self.widget.addItem(self.center_sphere)
 
     def _generate_sphere_faces(
         self, samples_theta: int, samples_phi: int
@@ -195,3 +196,14 @@ class Plot3d:
                 faces.append([idx0, idx1, idx2])
                 faces.append([idx1, idx3, idx2])
         return np.array(faces)
+
+    def update_params(self, **kwargs) -> None:
+        """Update simulation parameters and restart the animation."""
+        for key, value in kwargs.items():
+            if hasattr(self.sim_params, key):
+                setattr(self.sim_params, key, value)
+            if hasattr(self.params, key):
+                setattr(self.params, key, value)
+
+        # Re-run the simulation and reset the animation
+        self.setup_animation()
