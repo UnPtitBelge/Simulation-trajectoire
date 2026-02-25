@@ -1,9 +1,12 @@
 from pyqtgraph.Qt.QtWidgets import (
     QHBoxLayout,
     QPushButton,
+    QSplitter,
     QVBoxLayout,
     QWidget,
 )
+from PySide6.QtCore import Qt
+
 from simulations.sim2d.Plot2d import Plot2d
 from simulations.sim3d.Plot3d import Plot3d
 from utils.params import PlotParams, Simulation2dParams, Simulation3dParams
@@ -13,13 +16,14 @@ from utils.params_controller import ParamControl2dWidget, ParamControl3dWidget
 class SimWidget(QWidget):
     def __init__(self, plot: Plot2d | Plot3d) -> None:
         super().__init__()
-        self.plot_layout = QVBoxLayout()
+        self.splitter = QSplitter(Qt.Vertical)
 
         self.plot = plot
-        self.plot_layout.addWidget(self.plot.widget)
+        self.splitter.addWidget(self.plot.widget)
 
-        # Parameters layout
-        self.params_layout = QHBoxLayout()
+        # Controls layout
+        self.controls_widget = QWidget()
+        self.controls_layout = QVBoxLayout(self.controls_widget)
 
         # Buttons layout
         buttons_layout = QHBoxLayout()
@@ -39,7 +43,7 @@ class SimWidget(QWidget):
         self.reset_button.clicked.connect(self.reset_animation)
         buttons_layout.addWidget(self.reset_button)
 
-        self.params_layout.addLayout(buttons_layout)
+        self.controls_layout.addLayout(buttons_layout)
 
         # Initial plot (without animation)
         self.plot.setup_animation()
@@ -77,10 +81,15 @@ class SimWidget3d(SimWidget):
             self.plot_params, self.sim_params, plot
         )
 
-        self.params_layout.addWidget(self.param_control)
-        self.plot_layout.addLayout(self.params_layout)
+        self.controls_layout.addWidget(self.param_control)
 
-        self.setLayout(self.plot_layout)
+        self.splitter.addWidget(self.controls_widget)
+        self.splitter.setSizes([30, 70])
+
+        main_layout = QVBoxLayout(self)
+        main_layout.addWidget(self.splitter)
+
+        self.setLayout(main_layout)
 
 
 class SimWidget2d(SimWidget):
@@ -88,14 +97,16 @@ class SimWidget2d(SimWidget):
         super().__init__(plot)
 
         # Initialize 2D simulation parameters
-        sim_params = Simulation2dParams()
+        self.sim_params = Simulation2dParams()
 
-        # Create the parameter control widget for 2D
-        self.param_control = ParamControl2dWidget(sim_params, plot)
+        self.param_control = ParamControl2dWidget(self.sim_params, plot)
 
-        # Add the parameter control widget to the params layout
-        self.params_layout.addWidget(self.param_control)
+        self.controls_layout.addWidget(self.param_control)
 
-        # Set the main layout
-        self.plot_layout.addLayout(self.params_layout)
-        self.setLayout(self.plot_layout)
+        self.splitter.addWidget(self.controls_widget)
+        self.splitter.setSizes([30, 70])
+
+        main_layout = QVBoxLayout(self)
+        main_layout.addWidget(self.splitter)
+
+        self.setLayout(main_layout)
