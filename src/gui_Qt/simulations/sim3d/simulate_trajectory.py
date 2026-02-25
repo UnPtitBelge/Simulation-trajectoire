@@ -2,11 +2,11 @@ from math import sqrt
 from typing import List, Tuple
 
 from utils.math_helpers import gradient_xy
-from utils.params import PlotParams, SimulationParams
+from utils.params import PlotParams, Simulation3dParams
 
 
 def simulate_trajectory(
-    sim_params: SimulationParams = SimulationParams(),
+    sim_params: Simulation3dParams = Simulation3dParams(),
     plot_params: PlotParams = PlotParams(),
 ):
     """

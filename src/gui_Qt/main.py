@@ -7,8 +7,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from widgets.Plot2d import Plot2d
-from widgets.SimWidget3d import SimWidget3d
+from simulations.sim2d.Plot2d import Plot2d
+from simulations.sim3d.Plot3d import Plot3d
+from widgets.SimWidget import SimWidget
 
 
 class MainWindow(QMainWindow):
@@ -34,14 +35,14 @@ class MainWindow(QMainWindow):
     def setup_tabs(self):
         """Setup tabs widgets"""
         # Setup 2d tab
-        self.plot_2d = Plot2d()
+        self.plot_2d = SimWidget(Plot2d())
         self.tab_2d.setLayout(self.plot_2d.layout)
 
         # Initial 2D plot
-        self.plot_2d.update()
+        self.plot_2d.plot.redraw()
 
         # Setup 3d tab
-        self.sim_3d = SimWidget3d()
+        self.sim_3d = SimWidget(Plot3d())
         self.tab_3d.setLayout(self.sim_3d.layout)
 
         self.sim_3d.plot.redraw()

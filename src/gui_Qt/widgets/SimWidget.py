@@ -6,23 +6,21 @@ from pyqtgraph.Qt.QtWidgets import (
     QVBoxLayout,
 )
 
-from simulations.sim3d.Plot3d import Plot3d
 
-
-class SimWidget3d:
-    def __init__(self) -> None:
+class SimWidget:
+    def __init__(self, plot) -> None:
         self.layout = QVBoxLayout()
 
-        self.plot = Plot3d()
-        self.layout.addWidget(self.plot.view)
+        self.plot = plot
+        self.layout.addWidget(self.plot.widget)
 
         # Parameters layout
         params_layout = QHBoxLayout()
-        self.param_y = QDoubleSpinBox()
-        self.param_y.setRange(0, 10)
-        self.param_y.setValue(1)
-        params_layout.addWidget(QLabel("Parameter Y:"))
-        params_layout.addWidget(self.param_y)
+        # self.param_y = QDoubleSpinBox()
+        # self.param_y.setRange(0, 10)
+        # self.param_y.setValue(1)
+        # params_layout.addWidget(QLabel("Parameter Y:"))
+        # params_layout.addWidget(self.param_y)
 
         # Buttons layout
         buttons_layout = QHBoxLayout()
@@ -65,12 +63,5 @@ class SimWidget3d:
 
     def reset_animation(self) -> None:
         """Reset the animation to the start."""
-        self.plot.stop_animation()
-        self.plot.current_frame = 0
-        if self.plot.trajectory_xs:
-            self.plot._draw_particle(
-                self.plot.trajectory_xs[0],
-                self.plot.trajectory_ys[0],
-                self.plot.trajectory_zs[0],
-            )
+        self.plot.reset_animation()
         self.pause_button.setText("Pause")
