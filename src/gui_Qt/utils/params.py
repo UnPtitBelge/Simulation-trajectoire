@@ -30,6 +30,7 @@ class Simulation3dParams:
     """Parameters controlling the 3D simulation and initial conditions."""
 
     # Time integration
+    frame_ms = 60
     time_step: float = 0.01
     num_steps: int = 800
 

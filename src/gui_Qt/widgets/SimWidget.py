@@ -17,7 +17,6 @@ from utils.params import (
     SimulationMLParams,
 )
 from utils.params_controller import ParamsController
-from widgets.ParamsWidgets import ParamControl2dWidget, ParamControl3dWidget
 
 
 class SimWidget(QWidget):
@@ -137,11 +136,15 @@ class SimWidget3d(SimWidget):
         self.plot_params = PlotParams()
         self.sim_params = Simulation3dParams()
 
-        self.param_control = ParamControl3dWidget(
-            self.plot_params, self.sim_params, plot
+        self.param_control = ParamsController(
+            self.plot_params, Simulation3dParams, plot
+        )
+        self.sim_params_control = ParamsController(
+            self.sim_params, Simulation3dParams, plot
         )
 
         self.controls_layout.addWidget(self.param_control)
+        self.controls_layout.addWidget(self.sim_params_control)
         self.main_layout.addWidget(self.controls_widget)
 
 
@@ -156,7 +159,7 @@ class SimWidget2d(SimWidget):
 
         self.sim_params = Simulation2dParams()
 
-        self.param_control = ParamControl2dWidget(self.sim_params, plot)
+        self.param_control = ParamsController(self.sim_params, Simulation2dParams, plot)
 
         self.controls_layout.addWidget(self.param_control)
         self.main_layout.addWidget(self.controls_widget)
@@ -180,26 +183,20 @@ class SimWidgetML(SimWidget):
         """
         super().__init__(plot)
 
-        # ML-specific parameters and controller
         self.sim_params = SimulationMLParams()
 
-        # Create a ParamsController which will generate a ParamControlWidget for
-        # every field in SimulationMLParams. The controller will call plot.update_params(...)
-        # when a value changes.
         self.param_controller = ParamsController(
             self.sim_params, SimulationMLParams, plot
         )
 
-        # Initialize the plot with the current ML params so the view reflects defaults
-        # immediately (this will call PlotML.update_params with the dataclass fields).
-        try:
-            # Use the asdict conversion to pass named parameters to update_params.
-            self.plot.update_params(**asdict(self.sim_params))
-        except Exception:
-            # If update fails for any reason, continue silently — the UI will still work.
-            pass
+        # # Initialize the plot with the current ML params so the view reflects defaults
+        # # immediately (this will call PlotML.update_params with the dataclass fields).
+        # try:
+        #     # Use the asdict conversion to pass named parameters to update_params.
+        #     self.plot.update_params(**asdict(self.sim_params))
+        # except Exception:
+        #     # If update fails for any reason, continue silently — the UI will still work.
+        #     pass
 
-        # Add the generated controller into the controls layout and expose the
-        # controls widget (same pattern as for 2D/3D simulations).
         self.controls_layout.addWidget(self.param_controller)
         self.main_layout.addWidget(self.controls_widget)

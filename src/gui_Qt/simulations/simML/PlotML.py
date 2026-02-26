@@ -1,40 +1,10 @@
-"""
-PlotML.py
-
-Integrated ML visualization wrapper.
-
-This file implements an in-UI plotting wrapper for the simple linear
-regression demo. It supports the same minimal API expected by the Qt
-SimWidget: .widget, animation controls (setup/start/stop/reset) and a
-QTimer exposed as .animation_timer.
-
-New: this implementation reads runtime parameters from SimulationMLParams
-(see utils.params) and reacts to changes:
- - frame_ms: animation frame interval (ms)
- - test_initial_idx: select which training sample to visualize
- - retrain_on_update: retrain model when parameters change
- - model_type: placeholder for model selection
- - noise_level: add Gaussian noise to predicted trajectory
- - marker_size: size of the moving marker
-"""
-
-from __future__ import annotations
-
 from typing import Optional
 
 import numpy as np
-
-try:
-    from sklearn.linear_model import LinearRegression
-except Exception:  # sklearn may not be available in all environments
-    LinearRegression = None
-
-from simulations.Plot import Plot
-
-# Import ML UI params dataclass so we can reflect changes coming from the UI
-from utils.params import SimulationMLParams
-
 import pyqtgraph as pg
+from simulations.Plot import Plot
+from sklearn.linear_model import LinearRegression
+from utils.params import SimulationMLParams
 
 
 class PlotML(Plot):
