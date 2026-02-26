@@ -1,3 +1,4 @@
+import signal
 import sys
 
 from PySide6.QtWidgets import (
@@ -6,7 +7,6 @@ from PySide6.QtWidgets import (
     QSplitter,
     QTabWidget,
 )
-
 from simulations.sim2d.Plot2d import Plot2d
 from simulations.sim3d.Plot3d import Plot3d
 from widgets.SimWidget import SimWidget2d, SimWidget3d
@@ -36,8 +36,16 @@ class MainWindow(QMainWindow):
         self.showFullScreen()
 
 
+def handle_interrupt(signum, frame):
+    """Gestionnaire pour KeyboardInterrupt (Ctrl+C)."""
+    print("\nFermeture de l'application...")
+    QApplication.quit()
+
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+
+    signal.signal(signal.SIGINT, handle_interrupt)
     window = MainWindow()
     window.show()
     sys.exit(app.exec())
