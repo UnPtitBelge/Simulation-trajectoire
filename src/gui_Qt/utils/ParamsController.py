@@ -34,7 +34,7 @@ class ParamControlWidget(QWidget):
         self.spin_box.setSingleStep(step)
         self.spin_box.setValue(default_value)
         self.spin_box.setDecimals(3)
-        self.spin_box.setMaximumWidth(80)
+        self.spin_box.setMaximumWidth(110)
         self.spin_box.valueChanged.connect(self.emit_value_changed)
 
         # Boutons pour incrémenter/décrémenter
