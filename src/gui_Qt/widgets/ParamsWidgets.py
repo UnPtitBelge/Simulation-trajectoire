@@ -1,7 +1,6 @@
 from PySide6.QtWidgets import QGroupBox, QHBoxLayout, QVBoxLayout, QWidget
-
 from utils.params import PlotParams, Simulation2dParams, Simulation3dParams
-from utils.ParamsController import ParamsController
+from utils.params_controller import ParamsController
 
 
 class ParamControl3dWidget(QWidget):
