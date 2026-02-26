@@ -3,7 +3,6 @@ import sys
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
-    QSizePolicy,
     QSplitter,
     QTabWidget,
 )
@@ -34,9 +33,7 @@ class MainWindow(QMainWindow):
 
         # Set the splitter as the central widget
         self.setCentralWidget(splitter)
-
-        # Set initial sizes to 50/50
-        splitter.setSizes([self.width() // 3, 2 * self.width() // 3])
+        self.showFullScreen()
 
 
 if __name__ == "__main__":
