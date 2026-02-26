@@ -3,6 +3,18 @@ import logging
 import signal
 import sys
 
+from PySide6.QtWidgets import (
+    QApplication,
+    QMainWindow,
+    QSplitter,
+    QTabWidget,
+)
+from simulations.sim2d.Plot2d import Plot2d
+from simulations.sim3d.Plot3d import Plot3d
+from simulations.simML.PlotML import PlotML
+from widgets.SimWidget import SimWidget2d, SimWidget3d, SimWidgetML
+from widgets.VideoPlayerWidget import VideoPlayerWidget
+
 # Parse a minimal known-args subset so we can enable optional debug logging
 # without consuming the rest of the argv intended for QApplication.
 parser = argparse.ArgumentParser(add_help=False)
@@ -13,19 +25,6 @@ args, remaining_argv = parser.parse_known_args()
 logging.basicConfig(
     level=logging.DEBUG if args.debug else logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-)
-
-from simulations.sim2d.Plot2d import Plot2d
-from simulations.sim3d.Plot3d import Plot3d
-from simulations.simML.PlotML import PlotML
-from widgets.SimWidget import SimWidget2d, SimWidget3d, SimWidgetML
-from widgets.VideoPlayerWidget import VideoPlayerWidget
-
-from PySide6.QtWidgets import (
-    QApplication,
-    QMainWindow,
-    QSplitter,
-    QTabWidget,
 )
 
 
@@ -57,7 +56,7 @@ class MainWindow(QMainWindow):
         self.sim_tab_widget.addTab(SimWidget2d(Plot2d()), "2D Simulation")
         # 3D simulation tab
         self.sim_tab_widget.addTab(SimWidget3d(Plot3d()), "3D Simulation")
-        # Machine-learning simulation tab (integrated)
+        # Machine-learning simulation ta
         self.sim_tab_widget.addTab(SimWidgetML(PlotML()), "ML Simulation")
 
         splitter.addWidget(self.sim_tab_widget)
