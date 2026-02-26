@@ -1,4 +1,4 @@
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from math import cos, radians, sin, sqrt
 from typing import Dict
 
@@ -32,9 +32,6 @@ class Simulation3dParams:
 
     # Dissipation
     friction_coef: float = 0.3
-
-    # Reserved for future extensions / UI glue without breaking signatures
-    extras: Dict[str, float] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, float | int | bool | str]:
         return asdict(self)
