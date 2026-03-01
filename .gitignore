@@ -1,4 +1,5 @@
 # Byte-compiled / optimized / DLL files
+
 __pycache__/
 *.py[codz]
 *$py.class
@@ -234,3 +235,7 @@ __marimo__/
 
 # Personal venv file
 .venvQt
+.venv
+
+# Personal useless files
+loop.sh

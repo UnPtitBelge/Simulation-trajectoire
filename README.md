@@ -45,20 +45,20 @@ cd src/simu_machine_learning && python3 main.py
 Dans la racine du projet, exécuter:
 
 ```bash/zsh
-python src/tracking/main.py [--path_video PATH_VIDEO] [--save_images SAVE_IMAGES] [--save_data SAVE_DATA]
+python src/tracking/main.py [--path_video PATH_VIDEO] [--save_data]
 ```
-Où [] indique que les arguments sont optionnels, et:
+les options disponibles sont les suivantes:
+- `--help` : affiche l'aide et les options disponibles
 - `--path_video PATH_VIDEO` : chemin vers la vidéo à traiter à partir du dossier `src/tracking/resources/`, par défaut `src/tracking/resources/big_blue.mp4`
-- `--save_images SAVE_IMAGES` : indique si les images extraites de la vidéo doivent être sauvegardées, par défaut `False`
-- `--save_data SAVE_DATA` : indique si les positions de la balle extraites de la vidéo doivent être sauvegardées dans un fichier CSV, par défaut `False`
+- `--save_data` : si présent, les données de la trajectoire de la balle seront sauvegardées (ajouter) dans un fichier CSV dans le dossier `src/tracking/outputs/tracking_data.csv`.
 
 ### Nettoyage des images sauvegardées
 
-Si vous avez choisi de sauvegarder les images extraites de la vidéo, elles seront stockées dans le dossier `src/tracking/outputs/outputs_images`.
+Les images capturant toute la trajectoire de la balle seront stockées dans le dossier `src/tracking/outputs/outputs_images`.
 Pareil pour les vidéos traitées, elles seront stockées dans le dossier `src/tracking/outputs/outputs_videos`.
+Le dossier `src/tracking/outputs/live_records` contient les vidéos enregistrées en temps réel.
 Pour nettoyer ces dossiers et supprimer tout ce qui est sauvegardé, vous pouvez exécuter la commande suivante dans la racine du projet:
 
 ```bash/zsh
 ./src/tracking/cleanOutputs.sh
 ```
-

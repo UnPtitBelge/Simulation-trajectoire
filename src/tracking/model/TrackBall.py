@@ -11,25 +11,24 @@ Module for tracking a single colored ball in a video and creating an output vide
 """
 
 class TrackBall:
-    def __init__(self, backgroundColor: list = [0, 0, 0], ballColor: list = [255, 255, 255], output_video: str = "trajectory.mp4" ):
-        self.backgroundColor = backgroundColor
-        self.ballColor = np.uint8([[ballColor]]) # RGB -> BGR
+    # ballColor argument is taken with BGR color
+    def __init__(self, ballColor: list = [255, 255, 255], output_video: str = "trajectory.mp4" ):
+        self.ballColor = np.uint8([[ballColor]])
+        self.lower, self.upper = self._set_hue_range(cv2.cvtColor(self.ballColor, cv2.COLOR_BGR2HSV)[0][0])
+        self.frames = []
         self.ballPositions = []
         self.tracker = []
-        self.frames = []
         self.path = os.getcwd() + "/" + DEFAULT_TRACKING_DIR
         create_necessary_dirs(self.path, OUTPUT_IMAGES_DIR)
         create_necessary_dirs(self.path, OUTPUT_VIDEO_DIR)
-        self.outputDir = os.path.join(
-            self.path + OUTPUT_IMAGES_DIR,
-            "images_" + str(findLastDirNumber(self.path + OUTPUT_IMAGES_DIR, "images_") + 1)
-        )
+        self.outputImagesDir = os.path.join(self.path, OUTPUT_IMAGES_DIR)
         self.output_video_name = os.path.join(
             self.path + OUTPUT_VIDEO_DIR,
             set_video_filename(self.path + OUTPUT_VIDEO_DIR, output_video.split(".")[0], ".mp4")
         )
+        self.numVideo = self.output_video_name.split("/")[-1].split(".")[0].split("_")[-1]
 
-    def convertVideoToImages(self, path: str, saveImages: bool=True) -> bool:
+    def convertVideoToImages(self, path: str) -> bool:
         """
         Convert a video file into individual image frames and save them in the output directory.
         Args:
@@ -39,8 +38,7 @@ class TrackBall:
         video = cv2.VideoCapture(path)
         if not video.isOpened():
             return False
-        if saveImages:
-            os.makedirs(self.outputDir, exist_ok=True)
+        os.makedirs(self.outputImagesDir, exist_ok=True)
 
         frameIndex = 0
         while True:
@@ -48,9 +46,6 @@ class TrackBall:
             if not ret:
                 break
             self.frames.append(frame)
-            if saveImages:
-                imagePath = os.path.join(self.outputDir, f"frame_{frameIndex:04d}.png")
-                cv2.imwrite(imagePath, frame)
             frameIndex += 1
 
         video.release()
@@ -61,40 +56,51 @@ class TrackBall:
         """
         Track the ball in the video frames and create an output video showing the trajectory.
         """
-        hsv_color = cv2.cvtColor(self.ballColor, cv2.COLOR_BGR2HSV)[0][0]
-        lower, upper = self._set_hue_range(hsv_color)
         positions = []
         canvas = np.zeros_like(self.frames[0])
-        for frame in self.frames:
-            hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-            mask = cv2.inRange(hsv, lower, upper)
-            mask = cv2.medianBlur(mask, 5) # To test if needed
+        for idx, frame in enumerate(self.frames):
+            center = self.findBallFrame(frame)
+            if center is not None:
+                positions.append(center)
+                self.ballPositions.append((idx, center))
 
-            self._add_center_ball(mask, positions)
-
-        self.ballPositions = positions
-        positions = self._interpolate_positions(positions, smoothing=5)
+        positions = self._interpolate_positions(positions, smoothing=2000)
         self.tracker = positions
         self._create_video(canvas, positions, fps=60)
 
-    def _set_hue_range(self, hsv_color):
+    def findBallFrame(self, frame: np.ndarray) -> tuple or None:
         """
-        Set the hue range for color detection.
+        Find the position of the ball in a single frame.
         """
-        hue = hsv_color[0]
-        lower = np.array([hue - 10, 50, 10])
-        upper = np.array([hue + 10, 255, 255])
-        return lower, upper
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        mask = cv2.inRange(hsv, self.lower, self.upper)
+        mask = cv2.medianBlur(mask, 5) # To test if needed
 
-    def _add_center_ball(self, mask, positions):
-        """
-         Get the center of the ball from the mask and add it to the positions list.
-        """
         M = cv2.moments(mask)
         if M["m00"] > 0:
             cx = int(M["m10"] / M["m00"])
             cy = int(M["m01"] / M["m00"])
-            positions.append((cx, cy))
+            return (cx, cy)
+        return None
+
+
+    def _set_hue_range(self, hsv_color, hue_range: int = 10) -> tuple:
+        """
+        Set the hue range for color detection.
+        """
+        H_MAX = 179
+        S_MAX = 255
+        V_MAX = 255
+
+        h, s, v = int(hsv_color[0]), int(hsv_color[1]), int(hsv_color[2])
+
+        color = { 'max': min(H_MAX, h + hue_range * 5), 'min': max(0, h - hue_range * 5) }
+        saturation = { 'max': min(S_MAX, s + hue_range * 5), 'min': max(0, s - hue_range * 5) }
+        luminance = { 'max': min(V_MAX, v + hue_range * 5), 'min': max(0, v - hue_range * 5) }
+
+        lower = np.array([color['min'], saturation['min'], luminance['min']])
+        upper = np.array([color['max'], saturation['max'], luminance['max']])
+        return lower, upper
 
     def _create_video(self, canvas: np.array, positions: np.array, fps:int =30):
         """
@@ -119,6 +125,8 @@ class TrackBall:
 
             out.write(frame)
 
+        imagePath = os.path.join(self.outputImagesDir, f"frame_{self.numVideo}.png")
+        cv2.imwrite(imagePath, trajectory)
         out.release()
 
     def _interpolate_positions(self, positions: np.array, smoothing: int = 0) -> np.array:
@@ -147,6 +155,10 @@ class TrackBall:
         x_new, y_new = interp.splev(unew, tck)
 
         return list(zip(np.array(x_new, dtype=int), np.array(y_new, dtype=int)))
+
+    @property
+    def getFrames(self):
+        return self.frames
 
     @property
     def getPositionsInterpolated(self):
