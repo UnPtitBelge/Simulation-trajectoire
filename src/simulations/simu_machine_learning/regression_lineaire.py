@@ -2,6 +2,8 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
 import matplotlib.pyplot as plt
+import csv
+from pathlib import Path
 
 
 def plot_trajectories(true_traj, pred_traj):
@@ -19,92 +21,89 @@ def plot_trajectories(true_traj, pred_traj):
     plt.show()
 
 
-data = [
-    {
-        "initial": (1.0, 0.0, 0.0, 1.2),
-        "trajectory": [
-            (0.99, 0.06),
-            (0.97, 0.12),
-            (0.94, 0.18),
-            (0.90, 0.24),
-            (0.85, 0.30),
-            (0.79, 0.35),
-            (0.72, 0.40),
-            (0.64, 0.44),
-            (0.55, 0.48),
-            (0.45, 0.51),
-            (0.35, 0.53),
-            (0.24, 0.54),
-            (0.13, 0.54),
-            (0.02, 0.53),
-            (-0.09, 0.51),
-            (-0.20, 0.48),
-            (-0.30, 0.44),
-            (-0.39, 0.39),
-            (-0.47, 0.33),
-            (-0.54, 0.26),
-        ],
-    },
-    {
-        "initial": (1.5, 0.0, 0.0, 1.0),
-        "trajectory": [
-            (1.49, 0.05),
-            (1.47, 0.10),
-            (1.44, 0.15),
-            (1.40, 0.20),
-            (1.35, 0.25),
-            (1.29, 0.29),
-            (1.22, 0.33),
-            (1.14, 0.36),
-            (1.05, 0.39),
-            (0.95, 0.41),
-            (0.85, 0.42),
-            (0.74, 0.43),
-            (0.63, 0.43),
-            (0.52, 0.42),
-            (0.41, 0.40),
-            (0.30, 0.37),
-            (0.20, 0.33),
-            (0.11, 0.28),
-            (0.03, 0.22),
-            (-0.04, 0.15),
-        ],
-    },
-    {
-        "initial": (0.8, 0.0, 0.0, 1.4),
-        "trajectory": [
-            (0.79, 0.07),
-            (0.76, 0.14),
-            (0.72, 0.21),
-            (0.66, 0.27),
-            (0.59, 0.33),
-            (0.51, 0.38),
-            (0.42, 0.42),
-            (0.32, 0.45),
-            (0.21, 0.47),
-            (0.10, 0.48),
-            (-0.01, 0.48),
-            (-0.12, 0.47),
-            (-0.23, 0.45),
-            (-0.33, 0.42),
-            (-0.42, 0.38),
-            (-0.50, 0.33),
-            (-0.57, 0.27),
-            (-0.63, 0.20),
-            (-0.68, 0.12),
-            (-0.72, 0.04),
-        ],
-    },
-]
+def estimate_mass_center(grouped_rows):
+    all_x = []
+    all_y = []
+
+    for rows in grouped_rows.values():
+        for point in rows:
+            all_x.append(point["x"])
+            all_y.append(point["y"])
+
+    if not all_x or not all_y:
+        return 0.0, 0.0
+
+    return float(np.median(all_x)), float(np.median(all_y))
+
+
+def parse_tracking_csv(csv_path, center_mode="auto"):
+    grouped_rows = {}
+
+    with open(csv_path, "r", encoding="utf-8") as file:
+        reader = csv.DictReader(file, delimiter=";")
+        for row in reader:
+            clean_row = {k.strip(): v.strip() for k, v in row.items() if k is not None}
+            exp_id = clean_row["expID"]
+
+            if exp_id not in grouped_rows:
+                grouped_rows[exp_id] = []
+
+            grouped_rows[exp_id].append(
+                {
+                    "temps": float(clean_row["temps"]),
+                    "x": float(clean_row["x"]),
+                    "y": float(clean_row["y"]),
+                    "speedX": float(clean_row["speedX"]),
+                    "speedY": float(clean_row["speedY"]),
+                }
+            )
+
+    if center_mode == "auto":
+        center_x, center_y = estimate_mass_center(grouped_rows)
+    elif center_mode is None:
+        center_x, center_y = 0.0, 0.0
+    else:
+        center_x, center_y = center_mode
+
+    parsed_data = []
+    for exp_id in sorted(grouped_rows.keys(), key=lambda value: int(value)):
+        rows = grouped_rows[exp_id]
+        rows.sort(key=lambda point: point["temps"])
+
+        first_point = rows[0]
+        sample = {
+            "initial": (
+                first_point["x"] - center_x,
+                first_point["y"] - center_y,
+                first_point["speedX"],
+                first_point["speedY"],
+            ),
+            "trajectory": [
+                (point["x"] - center_x, point["y"] - center_y)
+                for point in rows
+            ],
+        }
+        parsed_data.append(sample)
+
+    return parsed_data, (center_x, center_y)
+
+
+csv_path = Path(__file__).resolve().parents[3] / "data" / "tracking_data.csv"
+data, mass_center = parse_tracking_csv(csv_path, center_mode="auto")
+
+if not data:
+    raise ValueError("Aucune trajectoire valide trouvée dans tracking_data.csv")
 
 X = []
 Y = []
+
+min_trajectory_len = min(len(sample["trajectory"]) for sample in data)
 
 for sample in data:
     # Entrée : conditions initiales
     X.append(sample["initial"])
     # Sortie : trajectoire formatée en un vecteur
-    traj = sample["trajectory"]
+    traj = sample["trajectory"][:min_trajectory_len]
     flat_traj = []
     for point in traj:
         for coord in point:
@@ -114,8 +113,11 @@ for sample in data:
 X = np.array(X, dtype=np.float32)
 Y = np.array(Y, dtype=np.float32)
 
+print("Nombre d'échantillons:", len(data))
+print("Masse centrale estimée (px):", mass_center)
+print("Longueur minimale commune utilisée pour l'entraînement:", min_trajectory_len)
 print("Shape X:", X.shape)  # (n_samples, 4)
-print("Shape Y:", Y.shape)  # (n_samples, 40)
+print("Shape Y:", Y.shape)  # (n_samples, 2 * min_trajectory_len)
 
 model = LinearRegression()
 model.fit(X, Y)
@@ -125,15 +127,15 @@ Y_pred = model.predict(X)
 mse = mean_squared_error(Y, Y_pred)
 print("MSE:", mse)
 
-x_test = np.array([[1.0, 0.0, 0.0, 1.2]], dtype=np.float32)
+x_test = np.array([data[0]["initial"]], dtype=np.float32)
 
 pred = model.predict(x_test)
 
 pred_traj = pred.reshape(
-    20, 2
-)  # reshape pour obtenir une trajectoire 20 points x 2 coordonnées
+    -1, 2
+)  # reshape pour obtenir une trajectoire de points (x, y) à partir du vecteur prédit.
 print("Trajectoire prédite:")
 print(pred_traj)
 
-true_traj = np.array(data[0]["trajectory"])
+true_traj = np.array(data[0]["trajectory"][:min_trajectory_len])
 plot_trajectories(true_traj, pred_traj)
