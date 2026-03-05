@@ -239,3 +239,6 @@ __marimo__/
 
 # Personal useless files
 loop.sh
+
+# Personal log files
+logs/*.log

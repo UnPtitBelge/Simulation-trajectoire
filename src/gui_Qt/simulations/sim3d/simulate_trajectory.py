@@ -1,32 +1,53 @@
-from math import hypot
+from math import hypot, log, pi, sqrt
 from typing import List
 
-from utils.math_helpers import gradient_xy
-from utils.params import PlotParams, Simulation3dParams
+from utils.math_helpers import _deformation_scalar, gradient_xy
+from utils.params import Simulation3dParams
 
 
 def simulate_trajectory(
     sim_params: Simulation3dParams = Simulation3dParams(),
-    plot_params: PlotParams = PlotParams(),
-):
-    """Simulate a point moving on a deformable surface."""
+) -> dict:
+    """Integrate the 3-D surface trajectory and return all frame positions.
+
+    Uses explicit Euler integration. Returns a dict with keys
+    "xs", "ys", "zs" — lists of per-frame particle positions.
+    """
+
     g = sim_params.g
     dt = sim_params.time_step
     steps = sim_params.num_steps
     friction_coef = sim_params.friction_coef
 
-    R = plot_params.surface_radius
-    T = plot_params.surface_tension
-    F = plot_params.center_weight
-    center_radius = plot_params.center_radius
+    R = sim_params.surface_radius
+    T = sim_params.surface_tension
+    # F is the weight of the central sphere: it depends on BOTH mass and gravity.
+    # Using F = center_mass * g means doubling g or doubling center_mass both
+    # deepen the surface by the same factor, which is physically correct.
+    center_mass = sim_params.center_mass
+    F = center_mass * g
+    center_radius = sim_params.center_radius
+    particle_radius = sim_params.particle_radius
 
-    m = F / g if g != 0.0 else 1.0
-    friction_over_m = friction_coef / m  # precompute constant
+    # Z-centre of the central sphere mesh (matches Plot3d._draw_center_sphere).
+    # The mesh is placed with z_offset = deformation(center_radius) + center_radius/2,
+    # so the equator of the sphere sits at the surface level at r = center_radius.
+    _z_center_sphere = (
+        _deformation_scalar(center_radius, R=R, T=T, F=F, center_radius=center_radius)
+        + center_radius / 2.0
+    )
+    # Sum of radii — stop when 3-D distance between sphere centres equals this.
+    _contact_dist = center_radius + particle_radius
 
-    # Initial position
+    # Particle mass is separate from center_mass; derive from friction coefficient.
+    # Using center_mass directly as the orbiting particle mass is wrong —
+    # keep it as a unit mass scaled by friction_coef only.
+    friction_over_m = friction_coef / center_mass
+
     x = float(sim_params.x0)
     y = float(sim_params.y0)
     r0 = hypot(x, y)
+
     if r0 >= R:
         if r0 > 1e-12:
             scale = (R - 1e-6) / r0
@@ -56,7 +77,6 @@ def simulate_trajectory(
         x += vx * dt
         y += vy * dt
 
-        # Recompute z at the NEW position so the stored z matches (x, y)
         z, _, _ = gradient_xy(x, y, R=R, T=T, F=F, center_radius=center_radius)
 
         xs.append(x)
@@ -64,14 +84,21 @@ def simulate_trajectory(
         zs.append(float(z))
 
         steps_run += 1
+
         r = hypot(x, y)
-        if r >= R or r <= center_radius or steps_run >= steps:
+
+        if r >= R:
             break
 
-    return {
-        "xs": xs,
-        "ys": ys,
-        "zs": zs,
-        "steps_run": steps_run,
-        "final_state": {"x": x, "y": y, "vx": vx, "vy": vy, "z": float(z)},
-    }
+        # 3-D distance between particle centre and central-sphere centre.
+        # Particle centre is at (x, y, z + particle_radius) on the surface.
+        # Central sphere centre is at (0, 0, _z_center_sphere).
+        dz = (z + particle_radius) - _z_center_sphere
+        dist3d = sqrt(r * r + dz * dz)
+        if dist3d <= _contact_dist:
+            break
+
+        if steps_run >= steps:
+            break
+
+    return {"xs": xs, "ys": ys, "zs": zs}

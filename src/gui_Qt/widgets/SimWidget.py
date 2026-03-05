@@ -1,193 +1,277 @@
-from dataclasses import asdict
+import logging
 
-from pyqtgraph.Qt.QtWidgets import (
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QKeySequence, QShortcut
+from PySide6.QtWidgets import (
+    QFrame,
+    QHBoxLayout,
+    QLabel,
     QPushButton,
+    QScrollArea,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QKeySequence, QShortcut
 from simulations.sim2d.Plot2d import Plot2d
 from simulations.sim3d.Plot3d import Plot3d
 from simulations.simML.PlotML import PlotML
-from utils.params import (
-    PlotParams,
-    Simulation2dParams,
-    Simulation3dParams,
-    SimulationMLParams,
-)
 from utils.params_controller import ParamsController
+from utils.stylesheet import (
+    APP_STYLESHEET,
+    HINT_BAR_STYLE as _HINT_BAR_STYLE,
+    PANEL_STYLE as _PANEL_STYLE,
+    PAUSE_STYLE as _PAUSE_STYLE,
+    PLAYBACK_BAR_STYLE as _PLAYBACK_BAR_STYLE,
+    RESET_STYLE as _RESET_STYLE,
+    SCROLL_AREA_STYLE as _SCROLL_AREA_STYLE,
+    SEPARATOR_STYLE as _SEPARATOR_STYLE,
+    START_STYLE as _START_STYLE,
+)
+
+log = logging.getLogger(__name__)
+
+# Maximum height the control panel scroll-area is allowed to grow to.
+# The panel will naturally be as tall as its contents up to this ceiling;
+# a scrollbar appears only when contents overflow.
+_PANEL_MAX_HEIGHT = 520
 
 
 class SimWidget(QWidget):
     """Base widget hosting a plot and a collapsible control panel.
 
-    The hosted `plot` object must expose `.widget` (a QWidget) and animation
-    methods: `setup_animation`, `start_animation`, `stop_animation`, `reset_animation`,
-    and an `animation_timer` QTimer.
+    Ctrl+P toggles the panel. The hint bar shows a ⚙ Controls button
+    that does the same and disappears when the panel is open.
+
+    Attributes:
+        plot:                The plot backend instance.
+        main_layout:         Root QVBoxLayout.
+        controls_widget:     Panel container, hidden by default.
+        controls_layout:     QVBoxLayout inside controls_widget.
+        hint_bar:            Always-visible bar at the bottom of the plot.
+        start_button:        Restarts the animation from frame 0.
+        pause_button:        Pauses or resumes the timer.
+        reset_button:        Rewinds to frame 0.
+        _params_area_layout: Layout where subclasses add ParamsController widgets.
+        _controls_scroll:    QScrollArea wrapping controls_widget (set by subclasses).
     """
 
-    def __init__(self, plot: Plot2d | Plot3d | PlotML) -> None:
+    def __init__(self, plot: "Plot2d | Plot3d | PlotML") -> None:
         super().__init__()
 
-        # Main layout
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(0)
 
-        # Plot widget (visualization area)
         self.plot = plot
-        self.main_layout.addWidget(self.plot.widget)
+        log.debug("SimWidget.__init__ — plot type: %s", type(plot).__name__)
+        self.main_layout.addWidget(self.plot.widget, stretch=1)
 
-        # Controls container (hidden by default)
+        # Hint bar
+        self.hint_bar = QWidget()
+        self.hint_bar.setObjectName("hintBar")
+        self.hint_bar.setFixedHeight(30)
+        self.hint_bar.setStyleSheet(_HINT_BAR_STYLE)
+
+        hint_layout = QHBoxLayout(self.hint_bar)
+        hint_layout.setContentsMargins(12, 0, 8, 0)
+        hint_layout.setSpacing(8)
+
+        hint_label = QLabel("Space  Pause   ·   Ctrl+R  Reset")
+        hint_label.setObjectName("hintLabel")
+        hint_layout.addWidget(hint_label)
+        hint_layout.addStretch()
+
+        self._hint_toggle_btn = QPushButton("⚙  Controls  (Ctrl+P)")
+        self._hint_toggle_btn.setObjectName("hintToggleBtn")
+        self._hint_toggle_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self._hint_toggle_btn.setFixedHeight(22)
+        self._hint_toggle_btn.clicked.connect(self.toggle_controls)
+        hint_layout.addWidget(self._hint_toggle_btn)
+
+        self.main_layout.addWidget(self.hint_bar)
+
+        # Controls panel
         self.controls_widget = QWidget()
+        self.controls_widget.setObjectName("controlsWidget")
+        self.controls_widget.setStyleSheet(_PANEL_STYLE)
+
         self.controls_layout = QVBoxLayout(self.controls_widget)
-        self.controls_layout.setContentsMargins(5, 5, 5, 5)
+        self.controls_layout.setContentsMargins(0, 0, 0, 0)
+        self.controls_layout.setSpacing(0)
 
-        # Toggle button to show/hide controls
-        self.toggle_button = QPushButton("Show Controls")
-        self.toggle_button.clicked.connect(self.toggle_controls)
-        self.main_layout.addWidget(self.toggle_button)
+        # Playback row
+        playback_bar = QWidget()
+        playback_bar.setObjectName("playbackBar")
+        playback_bar.setStyleSheet(_PLAYBACK_BAR_STYLE)
+        playback_bar.setFixedHeight(52)
 
-        # Layout for control buttons
-        buttons_layout = QVBoxLayout()
+        pb_layout = QHBoxLayout(playback_bar)
+        pb_layout.setContentsMargins(14, 0, 14, 0)
+        pb_layout.setSpacing(10)
 
-        # Start button
-        self.start_button = QPushButton("Start Animation")
+        playback_title = QLabel("PLAYBACK")
+        playback_title.setObjectName("playbackTitle")
+        pb_layout.addWidget(playback_title)
+        pb_layout.addStretch()
+
+        self.start_button = QPushButton("▶  Start")
+        self.start_button.setStyleSheet(_START_STYLE)
+        self.start_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.start_button.clicked.connect(self.start_animation)
-        buttons_layout.addWidget(self.start_button)
+        pb_layout.addWidget(self.start_button)
 
-        # Pause / Resume button
-        self.pause_button = QPushButton("Pause")
+        self.pause_button = QPushButton("⏸  Pause")
+        self.pause_button.setStyleSheet(_PAUSE_STYLE)
+        self.pause_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.pause_button.clicked.connect(self.toggle_pause_animation)
-        buttons_layout.addWidget(self.pause_button)
+        pb_layout.addWidget(self.pause_button)
 
-        # Reset button
-        self.reset_button = QPushButton("Reset")
+        self.reset_button = QPushButton("↺  Reset")
+        self.reset_button.setStyleSheet(_RESET_STYLE)
+        self.reset_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.reset_button.clicked.connect(self.reset_animation)
-        buttons_layout.addWidget(self.reset_button)
+        pb_layout.addWidget(self.reset_button)
 
-        self.controls_layout.addLayout(buttons_layout)
+        self.controls_layout.addWidget(playback_bar)
 
-        # Initialize the plot (no animation running)
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.HLine)
+        sep.setFrameShadow(QFrame.Shadow.Plain)
+        sep.setFixedHeight(1)
+        sep.setStyleSheet(_SEPARATOR_STYLE)
+        self.controls_layout.addWidget(sep)
+
+        self._params_area_layout = QVBoxLayout()
+        self._params_area_layout.setSpacing(6)
+        self._params_area_layout.setContentsMargins(10, 8, 10, 8)
+        self.controls_layout.addLayout(self._params_area_layout)
+
+        log.debug(
+            "SimWidget — calling setup_animation for %s", type(self.plot).__name__
+        )
         self.plot.setup_animation()
+        log.debug(
+            "SimWidget — setup_animation complete for %s", type(self.plot).__name__
+        )
 
-        # Hide controls by default
         self.controls_widget.setVisible(False)
-
-        # Keyboard shortcuts
         self.setup_shortcuts()
 
     def setup_shortcuts(self) -> None:
-        """Configure keyboard shortcuts used by the widget.
-
-        Space: toggle pause/resume
-        Ctrl+R: reset animation
-        """
-
-        # Use an explicit string-based QKeySequence to avoid static analysis issues
         self.pause_shortcut = QShortcut(QKeySequence("Space"), self)
         self.pause_shortcut.activated.connect(self.toggle_pause_animation)
 
-        # Use the common Ctrl+R sequence string form
         self.reset_shortcut = QShortcut(QKeySequence("Ctrl+R"), self)
         self.reset_shortcut.activated.connect(self.reset_animation)
 
+        self.controls_shortcut = QShortcut(QKeySequence("Ctrl+P"), self)
+        self.controls_shortcut.activated.connect(self.toggle_controls)
+
     def toggle_controls(self) -> None:
-        """Show or hide the control panel."""
-        if self.controls_widget.isVisible():
-            self.controls_widget.setVisible(False)
-            self.toggle_button.setText("Show Controls")
+        scroll = getattr(self, "_controls_scroll", None)
+        target = scroll if scroll is not None else self.controls_widget
+
+        if target.isHidden():
+            log.debug("Controls panel shown (%s)", type(self.plot).__name__)
+            target.setVisible(True)
+            self._hint_toggle_btn.setVisible(False)
         else:
-            self.controls_widget.setVisible(True)
-            self.toggle_button.setText("Hide Controls")
+            log.debug("Controls panel hidden (%s)", type(self.plot).__name__)
+            target.setVisible(False)
+            self._hint_toggle_btn.setVisible(True)
 
     def start_animation(self) -> None:
-        """Restart and start the plot animation."""
+        log.info("Animation started — plot: %s", type(self.plot).__name__)
         self.plot.stop_animation()
         self.plot.setup_animation()
         self.plot.start_animation()
-        self.pause_button.setText("Pause")
+        self.pause_button.setText("⏸  Pause")
 
     def toggle_pause_animation(self) -> None:
-        """Toggle pause/resume of the animation timer."""
         if self.plot.animation_timer.isActive():
-            self.plot.animation_timer.stop()
-            self.pause_button.setText("Resume")
+            log.info(
+                "Animation paused — plot: %s | frame: %d",
+                type(self.plot).__name__,
+                self.plot.current_frame,
+            )
+            self.plot.stop_animation()
+            self.pause_button.setText("▶  Resume")
         else:
-            self.plot.animation_timer.start()
-            self.pause_button.setText("Pause")
+            log.info(
+                "Animation resumed — plot: %s | frame: %d",
+                type(self.plot).__name__,
+                self.plot.current_frame,
+            )
+            self.plot.start_animation()
+            self.pause_button.setText("⏸  Pause")
 
     def reset_animation(self) -> None:
-        """Reset the animation to its initial state."""
+        log.info("Animation reset — plot: %s", type(self.plot).__name__)
         self.plot.reset_animation()
-        self.pause_button.setText("Pause")
+        self.pause_button.setText("⏸  Pause")
+
+
+def _make_panel_scroll(controls_widget: QWidget) -> QScrollArea:
+    """Wrap *controls_widget* in a styled scroll area for the panel."""
+    scroll = QScrollArea()
+    scroll.setWidget(controls_widget)
+    scroll.setWidgetResizable(True)
+    scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+    scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+    # Let the panel grow with its contents up to _PANEL_MAX_HEIGHT.
+    scroll.setMaximumHeight(_PANEL_MAX_HEIGHT)
+    scroll.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+    scroll.setStyleSheet(_SCROLL_AREA_STYLE)
+    scroll.setVisible(False)
+    return scroll
 
 
 class SimWidget3d(SimWidget):
-    """SimWidget specialized for the 3D plot.
-
-    Adds PlotParams and Simulation3dParams controls.
-    """
+    """SimWidget for the 3-D surface simulation."""
 
     def __init__(self, plot: Plot3d) -> None:
+        log.debug("SimWidget3d — initialising")
         super().__init__(plot)
 
-        self.plot_params = PlotParams()
-        self.sim_params = Simulation3dParams()
-
-        self.param_control = ParamsController(
-            self.plot_params, Simulation3dParams, plot
-        )
         self.sim_params_control = ParamsController(
-            self.sim_params, Simulation3dParams, plot
+            plot.sim_params, type(plot.sim_params), plot
         )
+        self._params_area_layout.addWidget(self.sim_params_control)
 
-        self.controls_layout.addWidget(self.param_control)
-        self.controls_layout.addWidget(self.sim_params_control)
-        self.main_layout.addWidget(self.controls_widget)
+        self._controls_scroll = _make_panel_scroll(self.controls_widget)
+        self.main_layout.addWidget(self._controls_scroll)
+        log.debug("SimWidget3d — ready")
 
 
 class SimWidget2d(SimWidget):
-    """SimWidget specialized for the 2D plot.
-
-    Adds Simulation2dParams controls.
-    """
+    """SimWidget for the 2-D orbital simulation."""
 
     def __init__(self, plot: Plot2d) -> None:
+        log.debug("SimWidget2d — initialising")
         super().__init__(plot)
 
-        self.sim_params = Simulation2dParams()
+        self.param_control = ParamsController(
+            plot.sim_params, type(plot.sim_params), plot
+        )
+        self._params_area_layout.addWidget(self.param_control)
 
-        self.param_control = ParamsController(self.sim_params, Simulation2dParams, plot)
-
-        self.controls_layout.addWidget(self.param_control)
-        self.main_layout.addWidget(self.controls_widget)
+        self._controls_scroll = _make_panel_scroll(self.controls_widget)
+        self.main_layout.addWidget(self._controls_scroll)
+        log.debug("SimWidget2d — ready")
 
 
 class SimWidgetML(SimWidget):
-    """
-    Wrapper for a machine-learning based plot (PlotML).
-    This mirrors SimWidget2d/3d: it accepts a plot instance and registers a
-    parameter control widget so it can be hosted as a tab in the main GUI.
-    """
+    """SimWidget for the ML regression demo."""
 
     def __init__(self, plot: PlotML) -> None:
-        """
-        Parameters
-        ----------
-        plot:
-            An instance of the ML plotting wrapper (e.g. PlotML). The plot is
-            expected to expose the same minimal interface as other plots used
-            by SimWidget (a `.widget` attribute and animation controls).
-        """
+        log.debug("SimWidgetML — initialising")
         super().__init__(plot)
 
-        self.sim_params = SimulationMLParams()
-
         self.param_controller = ParamsController(
-            self.sim_params, SimulationMLParams, plot
+            plot.sim_params, type(plot.sim_params), plot
         )
+        self._params_area_layout.addWidget(self.param_controller)
 
-        self.controls_layout.addWidget(self.param_controller)
-        self.main_layout.addWidget(self.controls_widget)
+        self._controls_scroll = _make_panel_scroll(self.controls_widget)
+        self.main_layout.addWidget(self._controls_scroll)
+        log.debug("SimWidgetML — ready")

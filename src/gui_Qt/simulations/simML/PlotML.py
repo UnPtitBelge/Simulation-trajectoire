@@ -1,70 +1,95 @@
+"""ML regression demo plot."""
+
 from typing import Optional
 
 import numpy as np
 import pyqtgraph as pg
+from PySide6.QtCore import Qt
 from simulations.Plot import Plot
 from sklearn.linear_model import LinearRegression
 from utils.params import SimulationMLParams
+from utils.stylesheet import (
+    CLR_PLOT_BG,
+    CLR_PLOT_GRID,
+    CLR_PLOT_MARKER,
+    CLR_PLOT_PRED,
+    CLR_PLOT_TRUE,
+)
+
+
+def _hex_to_rgb(h: str) -> tuple[int, int, int]:
+    h = h.lstrip("#")
+    return int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+
+
+_BG = _hex_to_rgb(CLR_PLOT_BG)
+_GRID = _hex_to_rgb(CLR_PLOT_GRID)
+_TRUE = _hex_to_rgb(CLR_PLOT_TRUE)
+_PRED = _hex_to_rgb(CLR_PLOT_PRED)
+_MARKER = _hex_to_rgb(CLR_PLOT_MARKER)
 
 
 class PlotML(Plot):
-    """ML regression demo plot.
+    """ML regression demo plot backed by a pyqtgraph PlotWidget."""
 
-    Inherits all animation lifecycle (setup, start, stop, reset, timer) from
-    Plot. Only the three hooks required by the contract are implemented here:
-      - _prepare_simulation : compute true/predicted trajectories
-      - _update_frame       : advance the moving marker
-      - _draw_initial_frame : draw static curves + place marker at frame 0
-
-    update_params is overridden only to trigger a model retrain when
-    model_type changes, before delegating entirely to super().
-    """
-
-    def __init__(self):
+    def __init__(self) -> None:
         sim_params = SimulationMLParams()
-        # Pass sim_params to base — it stores it as self.sim_params and wires
-        # the timer. No need to assign self.sim_params before super().__init__.
         super().__init__(sim_params, frame_ms=sim_params.frame_ms)
+        self.sim_params: SimulationMLParams = sim_params
 
-        self.widget = pg.PlotWidget(title="ML Regression Trajectory")
-        self.widget.setBackground("w")
-        self.widget.showGrid(x=True, y=True, alpha=0.3)
+        # ── Widget ─────────────────────────────────────────────────────
+        self.widget = pg.PlotWidget()
+        self.widget.setBackground(CLR_PLOT_BG)
+        self.widget.setMenuEnabled(False)
         self.widget.getViewBox().setAspectLocked(lock=True, ratio=1.0)
 
-        # Static curves (data filled by _draw_initial_frame)
+        # Hide both axes
+        self.widget.hideAxis("bottom")
+        self.widget.hideAxis("left")
+
+        # Subtle grid using the grid colour token
+        self.widget.showGrid(x=True, y=True, alpha=0.15)
+        # Override grid pen to use our token colour
+        for axis in ("bottom", "left"):
+            self.widget.getPlotItem().getAxis(axis).setPen(pg.mkPen(color=(*_GRID, 80)))
+
+        # ── Static curves ──────────────────────────────────────────────
         self.true_curve = self.widget.plot(
-            [], [], pen=pg.mkPen(color=(50, 150, 50), width=2), name="True"
+            [],
+            [],
+            pen=pg.mkPen(color=(*_TRUE, 200), width=2),
+            name="True",
         )
         self.pred_curve = self.widget.plot(
             [],
             [],
-            pen=pg.mkPen(color=(200, 50, 50), width=2, style=pg.QtCore.Qt.DashLine),
+            pen=pg.mkPen(
+                color=(*_PRED, 200),
+                width=2,
+                style=Qt.PenStyle.DashLine,
+            ),
             name="Predicted",
         )
 
-        # Moving marker — created once, repositioned via setData() every frame
+        # ── Animated marker ────────────────────────────────────────────
         self.current_point = pg.ScatterPlotItem(
             size=self.sim_params.marker_size,
-            brush=pg.mkBrush(30, 30, 220),
-            pen=pg.mkPen("k"),
+            brush=pg.mkBrush(*_MARKER, 230),
+            pen=pg.mkPen(color=(*_MARKER, 255), width=1),
         )
         self.widget.addItem(self.current_point)
 
-        # Model + data (populated by _build_and_train_model)
-        self._model: Optional[object] = None
+        # ── Model / data storage ───────────────────────────────────────
+        self._model: Optional[LinearRegression] = None
         self._train_ref: list = []
         self._true_traj = np.zeros((0, 2), dtype=np.float32)
         self._pred_traj = np.zeros((0, 2), dtype=np.float32)
 
-        # Train once — SimWidget calls setup_animation() afterwards
         self._build_and_train_model()
 
-    # ------------------------------------------------------------------ #
-    # Model training                                                       #
-    # ------------------------------------------------------------------ #
+    # ── Model training ─────────────────────────────────────────────────
 
     def _build_and_train_model(self) -> None:
-        """Build the toy dataset and fit a LinearRegression model."""
         data = [
             {
                 "initial": (1.0, 0.0, 0.0, 1.2),
@@ -156,12 +181,9 @@ class PlotML(Plot):
 
         self._train_ref = data
 
-    # ------------------------------------------------------------------ #
-    # Abstract hooks — the only three methods PlotML must implement       #
-    # ------------------------------------------------------------------ #
+    # ── Abstract hook implementations ──────────────────────────────────
 
     def _prepare_simulation(self) -> None:
-        """Compute true + predicted trajectories for the selected sample."""
         if not self._train_ref:
             self._true_traj = np.zeros((0, 2), dtype=np.float32)
             self._pred_traj = np.zeros((0, 2), dtype=np.float32)
@@ -176,18 +198,16 @@ class PlotML(Plot):
         self._n_frames = max(self._true_traj.shape[0], self._pred_traj.shape[0])
 
     def _update_frame(self, frame_index: int) -> None:
-        """Advance the marker to position frame_index along the predicted trajectory."""
         if self._pred_traj.shape[0] == 0:
             return
-        # Clamp to valid range (pred may be shorter than true)
         idx = min(frame_index, self._pred_traj.shape[0] - 1)
         x, y = self._pred_traj[idx]
         self.current_point.setData([x], [y])
 
     def _draw_initial_frame(self) -> None:
-        """Draw static curves and place the marker at position 0."""
         if self._true_traj.shape[0] > 0:
             self.true_curve.setData(self._true_traj[:, 0], self._true_traj[:, 1])
+
         if self._pred_traj.shape[0] > 0:
             self.pred_curve.setData(self._pred_traj[:, 0], self._pred_traj[:, 1])
             x0, y0 = self._pred_traj[0]
@@ -195,38 +215,14 @@ class PlotML(Plot):
         else:
             self.current_point.setData([], [])
 
-    # ------------------------------------------------------------------ #
-    # update_params — only override to trigger retrain when needed        #
-    # ------------------------------------------------------------------ #
+    # ── Parameter update ───────────────────────────────────────────────
 
     def update_params(self, **kwargs) -> None:
-        """Retrain the model if model_type changed, then delegate to super().
-
-        super().update_params() writes all kwargs into self.sim_params and
-        calls setup_animation() → _prepare_simulation() + _draw_initial_frame().
-        There is no need to duplicate any of that logic here.
-        """
-        if "model_type" in kwargs or kwargs.get("retrain_on_update", False):
-            # Apply the two retrain-relevant fields early so _build_and_train_model
-            # sees the updated model_type before fitting.
-            for key in ("model_type", "retrain_on_update"):
-                if key in kwargs and hasattr(self.sim_params, key):
-                    setattr(
-                        self.sim_params,
-                        key,
-                        type(getattr(self.sim_params, key))(kwargs[key]),
-                    )
-            self._build_and_train_model()
-
-        # Delegate everything else (param writing + setup_animation) to the base
         super().update_params(**kwargs)
 
-    # ------------------------------------------------------------------ #
-    # Private helper                                                       #
-    # ------------------------------------------------------------------ #
+    # ── Prediction helper ──────────────────────────────────────────────
 
     def _predict_for_index(self, idx: int) -> np.ndarray:
-        """Return the predicted trajectory for training sample `idx`."""
         idx = max(0, min(idx, len(self._train_ref) - 1))
         initial = np.array([self._train_ref[idx]["initial"]], dtype=np.float32)
 

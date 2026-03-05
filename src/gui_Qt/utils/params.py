@@ -1,65 +1,66 @@
-"""Dataclasses for plot and simulation parameters.
-
-This module defines simple dataclasses that hold configuration parameters for
-the different simulation views (plot-level, 2D, 3D and ML). These dataclasses
-are used by the UI controller code to automatically generate controls and to
-pass values into the simulation/plot implementations.
-
-Keep these classes as plain dataclasses so tools like `dataclasses.fields()` can
-discover their fields for dynamic UI generation.
-"""
-
 from dataclasses import asdict, dataclass
 from math import cos, radians, sin, sqrt
 from typing import Dict
 
 
 @dataclass
-class PlotParams:
-    """Plot-level parameters used to scale and style visual elements."""
+class Simulation3dParams:
+    """Physics, initial-condition, and surface-geometry parameters for the 3D sim.
 
-    # Geometry / model scaling
+    The particle starts at (x0, y0) on the deformable surface with speed v_i
+    directed at angle theta (degrees) relative to the radial direction.
+    Velocity components vx0/vy0 are derived properties.
+
+    frame_ms is declared without a type annotation so dataclasses.fields()
+    skips it and it does not appear as a UI control.
+
+    Attributes:
+        surface_tension: Membrane tension T [N/m].
+        surface_radius:  Membrane radius R [m]. Outer stopping boundary.
+        center_radius:   Central sphere radius [m]. Inner stopping boundary.
+        center_mass:     Mass of the central sphere [kg]. F = center_mass * g.
+        time_step:       Euler integration step dt [s].
+        num_steps:       Maximum integration steps per simulation.
+        g:               Gravitational acceleration [m/s²].
+        particle_radius: Moving particle radius [m]. Visual size and z-offset.
+        x0:              Initial x-coordinate [m].
+        y0:              Initial y-coordinate [m].
+        v_i:             Initial speed [m/s].
+        theta:           Launch angle [°]. 0 = radially inward, 90 = CCW tangential.
+        friction_coef:   Viscous friction coefficient [kg/s].
+    """
+
+    frame_ms = 10
+
     surface_tension: float = 13.0
     surface_radius: float = 0.8
     center_radius: float = 0.05
-    center_weight: float = 0.8 * 9.81
+    center_mass: float = 0.8
 
-
-@dataclass
-class Simulation3dParams:
-    """Parameters controlling the 3D simulation and initial conditions."""
-
-    # Time integration
-    frame_ms = 60
     time_step: float = 0.01
     num_steps: int = 800
 
-    # Physical constants
     g: float = 9.81
 
-    # Moving particle (used to offset z in the 3D view so it visually "touches" the surface)
-    particle_radius: float = 0.05
+    particle_radius: float = 0.025
 
-    # Initial state (2D projected)
     x0: float = 0.8
     y0: float = 0.00
+
     v_i: float = 0.5
     theta: float = 45.0
 
-    # Dissipation
     friction_coef: float = 0.3
 
-    def to_dict(self) -> Dict[str, float | int | bool | str]:
-        """Return a plain dict representation of the params (helper)."""
+    def to_dict(self) -> Dict:
         return asdict(self)
 
     @property
     def vx0(self) -> float:
-        """Computed initial x-velocity from polar decomposition of (x0, y0) and theta."""
         r = sqrt(self.x0 * self.x0 + self.y0 * self.y0)
         if r > 1e-12:
             rx = -self.x0 / r
-            tx = -self.y0 / r  # CCW tangential x-component
+            tx = -self.y0 / r
         else:
             rx, tx = -1.0, 0.0
         th = radians(self.theta)
@@ -67,11 +68,10 @@ class Simulation3dParams:
 
     @property
     def vy0(self) -> float:
-        """Computed initial y-velocity from polar decomposition of (x0, y0) and theta."""
         r = sqrt(self.x0 * self.x0 + self.y0 * self.y0)
         if r > 1e-12:
             ry = -self.y0 / r
-            ty = self.x0 / r  # CCW tangential y-component
+            ty = self.x0 / r
         else:
             ry, ty = 0.0, 1.0
         th = radians(self.theta)
@@ -80,41 +80,52 @@ class Simulation3dParams:
 
 @dataclass
 class Simulation2dParams:
-    """Parameters for the 2D (planar) simulation.
+    """Physics and initial-condition parameters for the 2D orbital simulation.
 
-    These values are intentionally simple numeric fields used by the simulation
-    code and exposed in the UI for tuning.
+    Attributes:
+        G:              Gravitational constant [m³ kg⁻¹ s⁻²].
+        M:              Central body mass [kg].
+        r0:             Initial orbital radius [m].
+        v0:             Initial speed [m/s].
+        theta_deg:      Launch angle relative to positive x-axis [°].
+        gamma:          Linear drag coefficient [s⁻¹].
+        trail:          Number of past positions kept for the trail overlay.
+        center_radius:  Central body radius [m].
+        particle_radius: Moving particle radius [m].
+        frame_ms:       Animation frame interval [ms].
+        dt:             Velocity-Verlet integration time step [s].
     """
 
     G: float = 9.81
     M: float = 1000.0
+
     r0: float = 50.0
     v0: float = 10.0
-    theta_deg: float = 90
+    theta_deg: float = 90.0
+
     gamma: float = 0.001
+
     trail: int = 50
     center_radius: float = 6.0
     particle_radius: float = 2.0
-    frame_ms: int = 5
+
+    frame_ms: int = 10
     dt: float = 0.02
 
 
 @dataclass
 class SimulationMLParams:
-    """
-    Parameters for the machine-learning simulation visualization.
+    """Configuration for the machine-learning trajectory demo.
 
-    - frame_ms: milliseconds between animation frames
-    - test_initial_idx: index of the training sample to use for prediction/visualization
-    - retrain_on_update: whether to retrain the model when params are updated
-    - model_type: integer identifier of model to use (e.g. 0 == linear)
-    - noise_level: synthetic noise level to add to predictions (for demo purposes)
-    - marker_size: size (pixels) of the moving marker shown on the ML plot
+    Attributes:
+        test_initial_idx: Index of the training sample to display (0–2).
+        noise_level:      Gaussian noise std added to predicted points.
+        marker_size:      Animated position marker diameter [px].
     """
 
-    frame_ms: int = 100
+    # No type annotation — hidden from the auto-generated UI controls.
+    frame_ms = 30
+
     test_initial_idx: int = 0
-    retrain_on_update: bool = False
-    model_type: int = 0  # 0 == Linear
     noise_level: float = 0.0
     marker_size: int = 10
