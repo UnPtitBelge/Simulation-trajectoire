@@ -8,32 +8,30 @@ from utils.params import SimulationMLParams
 
 
 class PlotML(Plot):
+    """ML regression demo plot.
+
+    Inherits all animation lifecycle (setup, start, stop, reset, timer) from
+    Plot. Only the three hooks required by the contract are implemented here:
+      - _prepare_simulation : compute true/predicted trajectories
+      - _update_frame       : advance the moving marker
+      - _draw_initial_frame : draw static curves + place marker at frame 0
+
+    update_params is overridden only to trigger a model retrain when
+    model_type changes, before delegating entirely to super().
     """
-    Lightweight plot wrapper for the ML regression demo.
 
-    Inherits common animation and parameter handling from `Plot`. This class
-    implements the ML-specific preparation and per-frame rendering hooks and
-    provides an update_params override to support retraining and interactive
-    visualization parameters.
-    """
+    def __init__(self):
+        sim_params = SimulationMLParams()
+        # Pass sim_params to base — it stores it as self.sim_params and wires
+        # the timer. No need to assign self.sim_params before super().__init__.
+        super().__init__(sim_params, frame_ms=sim_params.frame_ms)
 
-    def __init__(self, parent=None):
-        # Initialize base plot with UI-driven default frame interval
-        self.sim_params: SimulationMLParams = SimulationMLParams()
-        super().__init__(
-            self.sim_params, frame_ms=int(getattr(self.sim_params, "frame_ms", 100))
-        )
-
-        # Create the plotting area
         self.widget = pg.PlotWidget(title="ML Regression Trajectory")
         self.widget.setBackground("w")
         self.widget.showGrid(x=True, y=True, alpha=0.3)
-        try:
-            self.widget.getViewBox().setAspectLocked(lock=True, ratio=1.0)
-        except Exception:
-            pass
+        self.widget.getViewBox().setAspectLocked(lock=True, ratio=1.0)
 
-        # Plot items
+        # Static curves (data filled by _draw_initial_frame)
         self.true_curve = self.widget.plot(
             [], [], pen=pg.mkPen(color=(50, 150, 50), width=2), name="True"
         )
@@ -43,6 +41,8 @@ class PlotML(Plot):
             pen=pg.mkPen(color=(200, 50, 50), width=2, style=pg.QtCore.Qt.DashLine),
             name="Predicted",
         )
+
+        # Moving marker — created once, repositioned via setData() every frame
         self.current_point = pg.ScatterPlotItem(
             size=self.sim_params.marker_size,
             brush=pg.mkBrush(30, 30, 220),
@@ -50,30 +50,21 @@ class PlotML(Plot):
         )
         self.widget.addItem(self.current_point)
 
-        # Internal state: model/data storage
+        # Model + data (populated by _build_and_train_model)
         self._model: Optional[object] = None
-        self._train_ref = []
-        self._true_traj = np.zeros((0, 2))
-        self._pred_traj = np.zeros((0, 2))
+        self._train_ref: list = []
+        self._true_traj = np.zeros((0, 2), dtype=np.float32)
+        self._pred_traj = np.zeros((0, 2), dtype=np.float32)
 
-        # Ensure frame count is tracked by base class when we prepare
-        self._n_points = 0
-
-        # Build and train the initial model and prepare simulation data
+        # Train once — SimWidget calls setup_animation() afterwards
         self._build_and_train_model()
-        # Prepare initial visuals (base.setup_animation will call our _prepare_simulation)
-        try:
-            self.setup_animation()
-        except Exception:
-            pass
 
-    def _build_and_train_model(self):
-        """Create the toy dataset and fit the selected model type.
+    # ------------------------------------------------------------------ #
+    # Model training                                                       #
+    # ------------------------------------------------------------------ #
 
-        The implementation supports a LinearRegression fallback. If sklearn is
-        not available, the predictor will be a no-op identity copier.
-        """
-        # Toy dataset (same shape as the original demo)
+    def _build_and_train_model(self) -> None:
+        """Build the toy dataset and fit a LinearRegression model."""
         data = [
             {
                 "initial": (1.0, 0.0, 0.0, 1.2),
@@ -152,43 +143,93 @@ class PlotML(Plot):
             },
         ]
 
-        # Format dataset for regression
-        X = []
-        Y = []
-        for sample in data:
-            X.append(sample["initial"])
-            traj = sample["trajectory"]
-            flat = [coord for point in traj for coord in point]
-            Y.append(flat)
-        X = np.array(X, dtype=np.float32)
-        Y = np.array(Y, dtype=np.float32)
+        X = np.array([s["initial"] for s in data], dtype=np.float32)
+        Y = np.array(
+            [[c for pt in s["trajectory"] for c in pt] for s in data],
+            dtype=np.float32,
+        )
 
-        # Fit model if available
-        if LinearRegression is not None and int(self.sim_params.model_type) == 0:
-            try:
-                model = LinearRegression()
-                model.fit(X, Y)
-                self._model = model
-            except Exception:
-                self._model = None
-        else:
+        try:
+            self._model = LinearRegression().fit(X, Y)
+        except Exception:
             self._model = None
 
-        # Keep the training reference and precompute the default true trajectory
         self._train_ref = data
-        self._true_traj = np.array(self._train_ref[0]["trajectory"], dtype=np.float32)
-        self._n_points = self._true_traj.shape[0]
+
+    # ------------------------------------------------------------------ #
+    # Abstract hooks — the only three methods PlotML must implement       #
+    # ------------------------------------------------------------------ #
+
+    def _prepare_simulation(self) -> None:
+        """Compute true + predicted trajectories for the selected sample."""
+        if not self._train_ref:
+            self._true_traj = np.zeros((0, 2), dtype=np.float32)
+            self._pred_traj = np.zeros((0, 2), dtype=np.float32)
+            self._n_frames = 0
+            return
+
+        idx = max(
+            0, min(int(self.sim_params.test_initial_idx), len(self._train_ref) - 1)
+        )
+        self._true_traj = np.array(self._train_ref[idx]["trajectory"], dtype=np.float32)
+        self._pred_traj = self._predict_for_index(idx)
+        self._n_frames = max(self._true_traj.shape[0], self._pred_traj.shape[0])
+
+    def _update_frame(self, frame_index: int) -> None:
+        """Advance the marker to position frame_index along the predicted trajectory."""
+        if self._pred_traj.shape[0] == 0:
+            return
+        # Clamp to valid range (pred may be shorter than true)
+        idx = min(frame_index, self._pred_traj.shape[0] - 1)
+        x, y = self._pred_traj[idx]
+        self.current_point.setData([x], [y])
+
+    def _draw_initial_frame(self) -> None:
+        """Draw static curves and place the marker at position 0."""
+        if self._true_traj.shape[0] > 0:
+            self.true_curve.setData(self._true_traj[:, 0], self._true_traj[:, 1])
+        if self._pred_traj.shape[0] > 0:
+            self.pred_curve.setData(self._pred_traj[:, 0], self._pred_traj[:, 1])
+            x0, y0 = self._pred_traj[0]
+            self.current_point.setData([x0], [y0], size=self.sim_params.marker_size)
+        else:
+            self.current_point.setData([], [])
+
+    # ------------------------------------------------------------------ #
+    # update_params — only override to trigger retrain when needed        #
+    # ------------------------------------------------------------------ #
+
+    def update_params(self, **kwargs) -> None:
+        """Retrain the model if model_type changed, then delegate to super().
+
+        super().update_params() writes all kwargs into self.sim_params and
+        calls setup_animation() → _prepare_simulation() + _draw_initial_frame().
+        There is no need to duplicate any of that logic here.
+        """
+        if "model_type" in kwargs or kwargs.get("retrain_on_update", False):
+            # Apply the two retrain-relevant fields early so _build_and_train_model
+            # sees the updated model_type before fitting.
+            for key in ("model_type", "retrain_on_update"):
+                if key in kwargs and hasattr(self.sim_params, key):
+                    setattr(
+                        self.sim_params,
+                        key,
+                        type(getattr(self.sim_params, key))(kwargs[key]),
+                    )
+            self._build_and_train_model()
+
+        # Delegate everything else (param writing + setup_animation) to the base
+        super().update_params(**kwargs)
+
+    # ------------------------------------------------------------------ #
+    # Private helper                                                       #
+    # ------------------------------------------------------------------ #
 
     def _predict_for_index(self, idx: int) -> np.ndarray:
-        """Return predicted trajectory for the training sample index `idx`.
-
-        Applies optional synthetic noise from sim_params.noise_level.
-        """
-        if not self._train_ref:
-            return np.array([], dtype=np.float32)
-
-        idx = max(0, min(int(idx), len(self._train_ref) - 1))
+        """Return the predicted trajectory for training sample `idx`."""
+        idx = max(0, min(idx, len(self._train_ref) - 1))
         initial = np.array([self._train_ref[idx]["initial"]], dtype=np.float32)
+
         if self._model is not None:
             try:
                 pred_flat = self._model.predict(initial)[0]
@@ -200,202 +241,8 @@ class PlotML(Plot):
         else:
             pred_traj = np.array(self._train_ref[idx]["trajectory"], dtype=np.float32)
 
-        # Optionally add noise for visualization/debugging
-        noise_level = float(getattr(self.sim_params, "noise_level", 0.0))
-        if noise_level and noise_level > 0.0:
-            pred_traj = pred_traj + np.random.normal(
-                scale=noise_level, size=pred_traj.shape
-            )
+        noise = float(self.sim_params.noise_level)
+        if noise > 0.0:
+            pred_traj = pred_traj + np.random.normal(scale=noise, size=pred_traj.shape)
 
-        return np.array(pred_traj, dtype=np.float32)
-
-    def _prepare_simulation(self) -> None:
-        """Prepare predicted trajectory and static data for animation.
-
-        This hook is used by the base class `setup_animation()` to recompute the
-        necessary arrays from current parameters.
-        """
-        # Ensure we have the training data available (built by _build_and_train_model)
-        if not self._train_ref:
-            self._pred_traj = np.zeros((0, 2), dtype=np.float32)
-            self._true_traj = np.zeros((0, 2), dtype=np.float32)
-            self._n_frames = 0
-            return
-
-        # Determine index and compute prediction
-        idx = int(getattr(self.sim_params, "test_initial_idx", 0))
-        idx = max(0, min(idx, len(self._train_ref) - 1))
-
-        # True trajectory for the selected sample
-        self._true_traj = np.array(self._train_ref[idx]["trajectory"], dtype=np.float32)
-        # Predicted trajectory
-        self._pred_traj = self._predict_for_index(idx)
-
-        # Number of frames is the max of true/pred lengths
-        self._n_frames = max(self._true_traj.shape[0], self._pred_traj.shape[0])
-
-    def _update_frame(self, frame_index: int) -> None:
-        """Render a single frame by advancing the moving marker."""
-        if self._n_frames == 0:
-            return
-
-        idx = (
-            frame_index % self._pred_traj.shape[0]
-            if self._pred_traj.shape[0] > 0
-            else 0
-        )
-        if self._pred_traj.shape[0] > 0:
-            x, y = self._pred_traj[idx]
-            # Update the marker position
-            try:
-                self.current_point.setData([x], [y])
-            except Exception:
-                # On older pyqtgraph versions current_point.setData may accept different args.
-                try:
-                    self.widget.removeItem(self.current_point)
-                except Exception:
-                    pass
-                self.current_point = pg.ScatterPlotItem(
-                    size=int(getattr(self.sim_params, "marker_size", 10)),
-                    brush=pg.mkBrush(30, 30, 220),
-                    pen=pg.mkPen("k"),
-                )
-                self.widget.addItem(self.current_point)
-                self.current_point.setData([x], [y])
-
-    def _draw_initial_frame(self) -> None:
-        """Draw static curves and configure marker size before animation."""
-        # Static curves
-        try:
-            self.true_curve.setData(self._true_traj[:, 0], self._true_traj[:, 1])
-            self.pred_curve.setData(self._pred_traj[:, 0], self._pred_traj[:, 1])
-        except Exception:
-            # If data is empty the calls above may fail silently
-            pass
-
-        # Ensure marker has the right size (recreate if necessary)
-        try:
-            self.current_point.setSize(int(getattr(self.sim_params, "marker_size", 10)))
-        except Exception:
-            try:
-                self.widget.removeItem(self.current_point)
-            except Exception:
-                pass
-            self.current_point = pg.ScatterPlotItem(
-                size=int(getattr(self.sim_params, "marker_size", 10)),
-                brush=pg.mkBrush(30, 30, 220),
-                pen=pg.mkPen("k"),
-            )
-            self.widget.addItem(self.current_point)
-
-        # Place marker at the first predicted point if available
-        if self._pred_traj.shape[0] > 0:
-            x0, y0 = self._pred_traj[0]
-            self.current_point.setData([x0], [y0])
-        else:
-            self.current_point.setData([], [])
-
-    # The base class `_on_timer` drives per-frame updates by calling `_update_frame`.
-    # We keep `_step` for backward compatibility but forward it to the base hook.
-    def _step(self):
-        """Compatibility wrapper: forward to the base frame step implementation."""
-        # Base class uses current_frame/_n_frames and calls _update_frame internally,
-        # so simply delegate to that behavior by invoking the base handler.
-        self._on_timer()
-
-    def start_animation(self):
-        """Start the animation timer (align interval to current sim_params)."""
-        # Use sim_params.frame_ms if present
-        try:
-            self._frame_ms = int(getattr(self.sim_params, "frame_ms", self._frame_ms))
-        except Exception:
-            pass
-        super().start_animation()
-
-    def stop_animation(self):
-        """Stop the animation timer."""
-        if self.animation_timer is None:
-            return
-        self.animation_timer.stop()
-
-    def reset_animation(self):
-        """Stop and reset animation to initial state."""
-        self.stop_animation()
-        self._index = 0
-        if self._pred_traj.shape[0] > 0:
-            x0, y0 = self._pred_traj[0]
-            self.current_point.setData([x0], [y0])
-        else:
-            self.current_point.setData([], [])
-
-    def update_params(self, **kwargs):
-        """
-        Apply parameter updates coming from the UI controls.
-
-        This override detects model-type/retrain requests before delegating to
-        the base class which writes kwargs into `sim_params`/`params` and calls
-        `setup_animation()`. After the base update runs we ensure marker sizing
-        and a current prediction are reflected in the view.
-        """
-        # Detect model-type or retrain flags early so we can retrain before prepare
-        need_retrain = False
-        if "model_type" in kwargs or "retrain_on_update" in kwargs:
-            need_retrain = True
-
-        # If model_type/retrain flags are present and request retrain, apply them to sim_params
-        # (we'll rely on base.update_params to call setup_animation/_prepare_simulation)
-        if need_retrain:
-            # apply preliminary changes to sim_params if available
-            if self.sim_params is not None:
-                for k in ("model_type", "retrain_on_update"):
-                    if k in kwargs and hasattr(self.sim_params, k):
-                        try:
-                            setattr(
-                                self.sim_params,
-                                k,
-                                type(getattr(self.sim_params, k))(kwargs[k]),
-                            )
-                        except Exception:
-                            try:
-                                setattr(self.sim_params, k, kwargs[k])
-                            except Exception:
-                                pass
-            # trigger rebuild if explicitly requested
-            try:
-                if getattr(self.sim_params, "retrain_on_update", False) or (
-                    "model_type" in kwargs
-                ):
-                    self._build_and_train_model()
-            except Exception:
-                pass
-
-        # Now let the base class apply incoming parameters and call setup_animation()
-        super().update_params(**kwargs)
-
-        # After the base setup, ensure marker sizing and predicted data are visible
-        try:
-            # update marker size if requested
-            if hasattr(self.sim_params, "marker_size"):
-                try:
-                    self.current_point.setSize(
-                        int(getattr(self.sim_params, "marker_size"))
-                    )
-                except Exception:
-                    # recreate marker if setSize is unavailable
-                    try:
-                        self.widget.removeItem(self.current_point)
-                    except Exception:
-                        pass
-                    self.current_point = pg.ScatterPlotItem(
-                        size=int(getattr(self.sim_params, "marker_size")),
-                        brush=pg.mkBrush(30, 30, 220),
-                        pen=pg.mkPen("k"),
-                    )
-                    self.widget.addItem(self.current_point)
-            # update predicted curve (setup_animation already set pred arrays, but ensure plotted)
-            try:
-                self.pred_curve.setData(self._pred_traj[:, 0], self._pred_traj[:, 1])
-            except Exception:
-                pass
-        except Exception:
-            pass
+        return pred_traj.astype(np.float32)

@@ -1,6 +1,7 @@
 from dataclasses import fields
+from math import floor, log10
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import QTimer, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
     QDoubleSpinBox,
@@ -15,13 +16,7 @@ from PySide6.QtWidgets import (
 
 
 class ParamControlWidget(QWidget):
-    """Single-row control for a parameter (numeric or boolean).
-
-    Emits `value_changed(name, value)` where value is either a numeric type
-    (float) or a boolean. The widget adapts to the default_value type:
-    - bool -> a QCheckBox is created
-    - int/float -> a QDoubleSpinBox with small +/- buttons is used
-    """
+    """Single-row control for one parameter (numeric or boolean)."""
 
     value_changed = Signal(str, object)
 
@@ -31,67 +26,48 @@ class ParamControlWidget(QWidget):
         super().__init__()
         self.param_name = param_name
         self.default_value = default_value
-        self.min_value = min_value
-        self.max_value = max_value
-        self.step = step
 
-        # Label for the parameter name
         self.label = QLabel(param_name)
         self.label.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
-        # Choose control type based on parameter value type
         if isinstance(default_value, bool):
-            # Boolean -> checkbox
             self.checkbox = QCheckBox()
             self.checkbox.setChecked(bool(default_value))
             self.checkbox.stateChanged.connect(self._checkbox_changed)
-
-            # Create a small horizontal layout that holds the checkbox as the control
             control_layout = QHBoxLayout()
             control_layout.setContentsMargins(0, 0, 0, 0)
             control_layout.setSpacing(2)
             control_layout.addWidget(self.checkbox)
         else:
-            # Numeric -> spinbox with +/- buttons
             self.spin_box = QDoubleSpinBox()
-
-            # If min/max not provided, choose reasonable defaults
-            if self.min_value is None:
-                # if default is zero, choose a symmetric range
-                self.min_value = (
+            if min_value is None:
+                min_value = (
                     default_value - abs(default_value) - 10
                     if default_value != 0
                     else -100.0
                 )
-            if self.max_value is None:
-                self.max_value = (
+            if max_value is None:
+                max_value = (
                     default_value + abs(default_value) + 10
                     if default_value != 0
                     else 100.0
                 )
-            if self.step is None:
-                self.step = self.calculate_default_step(default_value)
-
+            if step is None:
+                step = ParamControlWidget.calculate_default_step(default_value)
             try:
-                self.spin_box.setRange(self.min_value, self.max_value)
-                self.spin_box.setSingleStep(self.step)
+                self.spin_box.setRange(min_value, max_value)
+                self.spin_box.setSingleStep(step)
             except Exception:
-                # Ensure the spin box is configured even if values are odd
                 self.spin_box.setRange(-1e9, 1e9)
                 self.spin_box.setSingleStep(0.1)
-
-            # Initialize display value
             try:
                 self.spin_box.setValue(float(default_value))
             except Exception:
-                # fallback to zero if conversion fails
                 self.spin_box.setValue(0.0)
-
             self.spin_box.setDecimals(3)
             self.spin_box.setMaximumWidth(110)
             self.spin_box.valueChanged.connect(self.emit_value_changed)
 
-            # Small +/- buttons
             self.increment_button = QPushButton("+")
             self.increment_button.setFixedSize(20, 20)
             self.increment_button.clicked.connect(self.spin_box.stepUp)
@@ -100,58 +76,44 @@ class ParamControlWidget(QWidget):
             self.decrement_button.setFixedSize(20, 20)
             self.decrement_button.clicked.connect(self.spin_box.stepDown)
 
-            # Layout for buttons + spinbox
-            spin_box_layout = QHBoxLayout()
-            spin_box_layout.setContentsMargins(0, 0, 0, 0)
-            spin_box_layout.setSpacing(2)
-            spin_box_layout.addWidget(self.decrement_button)
-            spin_box_layout.addWidget(self.spin_box)
-            spin_box_layout.addWidget(self.increment_button)
+            control_layout = QHBoxLayout()
+            control_layout.setContentsMargins(0, 0, 0, 0)
+            control_layout.setSpacing(2)
+            control_layout.addWidget(self.decrement_button)
+            control_layout.addWidget(self.spin_box)
+            control_layout.addWidget(self.increment_button)
 
-            control_layout = spin_box_layout
-
-        # Main horizontal layout: label on the left, control on the right
         main_layout = QHBoxLayout()
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(5)
-
         main_layout.addWidget(self.label)
-
-        # Expanding spacer to push control to the right
         main_layout.addSpacerItem(
             QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Minimum)
         )
-
-        # Add the chosen control layout
         main_layout.addLayout(control_layout)
-
         self.setLayout(main_layout)
 
     def _checkbox_changed(self, state):
-        """Internal handler for checkbox state changes (int -> bool)."""
-        # Qt uses 0/2 for unchecked/checked; convert to bool
-        value = bool(state)
-        self.value_changed.emit(self.param_name, value)
+        self.value_changed.emit(self.param_name, bool(state))
 
     def emit_value_changed(self, value):
-        """Emit the generic value_changed signal for numeric spinbox updates."""
         self.value_changed.emit(self.param_name, value)
 
     def get_value(self):
-        """Return the current control value (bool or numeric)."""
         if hasattr(self, "spin_box"):
             return self.spin_box.value()
         if hasattr(self, "checkbox"):
             return self.checkbox.isChecked()
         return None
 
+    @staticmethod
+    def calculate_default_step(default_value) -> float:
+        """Fallback step used when ParamsController does not supply one."""
+        return ParamsController._calculate_step(default_value, is_int=False)
+
 
 class ParamsController(QWidget):
-    """Controller that generates UI controls from a dataclass.
-
-    For each field in the provided dataclass `params`, a ParamControlWidget is
-    created. Changes are written back to `params` and forwarded to `plot.update_params`.
-    """
+    """Generates UI controls from a dataclass and forwards changes to a plot."""
 
     def __init__(self, params, param_type, plot=None):
         super().__init__()
@@ -159,27 +121,28 @@ class ParamsController(QWidget):
         self.param_type = param_type
         self.plot = plot
         self.default_params = param_type()
-        self.param_controls = {}
+        self.param_controls: dict = {}
 
-        self.layout = QVBoxLayout()
-        self.layout.setContentsMargins(0, 0, 0, 0)  # No margins
-        self.layout.setSpacing(2)  # Reduced spacing
-        self.setLayout(self.layout)
+        self.main_layout = QVBoxLayout()
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.setSpacing(2)
+        self.setLayout(self.main_layout)
 
-        # Create a control for each dataclass field
+        self._pending_updates: dict = {}
+        self._debounce_timer = QTimer(self)
+        self._debounce_timer.setSingleShot(True)
+        self._debounce_timer.setInterval(50)
+        self._debounce_timer.timeout.connect(self._flush_pending_update)
+
         for field in fields(self.params):
             param_name = field.name
             default_value = getattr(self.params, param_name)
 
-            # Handle boolean parameters with a checkbox control
             if isinstance(default_value, bool):
-                control = ParamControlWidget(
-                    param_name, default_value, None, None, None
-                )
-            # Numeric parameters (int/float) -> use spinbox with calculated step
+                control = ParamControlWidget(param_name, default_value)
             elif isinstance(default_value, (int, float)):
-                step = self.calculate_step(default_value)
-                # avoid zero-range when default_value is zero
+                is_int = isinstance(default_value, int)
+                step = self._calculate_step(default_value, is_int=is_int)
                 if default_value == 0:
                     min_value, max_value = -100.0, 100.0
                 else:
@@ -189,74 +152,101 @@ class ParamsController(QWidget):
                     param_name, default_value, min_value, max_value, step
                 )
             else:
-                # Fallback: attempt to create a numeric control with a generic range
                 control = ParamControlWidget(param_name, 0.0, 0.0, 100.0, 1.0)
 
             control.value_changed.connect(self.on_value_changed)
             self.param_controls[param_name] = control
-            self.layout.addWidget(control)
+            self.main_layout.addWidget(control)
 
-        # Reset button
         reset_button = QPushButton("Reset")
         reset_button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        reset_button.setFixedSize(60, 20)  # Fixed size for the reset button
+        reset_button.setFixedSize(60, 20)
         reset_button.clicked.connect(self._reset_to_default)
-        self.layout.addWidget(reset_button)
+        self.main_layout.addWidget(reset_button)
 
-    def calculate_step(self, default_value):
-        """Return an appropriate spin step based on the magnitude of the default."""
-        if default_value < 1:
-            return 0.01
-        elif default_value < 10:
-            return 0.1
-        elif default_value < 100:
-            return 1
-        else:
-            return 10
+    @staticmethod
+    def _calculate_step(value: float, is_int: bool = False) -> float:
+        """Return a step size proportional to the order of magnitude of `value`.
 
-    def on_value_changed(self, param_name, value):
-        """Handle a parameter value change.
+        Strategy:
+          - The step is 1/100th of the value's order of magnitude, i.e.
+            10^(floor(log10(|value|)) - 1). This gives exactly 100 steps
+            to cross one order of magnitude, regardless of the scale.
+          - For integer fields the step is always rounded up to the nearest
+            integer ≥ 1, so int spinboxes always move by whole numbers.
+          - Zero and very small values fall back to a safe default.
 
-        Update the underlying dataclass and notify the attached plot (if any).
+        Examples
+        --------
+        value=0.001  → magnitude 1e-3  → step 1e-4   (0.0001)
+        value=0.05   → magnitude 1e-2  → step 1e-3   (0.001)
+        value=0.3    → magnitude 1e-1  → step 1e-2   (0.01)
+        value=0.8    → magnitude 1e-1  → step 1e-2   (0.01)
+        value=9.81   → magnitude 1e1   → step 1e-1   (0.1)
+        value=13.0   → magnitude 1e1   → step 1e-1   (0.1)   ← was 1.0
+        value=45.0   → magnitude 1e1   → step 1e-1   (0.1)   ← was 1.0
+        value=50.0   → magnitude 1e1   → step 1e-1   (0.1) → int→ 1
+        value=800    → magnitude 1e2   → step 1e0    (1.0) → int→ 1
+        value=1000.0 → magnitude 1e3   → step 1e1    (10)  → int→ 10
         """
+        abs_val = abs(value)
+
+        if abs_val < 1e-12:
+            # Zero or effectively zero: safe fallback
+            return 1 if is_int else 0.01
+
+        # floor(log10(|v|)) gives the exponent of the leading digit.
+        # Subtract 1 to get a step ~1% of the value's magnitude.
+        exponent = floor(log10(abs_val)) - 1
+        step = 10.0**exponent
+
+        if is_int:
+            # Integer fields always move by whole numbers (minimum 1)
+            return max(1, round(step))
+
+        return step
+
+    def on_value_changed(self, param_name: str, value) -> None:
+        """Accumulate changes and fire a single plot update after 50 ms of inactivity."""
         setattr(self.params, param_name, value)
         if self.plot is not None:
-            self.plot.update_params(**{param_name: value})
+            self._pending_updates[param_name] = value
+            self._debounce_timer.start()
 
-    def _reset_to_default(self):
-        """Reset all parameters to their default values and update the UI.
+    def _flush_pending_update(self) -> None:
+        """Send all accumulated param changes to the plot in one single call."""
+        if self.plot is not None and self._pending_updates:
+            self.plot.update_params(**self._pending_updates)
+            self._pending_updates.clear()
 
-        The underlying dataclass is restored to its default instance and the
-        plot is notified of the reset values.
-        """
+    def _reset_to_default(self) -> None:
+        """Reset all params to defaults, update the UI and notify the plot immediately."""
+        for field in fields(self.params):
+            param_name = field.name
+            default_value = getattr(self.default_params, param_name)
+            setattr(self.params, param_name, default_value)
 
-        def _reset_to_default(self):
-            """Reset all parameters to their dataclass defaults and update the UI and plot."""
-            for field in fields(self.params):
-                param_name = field.name
-                default_value = getattr(self.default_params, param_name)
-                setattr(self.params, param_name, default_value)
+            control = self.param_controls.get(param_name)
+            if control is None:
+                continue
+            if hasattr(control, "spin_box"):
+                control.spin_box.blockSignals(True)
+                try:
+                    control.spin_box.setValue(float(default_value))
+                finally:
+                    control.spin_box.blockSignals(False)
+            elif hasattr(control, "checkbox"):
+                control.checkbox.blockSignals(True)
+                try:
+                    control.checkbox.setChecked(bool(default_value))
+                finally:
+                    control.checkbox.blockSignals(False)
 
-                control = self.param_controls.get(param_name)
-                if control is None:
-                    continue
-
-                # Update control UI depending on control type
-                if hasattr(control, "spin_box"):
-                    try:
-                        control.spin_box.setValue(float(default_value))
-                    except Exception:
-                        # ignore if conversion fails
-                        pass
-                elif hasattr(control, "checkbox"):
-                    try:
-                        control.checkbox.setChecked(bool(default_value))
-                    except Exception:
-                        pass
-
-                # Notify the plot of the reset value if available
-                if self.plot is not None:
-                    try:
-                        self.plot.update_params(**{param_name: default_value})
-                    except Exception:
-                        pass
+        self._debounce_timer.stop()
+        self._pending_updates.clear()
+        if self.plot is not None:
+            all_defaults = {
+                field.name: getattr(self.default_params, field.name)
+                for field in fields(self.params)
+            }
+            self.plot.update_params(**all_defaults)
