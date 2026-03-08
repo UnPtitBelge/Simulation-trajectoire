@@ -8,7 +8,7 @@ QVideoWidget suffers from on X11/Wayland when alt-tabbing.
 
 import logging
 
-from PySide6.QtCore import QRectF, Qt, QTimer, QUrl
+from PySide6.QtCore import QRectF, Qt, QUrl
 from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PySide6.QtMultimediaWidgets import QGraphicsVideoItem
 from PySide6.QtWidgets import (
@@ -147,20 +147,18 @@ class VideoPlayerWidget(QWidget):
 
         self.time_label = QLabel("0:00 / 0:00")
         self.time_label.setObjectName("videoTimeLabel")
-        self.time_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.time_label.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
         ctrl_layout.addWidget(self.time_label)
 
         root.addWidget(controls)
-
-        # ── Fallback timer ─────────────────────────────────────────────
-        self.update_timer = QTimer(self)
-        self.update_timer.timeout.connect(self.update_slider)
-        self.update_timer.start(1000)
 
         # ── Media player signals ───────────────────────────────────────
         self.media_player.durationChanged.connect(self.duration_changed)
         self.media_player.positionChanged.connect(self.position_changed)
         self.media_player.playbackStateChanged.connect(self._on_playback_state_changed)
+        self.media_player.errorOccurred.connect(self._on_media_error)
 
         log.debug("VideoPlayerWidget — ready")
 
@@ -228,3 +226,13 @@ class VideoPlayerWidget(QWidget):
             self.play_button.setText("⏸  Pause")
         else:
             self.play_button.setText("▶  Play")
+
+    def _on_media_error(self, error: QMediaPlayer.Error, error_string: str) -> None:
+        """Re-show the placeholder and log the error when media fails to load."""
+        log.error(
+            "Media player error — code=%s message=%r",
+            error.name,
+            error_string,
+        )
+        self._placeholder.setText(f"Error: {error_string}")
+        self._placeholder.show()

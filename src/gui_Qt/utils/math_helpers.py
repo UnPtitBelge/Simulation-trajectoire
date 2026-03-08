@@ -99,6 +99,9 @@ def _deformation_scalar(
         Vertical deflection at radius ``r`` [m], clamped to the bottom
         of the central sphere.
     """
+    r = max(r, 1e-9)
+    center_radius = max(center_radius, 1e-9)
+
     coeff = -F / (2.0 * pi * T)
     z = coeff * log(R / r)
     z_bottom = coeff * log(R / center_radius)
@@ -196,9 +199,5 @@ def disk_xy(
     ang = np.linspace(0, 2 * np.pi, n, endpoint=True)
     x = cx + radius * np.cos(ang)
     y = cy + radius * np.sin(ang)
-
-    # Duplicate the first point to close the curve explicitly.
-    x = np.append(x, x[0])
-    y = np.append(y, y[0])
 
     return x, y

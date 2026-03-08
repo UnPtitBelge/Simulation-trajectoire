@@ -91,8 +91,6 @@ class Plot(ABC):
         self._prepare_simulation()
         self._prepared = True
         self.current_frame = 0
-        if getattr(self, "_n_frames", 0) is None:
-            self._n_frames = 0
         log.info(
             "%s.setup_animation — ready | n_frames=%d",
             type(self).__name__,
@@ -211,6 +209,7 @@ class Plot(ABC):
         Subclasses that need extra logic should override this and call
         super().update_params(**kwargs) at the end.
         """
+        self.stop_animation()
         if not kwargs:
             return
 

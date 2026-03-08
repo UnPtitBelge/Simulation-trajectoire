@@ -17,15 +17,14 @@ from simulations.sim3d.Plot3d import Plot3d
 from simulations.simML.PlotML import PlotML
 from utils.params_controller import ParamsController
 from utils.stylesheet import (
-    APP_STYLESHEET,
-    HINT_BAR_STYLE as _HINT_BAR_STYLE,
-    PANEL_STYLE as _PANEL_STYLE,
-    PAUSE_STYLE as _PAUSE_STYLE,
-    PLAYBACK_BAR_STYLE as _PLAYBACK_BAR_STYLE,
-    RESET_STYLE as _RESET_STYLE,
-    SCROLL_AREA_STYLE as _SCROLL_AREA_STYLE,
-    SEPARATOR_STYLE as _SEPARATOR_STYLE,
-    START_STYLE as _START_STYLE,
+    HINT_BAR_STYLE,
+    PANEL_STYLE,
+    PAUSE_STYLE,
+    PLAYBACK_BAR_STYLE,
+    RESET_STYLE,
+    SCROLL_AREA_STYLE,
+    SEPARATOR_STYLE,
+    START_STYLE,
 )
 
 log = logging.getLogger(__name__)
@@ -70,7 +69,7 @@ class SimWidget(QWidget):
         self.hint_bar = QWidget()
         self.hint_bar.setObjectName("hintBar")
         self.hint_bar.setFixedHeight(30)
-        self.hint_bar.setStyleSheet(_HINT_BAR_STYLE)
+        self.hint_bar.setStyleSheet(HINT_BAR_STYLE)
 
         hint_layout = QHBoxLayout(self.hint_bar)
         hint_layout.setContentsMargins(12, 0, 8, 0)
@@ -93,7 +92,7 @@ class SimWidget(QWidget):
         # Controls panel
         self.controls_widget = QWidget()
         self.controls_widget.setObjectName("controlsWidget")
-        self.controls_widget.setStyleSheet(_PANEL_STYLE)
+        self.controls_widget.setStyleSheet(PANEL_STYLE)
 
         self.controls_layout = QVBoxLayout(self.controls_widget)
         self.controls_layout.setContentsMargins(0, 0, 0, 0)
@@ -102,7 +101,7 @@ class SimWidget(QWidget):
         # Playback row
         playback_bar = QWidget()
         playback_bar.setObjectName("playbackBar")
-        playback_bar.setStyleSheet(_PLAYBACK_BAR_STYLE)
+        playback_bar.setStyleSheet(PLAYBACK_BAR_STYLE)
         playback_bar.setFixedHeight(52)
 
         pb_layout = QHBoxLayout(playback_bar)
@@ -115,19 +114,19 @@ class SimWidget(QWidget):
         pb_layout.addStretch()
 
         self.start_button = QPushButton("▶  Start")
-        self.start_button.setStyleSheet(_START_STYLE)
+        self.start_button.setStyleSheet(START_STYLE)
         self.start_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.start_button.clicked.connect(self.start_animation)
         pb_layout.addWidget(self.start_button)
 
         self.pause_button = QPushButton("⏸  Pause")
-        self.pause_button.setStyleSheet(_PAUSE_STYLE)
+        self.pause_button.setStyleSheet(PAUSE_STYLE)
         self.pause_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.pause_button.clicked.connect(self.toggle_pause_animation)
         pb_layout.addWidget(self.pause_button)
 
         self.reset_button = QPushButton("↺  Reset")
-        self.reset_button.setStyleSheet(_RESET_STYLE)
+        self.reset_button.setStyleSheet(RESET_STYLE)
         self.reset_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.reset_button.clicked.connect(self.reset_animation)
         pb_layout.addWidget(self.reset_button)
@@ -138,7 +137,7 @@ class SimWidget(QWidget):
         sep.setFrameShape(QFrame.Shape.HLine)
         sep.setFrameShadow(QFrame.Shadow.Plain)
         sep.setFixedHeight(1)
-        sep.setStyleSheet(_SEPARATOR_STYLE)
+        sep.setStyleSheet(SEPARATOR_STYLE)
         self.controls_layout.addWidget(sep)
 
         self._params_area_layout = QVBoxLayout()
@@ -183,7 +182,6 @@ class SimWidget(QWidget):
     def start_animation(self) -> None:
         log.info("Animation started — plot: %s", type(self.plot).__name__)
         self.plot.stop_animation()
-        self.plot.setup_animation()
         self.plot.start_animation()
         self.pause_button.setText("⏸  Pause")
 
@@ -221,7 +219,7 @@ def _make_panel_scroll(controls_widget: QWidget) -> QScrollArea:
     # Let the panel grow with its contents up to _PANEL_MAX_HEIGHT.
     scroll.setMaximumHeight(_PANEL_MAX_HEIGHT)
     scroll.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-    scroll.setStyleSheet(_SCROLL_AREA_STYLE)
+    scroll.setStyleSheet(SCROLL_AREA_STYLE)
     scroll.setVisible(False)
     return scroll
 

@@ -17,14 +17,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-
-parser = argparse.ArgumentParser(add_help=False)
-parser.add_argument("--debug", action="store_true", help="Enable debug logging")
-args, remaining_argv = parser.parse_known_args()
-
-from utils.logger import get_log_path, setup_logging  # noqa: E402
-
-setup_logging(debug=args.debug)
+from utils.logger import get_log_path, setup_logging
 
 log = logging.getLogger(__name__)
 
@@ -129,7 +122,7 @@ class MainWindow(QMainWindow):
         self.sim_tab_widget.addLazyTab(self._make_video, "Video Player")
         root_layout.addWidget(self.sim_tab_widget, stretch=1)
 
-        self.sim_tab_widget.preload_all()
+        self.sim_tab_widget._on_tab_changed(1)
         log.info("MainWindow ready")
 
     def _on_close_clicked(self) -> None:
@@ -171,6 +164,12 @@ def handle_interrupt(signum, frame) -> None:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+    args, remaining_argv = parser.parse_known_args()
+
+    setup_logging(debug=args.debug)
+
     log.info(
         "Application starting — debug=%s | log file: %s", args.debug, get_log_path()
     )

@@ -32,25 +32,26 @@ class Simulation3dParams:
 
     frame_ms = 10
 
-    surface_tension: float = 13.0
+    surface_tension: float = 50.0
     surface_radius: float = 0.8
-    center_radius: float = 0.05
-    center_mass: float = 0.8
+    center_radius: float = 0.035
+    center_mass: float = 0.7
 
     time_step: float = 0.01
-    num_steps: int = 800
+    num_steps: int = 5000
 
     g: float = 9.81
 
-    particle_radius: float = 0.025
+    particle_radius: float = 0.01
+    particle_mass: float = 0.02
 
-    x0: float = 0.8
+    x0: float = surface_radius
     y0: float = 0.00
 
     v_i: float = 0.5
-    theta: float = 45.0
+    theta: float = 75.0
 
-    friction_coef: float = 0.3
+    friction_coef: float = 0.1
 
     def to_dict(self) -> Dict:
         return asdict(self)
@@ -96,11 +97,11 @@ class Simulation2dParams:
         dt:             Velocity-Verlet integration time step [s].
     """
 
-    G: float = 9.81
+    G: float = 1
     M: float = 1000.0
 
     r0: float = 50.0
-    v0: float = 10.0
+    v0: float = 3.0
     theta_deg: float = 90.0
 
     gamma: float = 0.001

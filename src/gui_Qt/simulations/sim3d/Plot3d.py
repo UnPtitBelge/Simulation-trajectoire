@@ -215,7 +215,7 @@ class Plot3d(Plot):
         """
         faces = []
 
-        for i in range(1, samples_theta - 2):
+        for i in range(1, samples_theta - 1):
             for j in range(samples_phi - 1):
                 idx0 = i * samples_phi + j
                 idx1 = i * samples_phi + (j + 1)

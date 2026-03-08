@@ -26,7 +26,7 @@ class Plot2d(Plot):
     """2D orbital simulation plot backed by a pyqtgraph PlotWidget."""
 
     def __init__(self, sim_params: Simulation2dParams = Simulation2dParams()) -> None:
-        super().__init__(sim_params, frame_ms=getattr(sim_params, "frame_ms", 100))
+        super().__init__(sim_params, frame_ms=sim_params.frame_ms)
         self.sim_params = sim_params
 
         self.widget = pg.PlotWidget()

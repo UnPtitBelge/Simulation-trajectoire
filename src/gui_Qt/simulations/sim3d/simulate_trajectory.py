@@ -6,13 +6,16 @@ from utils.params import Simulation3dParams
 
 
 def simulate_trajectory(
-    sim_params: Simulation3dParams = Simulation3dParams(),
+    sim_params: Simulation3dParams | None = None,
 ) -> dict:
     """Integrate the 3-D surface trajectory and return all frame positions.
 
     Uses explicit Euler integration. Returns a dict with keys
     "xs", "ys", "zs" — lists of per-frame particle positions.
     """
+
+    if sim_params is None:
+        sim_params = Simulation3dParams()
 
     g = sim_params.g
     dt = sim_params.time_step
@@ -39,11 +42,6 @@ def simulate_trajectory(
     # Sum of radii — stop when 3-D distance between sphere centres equals this.
     _contact_dist = center_radius + particle_radius
 
-    # Particle mass is separate from center_mass; derive from friction coefficient.
-    # Using center_mass directly as the orbiting particle mass is wrong —
-    # keep it as a unit mass scaled by friction_coef only.
-    friction_over_m = friction_coef / center_mass
-
     x = float(sim_params.x0)
     y = float(sim_params.y0)
     r0 = hypot(x, y)
@@ -69,8 +67,8 @@ def simulate_trajectory(
     while True:
         z, dz_dx, dz_dy = gradient_xy(x, y, R=R, T=T, F=F, center_radius=center_radius)
 
-        ax = -g * dz_dx - friction_over_m * vx
-        ay = -g * dz_dy - friction_over_m * vy
+        ax = -g * dz_dx - friction_coef * vx
+        ay = -g * dz_dy - friction_coef * vy
 
         vx += ax * dt
         vy += ay * dt

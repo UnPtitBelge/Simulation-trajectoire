@@ -241,20 +241,28 @@ class ParamsController(QWidget):
                 step = self._calculate_step(default_value, is_int=is_int)
                 if default_value == 0:
                     min_value, max_value = -100.0, 100.0
-                else:
+                elif default_value > 0:
                     min_value = default_value * 0.1
-                    max_value = default_value * 10
+                    max_value = default_value * 10.0
+                else:
+                    min_value = default_value * 10.0
+                    max_value = default_value * 0.1
                 control = ParamControlWidget(
                     param_name, default_value, min_value, max_value, step
                 )
                 log.debug(
                     "ParamsController — numeric field: %s = %r (step=%g, range=[%g, %g])",
-                    param_name, default_value, step, min_value, max_value,
+                    param_name,
+                    default_value,
+                    step,
+                    min_value,
+                    max_value,
                 )
             else:
                 log.warning(
                     "ParamsController — unsupported field type for %r (%s); using fallback spinbox",
-                    param_name, type(default_value).__name__,
+                    param_name,
+                    type(default_value).__name__,
                 )
                 control = ParamControlWidget(param_name, 0.0, 0.0, 100.0, 1.0)
 
@@ -265,7 +273,8 @@ class ParamsController(QWidget):
 
         log.debug(
             "ParamsController — %d controls built for %s",
-            len(self.param_controls), param_type.__name__,
+            len(self.param_controls),
+            param_type.__name__,
         )
 
         root_vbox.addWidget(grid_area)
@@ -305,7 +314,9 @@ class ParamsController(QWidget):
     def on_value_changed(self, param_name: str, value) -> None:
         log.debug(
             "ParamsController — field %r changed to %r (type=%s)",
-            param_name, value, type(value).__name__,
+            param_name,
+            value,
+            type(value).__name__,
         )
         setattr(self.params, param_name, value)
         if self.plot is not None:
@@ -359,6 +370,7 @@ class ParamsController(QWidget):
             }
             log.debug(
                 "ParamsController — pushing %d default values to %s",
-                len(all_defaults), type(self.plot).__name__,
+                len(all_defaults),
+                type(self.plot).__name__,
             )
             self.plot.update_params(**all_defaults)
