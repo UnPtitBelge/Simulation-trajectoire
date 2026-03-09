@@ -122,6 +122,7 @@ class SimulationMLParams:
         test_initial_idx: Index of the training sample to display (0–2).
         noise_level:      Gaussian noise std added to predicted points.
         marker_size:      Animated position marker diameter [px].
+        show_true_trajectory: Toggle to show/hide the true trajectory.
     """
 
     # No type annotation — hidden from the auto-generated UI controls.
@@ -130,3 +131,4 @@ class SimulationMLParams:
     test_initial_idx: int = 0
     noise_level: float = 0.0
     marker_size: int = 10
+    show_true_trajectory: bool = True

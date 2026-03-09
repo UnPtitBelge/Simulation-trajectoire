@@ -84,8 +84,7 @@ def parse_tracking_csv(csv_path, center_mode="auto"):
                 first_point["speedY"],
             ),
             "trajectory": [
-                (point["x"] - center_x, point["y"] - center_y)
-                for point in rows
+                (point["x"] - center_x, point["y"] - center_y) for point in rows
             ],
         }
         parsed_data.append(sample)
@@ -165,27 +164,34 @@ class PlotML(Plot):
         """Charge les données du CSV et entraîne le modèle de régression."""
         # Chemin vers le fichier CSV
         csv_path = Path(__file__).resolve().parents[4] / "data" / "tracking_data.csv"
-        
+
         # Charger les données depuis le CSV
         try:
             data, mass_center = parse_tracking_csv(csv_path, center_mode="auto")
             self._mass_center = mass_center
-            
+
             if not data:
-                print("Aucune donnée trouvée dans tracking_data.csv, utilisation de données par défaut")
+                print(
+                    "Aucune donnée trouvée dans tracking_data.csv, utilisation de données par défaut"
+                )
                 data = self._get_default_data()
                 self._mass_center = (0.0, 0.0)
         except Exception as e:
-            print(f"Erreur lors du chargement du CSV: {e}, utilisation de données par défaut")
+            print(
+                f"Erreur lors du chargement du CSV: {e}, utilisation de données par défaut"
+            )
             data = self._get_default_data()
             self._mass_center = (0.0, 0.0)
 
         # Préparer les données pour l'entraînement
         min_trajectory_len = min(len(sample["trajectory"]) for sample in data)
-        
+
         X = np.array([s["initial"] for s in data], dtype=np.float32)
         Y = np.array(
-            [[c for pt in s["trajectory"][:min_trajectory_len] for c in pt] for s in data],
+            [
+                [c for pt in s["trajectory"][:min_trajectory_len] for c in pt]
+                for s in data
+            ],
             dtype=np.float32,
         )
 
@@ -305,8 +311,11 @@ class PlotML(Plot):
         self.current_point.setData([x], [y])
 
     def _draw_initial_frame(self) -> None:
-        if self._true_traj.shape[0] > 0:
+        # Afficher la trajectoire réelle uniquement si le paramètre est activé
+        if self.sim_params.show_true_trajectory and self._true_traj.shape[0] > 0:
             self.true_curve.setData(self._true_traj[:, 0], self._true_traj[:, 1])
+        else:
+            self.true_curve.setData([], [])
 
         if self._pred_traj.shape[0] > 0:
             self.pred_curve.setData(self._pred_traj[:, 0], self._pred_traj[:, 1])
@@ -319,6 +328,9 @@ class PlotML(Plot):
 
     def update_params(self, **kwargs) -> None:
         super().update_params(**kwargs)
+        # Si le paramètre show_true_trajectory change, redessiner la frame
+        if "show_true_trajectory" in kwargs:
+            self._draw_initial_frame()
 
     # ── Prediction helper ──────────────────────────────────────────────
 
