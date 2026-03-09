@@ -1,6 +1,8 @@
 """ML regression demo plot."""
 
 from typing import Optional
+import csv
+from pathlib import Path
 
 import numpy as np
 import pyqtgraph as pg
@@ -20,6 +22,75 @@ from utils.stylesheet import (
 def _hex_to_rgb(h: str) -> tuple[int, int, int]:
     h = h.lstrip("#")
     return int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+
+
+def estimate_mass_center(grouped_rows):
+    """Estime le centre de masse à partir des trajectoires groupées."""
+    all_x = []
+    all_y = []
+
+    for rows in grouped_rows.values():
+        for point in rows:
+            all_x.append(point["x"])
+            all_y.append(point["y"])
+
+    if not all_x or not all_y:
+        return 0.0, 0.0
+
+    return float(np.median(all_x)), float(np.median(all_y))
+
+
+def parse_tracking_csv(csv_path, center_mode="auto"):
+    """Parse le fichier CSV de tracking et retourne les données formatées."""
+    grouped_rows = {}
+
+    with open(csv_path, "r", encoding="utf-8") as file:
+        reader = csv.DictReader(file, delimiter=";")
+        for row in reader:
+            clean_row = {k.strip(): v.strip() for k, v in row.items() if k is not None}
+            exp_id = clean_row["expID"]
+
+            if exp_id not in grouped_rows:
+                grouped_rows[exp_id] = []
+
+            grouped_rows[exp_id].append(
+                {
+                    "temps": float(clean_row["temps"]),
+                    "x": float(clean_row["x"]),
+                    "y": float(clean_row["y"]),
+                    "speedX": float(clean_row["speedX"]),
+                    "speedY": float(clean_row["speedY"]),
+                }
+            )
+
+    if center_mode == "auto":
+        center_x, center_y = estimate_mass_center(grouped_rows)
+    elif center_mode is None:
+        center_x, center_y = 0.0, 0.0
+    else:
+        center_x, center_y = center_mode
+
+    parsed_data = []
+    for exp_id in sorted(grouped_rows.keys(), key=lambda value: int(value)):
+        rows = grouped_rows[exp_id]
+        rows.sort(key=lambda point: point["temps"])
+
+        first_point = rows[0]
+        sample = {
+            "initial": (
+                first_point["x"] - center_x,
+                first_point["y"] - center_y,
+                first_point["speedX"],
+                first_point["speedY"],
+            ),
+            "trajectory": [
+                (point["x"] - center_x, point["y"] - center_y)
+                for point in rows
+            ],
+        }
+        parsed_data.append(sample)
+
+    return parsed_data, (center_x, center_y)
 
 
 _BG = _hex_to_rgb(CLR_PLOT_BG)
@@ -82,6 +153,7 @@ class PlotML(Plot):
         # ── Model / data storage ───────────────────────────────────────
         self._model: Optional[LinearRegression] = None
         self._train_ref: list = []
+        self._mass_center: tuple[float, float] = (0.0, 0.0)
         self._true_traj = np.zeros((0, 2), dtype=np.float32)
         self._pred_traj = np.zeros((0, 2), dtype=np.float32)
 
@@ -90,7 +162,48 @@ class PlotML(Plot):
     # ── Model training ─────────────────────────────────────────────────
 
     def _build_and_train_model(self) -> None:
-        data = [
+        """Charge les données du CSV et entraîne le modèle de régression."""
+        # Chemin vers le fichier CSV
+        csv_path = Path(__file__).resolve().parents[4] / "data" / "tracking_data.csv"
+        
+        # Charger les données depuis le CSV
+        try:
+            data, mass_center = parse_tracking_csv(csv_path, center_mode="auto")
+            self._mass_center = mass_center
+            
+            if not data:
+                print("Aucune donnée trouvée dans tracking_data.csv, utilisation de données par défaut")
+                data = self._get_default_data()
+                self._mass_center = (0.0, 0.0)
+        except Exception as e:
+            print(f"Erreur lors du chargement du CSV: {e}, utilisation de données par défaut")
+            data = self._get_default_data()
+            self._mass_center = (0.0, 0.0)
+
+        # Préparer les données pour l'entraînement
+        min_trajectory_len = min(len(sample["trajectory"]) for sample in data)
+        
+        X = np.array([s["initial"] for s in data], dtype=np.float32)
+        Y = np.array(
+            [[c for pt in s["trajectory"][:min_trajectory_len] for c in pt] for s in data],
+            dtype=np.float32,
+        )
+
+        # Entraîner le modèle
+        try:
+            self._model = LinearRegression().fit(X, Y)
+            print(f"Modèle entraîné sur {len(data)} échantillons")
+            print(f"Masse centrale estimée (px): {self._mass_center}")
+            print(f"Longueur minimale commune: {min_trajectory_len}")
+        except Exception as e:
+            print(f"Erreur lors de l'entraînement: {e}")
+            self._model = None
+
+        self._train_ref = data
+
+    def _get_default_data(self) -> list:
+        """Retourne des données par défaut si le CSV ne peut pas être chargé."""
+        return [
             {
                 "initial": (1.0, 0.0, 0.0, 1.2),
                 "trajectory": [
@@ -167,19 +280,6 @@ class PlotML(Plot):
                 ],
             },
         ]
-
-        X = np.array([s["initial"] for s in data], dtype=np.float32)
-        Y = np.array(
-            [[c for pt in s["trajectory"] for c in pt] for s in data],
-            dtype=np.float32,
-        )
-
-        try:
-            self._model = LinearRegression().fit(X, Y)
-        except Exception:
-            self._model = None
-
-        self._train_ref = data
 
     # ── Abstract hook implementations ──────────────────────────────────
 
