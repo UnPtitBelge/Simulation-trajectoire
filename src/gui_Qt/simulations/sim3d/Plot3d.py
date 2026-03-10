@@ -2,7 +2,7 @@ from typing import Any, Optional
 
 import numpy as np
 import pyqtgraph.opengl as gl
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QKeySequence, QShortcut
 from simulations.Plot import Plot
 from simulations.sim3d.simulate_trajectory import simulate_trajectory
 from utils.math_helpers import _deformation_scalar, deformation
@@ -52,6 +52,36 @@ class Plot3d(Plot):
         self.trajectory_ys: list[float] = []
         self.trajectory_zs: list[float] = []
 
+        self.trajectory_line: Optional[Any] = None
+        self.show_trajectory_trail = False
+
+        self.shortcut_traj = QShortcut(QKeySequence("Ctrl+T"), self.widget)
+        self.shortcut_traj.activated.connect(self.toggle_trajectory)
+
+    def toggle_trajectory(self) -> None:
+        self.show_trajectory_trail = not self.show_trajectory_trail
+        if not self.show_trajectory_trail:
+            if self.trajectory_line is not None:
+                try:
+                    self.widget.removeItem(self.trajectory_line)
+                except Exception:
+                    pass
+                self.trajectory_line = None
+        else:
+            if self.trajectory_xs:
+                pts = np.column_stack((
+                    self.trajectory_xs[:self.current_frame+1],
+                    self.trajectory_ys[:self.current_frame+1],
+                    self.trajectory_zs[:self.current_frame+1]
+                ))
+                self.trajectory_line = gl.GLLinePlotItem(
+                    pos=pts,
+                    color=(1.0, 1.0, 1.0, 0.5),
+                    width=2,
+                    antialias=True
+                )
+                self.widget.addItem(self.trajectory_line)
+
     # -----------------------------------------------------------------------
     # Abstract hook implementations
     # -----------------------------------------------------------------------
@@ -78,6 +108,13 @@ class Plot3d(Plot):
             except Exception:
                 pass
 
+        if self.trajectory_line is not None:
+            try:
+                self.widget.removeItem(self.trajectory_line)
+            except Exception:
+                pass
+            self.trajectory_line = None
+
         self._build_particle_mesh()
         self.widget.addItem(self.particle_trace)
 
@@ -97,6 +134,23 @@ class Plot3d(Plot):
         r = float(self.sim_params.particle_radius)
         verts = self._sphere_verts_at(x, y, z + r, r)
         self.particle_trace.setMeshData(vertexes=verts, faces=self._sphere_faces)
+
+        if self.show_trajectory_trail:
+            pts = np.column_stack((
+                self.trajectory_xs[:frame_index+1],
+                self.trajectory_ys[:frame_index+1],
+                self.trajectory_zs[:frame_index+1]
+            ))
+            if self.trajectory_line is None:
+                self.trajectory_line = gl.GLLinePlotItem(
+                    pos=pts,
+                    color=(1.0, 1.0, 1.0, 0.5),
+                    width=2,
+                    antialias=True
+                )
+                self.widget.addItem(self.trajectory_line)
+            else:
+                self.trajectory_line.setData(pos=pts)
 
     # -----------------------------------------------------------------------
     # Particle mesh helpers

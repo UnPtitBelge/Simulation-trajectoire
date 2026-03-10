@@ -1,6 +1,7 @@
 """2D orbital simulation plot."""
 
 import pyqtgraph as pg
+from PySide6.QtGui import QKeySequence, QShortcut
 from simulations.Plot import Plot
 from simulations.sim2d.simulate_trajectory import simulate_trajectory
 from utils.math_helpers import disk_xy
@@ -49,6 +50,27 @@ class Plot2d(Plot):
 
         self.trajectory_xs: list[float] = []
         self.trajectory_ys: list[float] = []
+        
+        self.trajectory_line = pg.PlotCurveItem(
+            pen=pg.mkPen(width=1.5, color=(1, 1, 1, 120))
+        )
+        self.widget.addItem(self.trajectory_line)
+        self.show_trajectory_trail = False
+
+        self.shortcut_traj = QShortcut(QKeySequence("Ctrl+T"), self.widget)
+        self.shortcut_traj.activated.connect(self.toggle_trajectory)
+
+    def toggle_trajectory(self) -> None:
+        self.show_trajectory_trail = not self.show_trajectory_trail
+        if not self.show_trajectory_trail:
+            self.trajectory_line.setData([], [])
+        else:
+            if self.trajectory_xs:
+                # Up to current frame
+                self.trajectory_line.setData(
+                    self.trajectory_xs[:self.current_frame+1],
+                    self.trajectory_ys[:self.current_frame+1]
+                )
 
     def _prepare_simulation(self) -> None:
         results = simulate_trajectory(self.sim_params)
@@ -59,10 +81,17 @@ class Plot2d(Plot):
     def _update_frame(self, frame_index: int) -> None:
         if not self.trajectory_xs or frame_index >= len(self.trajectory_xs):
             return
+        
         self.moving_ball.setData(
             [self.trajectory_xs[frame_index]],
             [self.trajectory_ys[frame_index]],
         )
+        
+        if self.show_trajectory_trail:
+            self.trajectory_line.setData(
+                self.trajectory_xs[:frame_index+1],
+                self.trajectory_ys[:frame_index+1]
+            )
 
     def _draw_initial_frame(self) -> None:
         if self.center_ball is not None:
@@ -82,6 +111,7 @@ class Plot2d(Plot):
         self.widget.addItem(self.center_ball)
 
         self.moving_ball.setSize(self.sim_params.particle_radius * 2)
+        self.trajectory_line.setData([], [])
 
         if self._n_frames > 0:
             self._update_frame(0)
