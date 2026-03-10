@@ -1,6 +1,6 @@
 import logging
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QFrame,
@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSizePolicy,
+    QStackedLayout,
     QVBoxLayout,
     QWidget,
 )
@@ -28,6 +29,21 @@ from utils.stylesheet import (
 )
 
 log = logging.getLogger(__name__)
+
+
+class _SimPrepareWorker(QThread):
+    """Runs _prepare_simulation() off the main thread to keep the UI responsive."""
+
+    done = Signal()
+
+    def __init__(self, plot) -> None:
+        super().__init__()
+        self._plot = plot
+
+    def run(self) -> None:
+        self._plot._prepare_simulation()
+        self.done.emit()
+
 
 # Maximum height the control panel scroll-area is allowed to grow to.
 # The panel will naturally be as tall as its contents up to this ceiling;
@@ -63,7 +79,24 @@ class SimWidget(QWidget):
 
         self.plot = plot
         log.debug("SimWidget.__init__ — plot type: %s", type(plot).__name__)
-        self.main_layout.addWidget(self.plot.widget, stretch=1)
+
+        # Use QStackedLayout(StackAll) so the GL/plot widget is ALWAYS painted
+        # (its OpenGL context initialises immediately) while the loading overlay
+        # sits on top until the worker thread finishes.
+        self._plot_container = QWidget()
+        _stack = QStackedLayout(self._plot_container)
+        _stack.setStackingMode(QStackedLayout.StackingMode.StackAll)
+        _stack.addWidget(self.plot.widget)       # layer 0 — always painted
+
+        self._loading_widget = QWidget()
+        self._loading_widget.setStyleSheet("background: rgba(20,20,20,210);")
+        _llo = QVBoxLayout(self._loading_widget)
+        self._loading_label = QLabel("Calcul en cours…")
+        self._loading_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        _llo.addWidget(self._loading_label)
+        _stack.addWidget(self._loading_widget)   # layer 1 — covers the plot
+
+        self.main_layout.addWidget(self._plot_container, stretch=1)
 
         # Hint bar
         self.hint_bar = QWidget()
@@ -145,16 +178,31 @@ class SimWidget(QWidget):
         self._params_area_layout.setContentsMargins(10, 8, 10, 8)
         self.controls_layout.addLayout(self._params_area_layout)
 
-        log.debug(
-            "SimWidget — calling setup_animation for %s", type(self.plot).__name__
-        )
-        self.plot.setup_animation()
-        log.debug(
-            "SimWidget — setup_animation complete for %s", type(self.plot).__name__
-        )
-
         self.controls_widget.setVisible(False)
         self.setup_shortcuts()
+
+        # Run the heavy simulation preparation off the main thread so the
+        # Qt event loop (and OpenGL context init) stay alive.
+        log.debug(
+            "SimWidget — starting background prepare for %s", type(self.plot).__name__
+        )
+        self._worker = _SimPrepareWorker(self.plot)
+        self._worker.done.connect(self._on_simulation_ready)
+        self._worker.finished.connect(self._worker.deleteLater)
+        self._worker.start()
+
+    def _on_simulation_ready(self) -> None:
+        """Called on the main thread once _prepare_simulation() has finished."""
+        self.plot._prepared = True
+        self.plot.current_frame = 0
+        log.info(
+            "SimWidget — simulation ready for %s | n_frames=%d",
+            type(self.plot).__name__,
+            self.plot._n_frames,
+        )
+        self.plot._draw_initial_frame()
+        self._loading_widget.setVisible(False)
+        self._worker = None
 
     def setup_shortcuts(self) -> None:
         self.pause_shortcut = QShortcut(QKeySequence("Space"), self)
@@ -180,6 +228,9 @@ class SimWidget(QWidget):
             self._hint_toggle_btn.setVisible(True)
 
     def start_animation(self) -> None:
+        if not self.plot._prepared:
+            log.debug("start_animation called before simulation ready — ignored")
+            return
         log.info("Animation started — plot: %s", type(self.plot).__name__)
         self.plot.stop_animation()
         self.plot.start_animation()
@@ -204,6 +255,9 @@ class SimWidget(QWidget):
             self.pause_button.setText("⏸  Pause")
 
     def reset_animation(self) -> None:
+        if not self.plot._prepared:
+            log.debug("reset_animation called before simulation ready — ignored")
+            return
         log.info("Animation reset — plot: %s", type(self.plot).__name__)
         self.plot.reset_animation()
         self.pause_button.setText("⏸  Pause")

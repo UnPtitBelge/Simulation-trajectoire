@@ -53,7 +53,7 @@ class Plot3d(Plot):
         self.trajectory_zs: list[float] = []
 
         self.trajectory_line: Optional[Any] = None
-        self.show_trajectory_trail = False
+        self.show_trajectory_trail = True
 
         self.shortcut_traj = QShortcut(QKeySequence("Ctrl+T"), self.widget)
         self.shortcut_traj.activated.connect(self.toggle_trajectory)

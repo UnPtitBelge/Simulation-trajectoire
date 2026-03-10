@@ -5,7 +5,7 @@ import sys
 from collections.abc import Callable
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
     QHBoxLayout,
@@ -72,8 +72,9 @@ class LazyTabWidget(QTabWidget):
 class MainWindow(QMainWindow):
     """Top-level application window."""
 
-    def __init__(self) -> None:
+    def __init__(self, presentation_mode: bool = False) -> None:
         super().__init__()
+        self.presentation_mode = presentation_mode
         self.setWindowTitle("Models & Simulations")
 
         container = QWidget()
@@ -86,7 +87,10 @@ class MainWindow(QMainWindow):
         # Top bar — styled entirely via APP_STYLESHEET (#topBar, #topBarTitle, #closeBtn)
         top_bar = QWidget()
         top_bar.setObjectName("topBar")
-        top_bar.setFixedHeight(38)
+        if self.presentation_mode:
+            top_bar.setVisible(False)
+        else:
+            top_bar.setFixedHeight(38)
 
         top_bar_layout = QHBoxLayout(top_bar)
         top_bar_layout.setContentsMargins(14, 0, 8, 0)
@@ -116,14 +120,61 @@ class MainWindow(QMainWindow):
 
         # Tab widget
         self.sim_tab_widget = LazyTabWidget()
+        if self.presentation_mode:
+            self.sim_tab_widget.tabBar().hide()
+            self.sim_tab_widget.setStyleSheet("background-color: #000000;")
         self.sim_tab_widget.addLazyTab(self._make_2d, "2D Simulation")
         self.sim_tab_widget.addLazyTab(self._make_3d, "3D Simulation")
         self.sim_tab_widget.addLazyTab(self._make_ml, "ML Simulation")
         self.sim_tab_widget.addLazyTab(self._make_video, "Video Player")
         root_layout.addWidget(self.sim_tab_widget, stretch=1)
 
-        self.sim_tab_widget._on_tab_changed(1)
+        if not self.presentation_mode:
+            self.sim_tab_widget._on_tab_changed(1)
+        else:
+            # En mode présentation, on charge la vue 2D par défaut sans la lancer
+            # pour éviter d'avoir un écran blanc vide au démarrage
+            self.sim_tab_widget._on_tab_changed(0)
+
         log.info("MainWindow ready")
+
+        if self.presentation_mode:
+            self._setup_presentation_shortcuts()
+
+    def _setup_presentation_shortcuts(self) -> None:
+        QShortcut(QKeySequence("1"), self, context=Qt.ShortcutContext.ApplicationShortcut).activated.connect(lambda: self._switch_and_run(0))
+        QShortcut(QKeySequence("2"), self, context=Qt.ShortcutContext.ApplicationShortcut).activated.connect(lambda: self._switch_and_run(1))
+        QShortcut(QKeySequence("3"), self, context=Qt.ShortcutContext.ApplicationShortcut).activated.connect(lambda: self._switch_and_run(2))
+        QShortcut(QKeySequence("4"), self, context=Qt.ShortcutContext.ApplicationShortcut).activated.connect(lambda: self._switch_and_run(3))
+        QShortcut(QKeySequence("Esc"), self, context=Qt.ShortcutContext.ApplicationShortcut).activated.connect(self._on_close_clicked)
+
+    def _switch_and_run(self, index: int) -> None:
+        # Pause current view before switching
+        current_idx = self.sim_tab_widget.currentIndex()
+        if current_idx != -1 and current_idx != index:
+            old_widget = self.sim_tab_widget.currentWidget()
+            if old_widget:
+                if hasattr(old_widget, "plot") and hasattr(old_widget.plot, "animation_timer"):
+                    if old_widget.plot.animation_timer.isActive():
+                        old_widget.plot.stop_animation()
+                        old_widget.pause_button.setText("▶  Resume")
+                elif hasattr(old_widget, "media_player"):
+                    old_widget.media_player.pause()
+
+        if self.sim_tab_widget.currentIndex() != index or getattr(self.sim_tab_widget, "_swapping", False):
+            self.sim_tab_widget.setCurrentIndex(index)
+        
+        # Now force lazy tab to evaluate if it hasn't mapped yet
+        self.sim_tab_widget._on_tab_changed(index)
+
+        # Reset and start animation or video playback
+        current_widget = self.sim_tab_widget.currentWidget()
+        if hasattr(current_widget, "reset_animation") and hasattr(current_widget, "start_animation"):
+            current_widget.reset_animation()
+            current_widget.start_animation()
+        elif hasattr(current_widget, "media_player"):
+            current_widget.media_player.setPosition(0)
+            current_widget.media_player.play()
 
     def _on_close_clicked(self) -> None:
         log.info("Close button clicked — quitting")
@@ -166,12 +217,13 @@ def handle_interrupt(signum, frame) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+    parser.add_argument("--presentation", action="store_true", help="Start in presentation mode (fullscreen, keys 1/2/3 auto-start views)")
     args, remaining_argv = parser.parse_known_args()
 
     setup_logging(debug=args.debug)
 
     log.info(
-        "Application starting — debug=%s | log file: %s", args.debug, get_log_path()
+        "Application starting — debug=%s | presentation=%s | log file: %s", args.debug, args.presentation, get_log_path()
     )
 
     app = QApplication(remaining_argv)
@@ -186,9 +238,13 @@ def main() -> None:
 
     signal.signal(signal.SIGINT, handle_interrupt)
 
-    window = MainWindow()
-    window.showFullScreen()
-    log.info("Window shown fullscreen — entering Qt event loop")
+    window = MainWindow(presentation_mode=args.presentation)
+    if args.presentation:
+        window.showFullScreen()
+        log.info("Window shown fullscreen — entering Qt event loop")
+    else:
+        window.showMaximized()
+        log.info("Window shown maximized — entering Qt event loop")
 
     exit_code = app.exec()
     log.info("Qt event loop exited — exit code=%d", exit_code)

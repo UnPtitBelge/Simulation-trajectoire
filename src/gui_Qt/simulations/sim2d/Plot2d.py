@@ -55,7 +55,7 @@ class Plot2d(Plot):
             pen=pg.mkPen(width=1.5, color=(1, 1, 1, 120))
         )
         self.widget.addItem(self.trajectory_line)
-        self.show_trajectory_trail = False
+        self.show_trajectory_trail = True
 
         self.shortcut_traj = QShortcut(QKeySequence("Ctrl+T"), self.widget)
         self.shortcut_traj.activated.connect(self.toggle_trajectory)
@@ -112,6 +112,11 @@ class Plot2d(Plot):
 
         self.moving_ball.setSize(self.sim_params.particle_radius * 2)
         self.trajectory_line.setData([], [])
+
+        # Centre the view on the central body with a margin around the orbit
+        margin = self.sim_params.r0 * 1.4
+        self.widget.setXRange(-margin, margin, padding=0)
+        self.widget.setYRange(-margin, margin, padding=0)
 
         if self._n_frames > 0:
             self._update_frame(0)
