@@ -1,6 +1,6 @@
 import logging
 from dataclasses import fields
-from math import floor, log10
+from math import ceil, floor, log10
 
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QWheelEvent
@@ -109,7 +109,11 @@ class ParamControlWidget(QWidget):
             except Exception:
                 self.spin_box.setValue(0.0)
 
-            self.spin_box.setDecimals(3)
+            self.spin_box.setDecimals(
+                ParamsController._calculate_decimals(
+                    default_value, is_int=isinstance(default_value, int)
+                )
+            )
             self.spin_box.setSizePolicy(
                 QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
             )
@@ -134,8 +138,8 @@ class ParamControlWidget(QWidget):
             spin_row.addWidget(self.increment_button)
             cell_layout.addLayout(spin_row)
 
-    def _checkbox_changed(self, state: int) -> None:
-        self.value_changed.emit(self.param_name, bool(state))
+    def _checkbox_changed(self, _state: int) -> None:
+        self.value_changed.emit(self.param_name, self.checkbox.isChecked())
 
     def emit_value_changed(self, value: float) -> None:
         self.value_changed.emit(self.param_name, value)
@@ -310,6 +314,43 @@ class ParamsController(QWidget):
         if is_int:
             return max(1, round(step))
         return step
+
+    @staticmethod
+    def _calculate_decimals(value: float, is_int: bool = False) -> int:
+        """Return the number of decimal places needed to display ``value``.
+
+        If ``is_int`` is True, returns 0 immediately because integer fields
+        require no decimal places regardless of magnitude.
+
+        For float fields, ensures the step (one order of magnitude below the
+        value) is always visible in the spin-box.  Minimum is 1, maximum is 10.
+
+        Parameters
+        ----------
+        value:
+            The field's current or default value.
+        is_int:
+            Pass True when the field holds a Python ``int``; the method will
+            return 0 without any further computation.
+
+        Examples
+        --------
+        value = 42,    is_int=True  → 0 decimals
+        value = 50.0,  is_int=False → step = 1.0    → 1 decimal
+        value = 0.5,   is_int=False → step = 0.01   → 2 decimals
+        value = 0.002, is_int=False → step = 0.0001 → 4 decimals
+        value = 0.0,   is_int=False → fallback       → 4 decimals
+        """
+        if is_int:
+            return 0
+        abs_val = abs(value)
+        if abs_val < 1e-12:
+            return 4
+        # step is 10^(floor(log10(abs_val)) - 1)
+        # we need enough decimals to show that step
+        step_exp = floor(log10(abs_val)) - 1
+        decimals = max(1, ceil(-step_exp))
+        return min(decimals, 10)
 
     def on_value_changed(self, param_name: str, value) -> None:
         log.debug(

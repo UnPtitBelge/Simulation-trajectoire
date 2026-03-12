@@ -7,57 +7,83 @@ from typing import Dict
 class Simulation3dParams:
     """Physics, initial-condition, and surface-geometry parameters for the 3D sim.
 
-    The particle starts at (x0, y0) on the deformable surface with speed v_i
-    directed at angle theta (degrees) relative to the radial direction.
+    The surface is a cone of constant slope alpha = arctan(cone_slope).
+    The particle starts at (x0, y0) on the cone with speed v_i directed at
+    angle theta (degrees) relative to the radial direction.
     Velocity components vx0/vy0 are derived properties.
 
     frame_ms is declared without a type annotation so dataclasses.fields()
     skips it and it does not appear as a UI control.
 
+    Surface geometry
+    ----------------
+    The cone profile is:
+        z(r) = -cone_slope * (R - r)
+    which gives z = 0 at the rim (r = R) and z = -cone_slope*R at the centre.
+    cone_slope = dz/dr = z_max / R  [dimensionless] is the constant radial slope.
+
+    Gravitational acceleration along the surface (constant everywhere):
+        a_grav = g * sin(arctan(cone_slope))  ≈  g * cone_slope  (small angles)
+    directed radially toward the centre.
+
     Attributes:
-        surface_tension: Membrane tension T [N/m].
-        surface_radius:  Membrane radius R [m]. Outer stopping boundary.
+        cone_slope:      Constant radial slope of the cone dz/dr [dimensionless].
+                         Positive value — surface descends toward the centre.
+        surface_radius:  Cone rim radius R [m]. Outer stopping boundary.
         center_radius:   Central sphere radius [m]. Inner stopping boundary.
-        center_mass:     Mass of the central sphere [kg]. F = center_mass * g.
         time_step:       Euler integration step dt [s].
         num_steps:       Maximum integration steps per simulation.
         g:               Gravitational acceleration [m/s²].
         particle_radius: Moving particle radius [m]. Visual size and z-offset.
+        particle_mass:   Particle mass m [kg].
+                         Note: in the current model (Coulomb friction + gravity only),
+                         m cancels out in both accelerations:
+                           a_grav = (m·g·sin α) / m = g·sin α
+                           a_fric = (μ_c·m·g·cos α) / m = μ_c·g·cos α
+                         The field is kept explicit so that any future force
+                         independent of mass (e.g. wind, magnetic) can be added
+                         without a model change.
         x0:              Initial x-coordinate [m].
         y0:              Initial y-coordinate [m].
         v_i:             Initial speed [m/s].
         theta:           Launch angle [°]. 0 = radially inward, 90 = CCW tangential.
-        friction_coef:   Viscous friction coefficient [kg/s].
+        friction_coef:   Coulomb kinetic friction coefficient μ_c [dimensionless].
+                         Friction force magnitude = μ_c · m · g · cos(α).
     """
 
     frame_ms = 10
 
-    surface_tension: float = 50.0
-    surface_radius: float = 0.8
+    cone_slope: float = 0.10
+    surface_radius: float = 0.80
     center_radius: float = 0.035
-    center_mass: float = 0.7
 
-    time_step: float = 0.01
-    num_steps: int = 5000
+    time_step: float = 0.010
+    num_steps: int = 20000
 
-    g: float = 9.81
+    g: float = 9.810
 
     particle_radius: float = 0.01
-    particle_mass: float = 0.02
+    particle_mass: float = 0.01
 
-    x0: float = surface_radius
+    x0: float = 0.8
     y0: float = 0.00
 
     v_i: float = 0.5
-    theta: float = 75.0
+    theta: float = 85.0
 
-    friction_coef: float = 0.1
+    friction_coef: float = 0.01
 
     def to_dict(self) -> Dict:
         return asdict(self)
 
     @property
     def vx0(self) -> float:
+        """Initial x-velocity component [m/s].
+
+        Convention: r̂ points **inward** (toward the centre) and t̂ points
+        **CCW tangentially**. theta=0 is a purely inward radial launch;
+        theta=90 is a purely CCW tangential launch.
+        """
         r = sqrt(self.x0 * self.x0 + self.y0 * self.y0)
         if r > 1e-12:
             rx = -self.x0 / r
@@ -69,6 +95,12 @@ class Simulation3dParams:
 
     @property
     def vy0(self) -> float:
+        """Initial y-velocity component [m/s].
+
+        Convention: r̂ points **inward** (toward the centre) and t̂ points
+        **CCW tangentially**. theta=0 is a purely inward radial launch;
+        theta=90 is a purely CCW tangential launch.
+        """
         r = sqrt(self.x0 * self.x0 + self.y0 * self.y0)
         if r > 1e-12:
             ry = -self.y0 / r

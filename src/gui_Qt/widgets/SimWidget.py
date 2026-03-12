@@ -67,7 +67,8 @@ class SimWidget(QWidget):
         pause_button:        Pauses or resumes the timer.
         reset_button:        Rewinds to frame 0.
         _params_area_layout: Layout where subclasses add ParamsController widgets.
-        _controls_scroll:    QScrollArea wrapping controls_widget (set by subclasses).
+        _controls_scroll:    QScrollArea wrapping controls_widget; initialised to
+                             None here and assigned by subclasses.
     """
 
     def __init__(self, plot: "Plot2d | Plot3d | PlotML") -> None:
@@ -78,6 +79,7 @@ class SimWidget(QWidget):
         self.main_layout.setSpacing(0)
 
         self.plot = plot
+        self._controls_scroll: QScrollArea | None = None
         log.debug("SimWidget.__init__ — plot type: %s", type(plot).__name__)
 
         # Use QStackedLayout(StackAll) so the GL/plot widget is ALWAYS painted
@@ -86,7 +88,7 @@ class SimWidget(QWidget):
         self._plot_container = QWidget()
         _stack = QStackedLayout(self._plot_container)
         _stack.setStackingMode(QStackedLayout.StackingMode.StackAll)
-        _stack.addWidget(self.plot.widget)       # layer 0 — always painted
+        _stack.addWidget(self.plot.widget)  # layer 0 — always painted
 
         self._loading_widget = QWidget()
         self._loading_widget.setStyleSheet("background: rgba(20,20,20,210);")
@@ -94,7 +96,7 @@ class SimWidget(QWidget):
         self._loading_label = QLabel("Calcul en cours…")
         self._loading_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         _llo.addWidget(self._loading_label)
-        _stack.addWidget(self._loading_widget)   # layer 1 — covers the plot
+        _stack.addWidget(self._loading_widget)  # layer 1 — covers the plot
 
         self.main_layout.addWidget(self._plot_container, stretch=1)
 
@@ -237,6 +239,9 @@ class SimWidget(QWidget):
         self.pause_button.setText("⏸  Pause")
 
     def toggle_pause_animation(self) -> None:
+        if not self.plot._prepared:
+            log.debug("toggle_pause_animation called before simulation ready — ignored")
+            return
         if self.plot.animation_timer.isActive():
             log.info(
                 "Animation paused — plot: %s | frame: %d",
@@ -285,10 +290,10 @@ class SimWidget3d(SimWidget):
         log.debug("SimWidget3d — initialising")
         super().__init__(plot)
 
-        self.sim_params_control = ParamsController(
+        self.params_controller = ParamsController(
             plot.sim_params, type(plot.sim_params), plot
         )
-        self._params_area_layout.addWidget(self.sim_params_control)
+        self._params_area_layout.addWidget(self.params_controller)
 
         self._controls_scroll = _make_panel_scroll(self.controls_widget)
         self.main_layout.addWidget(self._controls_scroll)
@@ -302,10 +307,10 @@ class SimWidget2d(SimWidget):
         log.debug("SimWidget2d — initialising")
         super().__init__(plot)
 
-        self.param_control = ParamsController(
+        self.params_controller = ParamsController(
             plot.sim_params, type(plot.sim_params), plot
         )
-        self._params_area_layout.addWidget(self.param_control)
+        self._params_area_layout.addWidget(self.params_controller)
 
         self._controls_scroll = _make_panel_scroll(self.controls_widget)
         self.main_layout.addWidget(self._controls_scroll)
@@ -319,10 +324,10 @@ class SimWidgetML(SimWidget):
         log.debug("SimWidgetML — initialising")
         super().__init__(plot)
 
-        self.param_controller = ParamsController(
+        self.params_controller = ParamsController(
             plot.sim_params, type(plot.sim_params), plot
         )
-        self._params_area_layout.addWidget(self.param_controller)
+        self._params_area_layout.addWidget(self.params_controller)
 
         self._controls_scroll = _make_panel_scroll(self.controls_widget)
         self.main_layout.addWidget(self._controls_scroll)

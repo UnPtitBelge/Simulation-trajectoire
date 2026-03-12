@@ -22,7 +22,7 @@ class Plot3d(Plot):
         sim_params:      Simulation3dParams controlling physics, initial
                          conditions, and surface geometry.
         widget:          The GLViewWidget used for all 3-D rendering.
-        surface:         GLSurfacePlotItem for the deformable membrane.
+        surface:         GLSurfacePlotItem for the conical surface.
         center_sphere:   GLMeshItem for the central heavy sphere.
         particle_trace:  GLMeshItem sphere for the moving particle, sized
                          by sim_params.particle_radius in world units.
@@ -31,13 +31,15 @@ class Plot3d(Plot):
         trajectory_zs:   Surface height at each trajectory frame [m].
     """
 
-    def __init__(self, sim_params: Simulation3dParams = Simulation3dParams()) -> None:
+    def __init__(self, sim_params: Simulation3dParams | None = None) -> None:
+        if sim_params is None:
+            sim_params = Simulation3dParams()
         super().__init__(sim_params, frame_ms=10)
 
         self.sim_params = sim_params
 
         self.widget = gl.GLViewWidget()
-        self.widget.setCameraPosition(distance=5, elevation=5, azimuth=5)
+        self.widget.setCameraPosition(distance=5, elevation=25, azimuth=5)
         self.widget.setBackgroundColor(_hex_to_qcolor(CLR_PLOT_BG))
 
         self.surface: Optional[Any] = None
@@ -69,16 +71,15 @@ class Plot3d(Plot):
                 self.trajectory_line = None
         else:
             if self.trajectory_xs:
-                pts = np.column_stack((
-                    self.trajectory_xs[:self.current_frame+1],
-                    self.trajectory_ys[:self.current_frame+1],
-                    self.trajectory_zs[:self.current_frame+1]
-                ))
+                pts = np.column_stack(
+                    (
+                        self.trajectory_xs[: self.current_frame],
+                        self.trajectory_ys[: self.current_frame],
+                        self.trajectory_zs[: self.current_frame],
+                    )
+                )
                 self.trajectory_line = gl.GLLinePlotItem(
-                    pos=pts,
-                    color=(1.0, 1.0, 1.0, 0.5),
-                    width=2,
-                    antialias=True
+                    pos=pts, color=(1.0, 1.0, 1.0, 0.5), width=2, antialias=True
                 )
                 self.widget.addItem(self.trajectory_line)
 
@@ -96,7 +97,12 @@ class Plot3d(Plot):
     def _draw_initial_frame(self) -> None:
         """Rebuild static geometry and place the particle at frame 0.
 
-        The particle must be added after the surface so it renders on top.
+        Items are added to the scene in the following order:
+        1. center_sphere — the central heavy sphere.
+        2. surface       — the conical deformation surface.
+        3. particle      — the moving particle sphere.
+
+        The particle must be added last so it renders on top of the surface.
         It is removed and recreated on every call to enforce that order.
         """
         self._draw_center_sphere()
@@ -136,17 +142,16 @@ class Plot3d(Plot):
         self.particle_trace.setMeshData(vertexes=verts, faces=self._sphere_faces)
 
         if self.show_trajectory_trail:
-            pts = np.column_stack((
-                self.trajectory_xs[:frame_index+1],
-                self.trajectory_ys[:frame_index+1],
-                self.trajectory_zs[:frame_index+1]
-            ))
+            pts = np.column_stack(
+                (
+                    self.trajectory_xs[: frame_index + 1],
+                    self.trajectory_ys[: frame_index + 1],
+                    self.trajectory_zs[: frame_index + 1],
+                )
+            )
             if self.trajectory_line is None:
                 self.trajectory_line = gl.GLLinePlotItem(
-                    pos=pts,
-                    color=(1.0, 1.0, 1.0, 0.5),
-                    width=2,
-                    antialias=True
+                    pos=pts, color=(1.0, 1.0, 1.0, 0.5), width=2, antialias=True
                 )
                 self.widget.addItem(self.trajectory_line)
             else:
@@ -189,7 +194,7 @@ class Plot3d(Plot):
     # -----------------------------------------------------------------------
 
     def _draw_surface(self) -> None:
-        """Rebuild the deformable membrane mesh.
+        """Rebuild the conical surface mesh.
 
         Samples the deformation function on a 140x140 grid. Points outside
         radius R are set to NaN so GLSurfacePlotItem clips them cleanly.
@@ -201,8 +206,7 @@ class Plot3d(Plot):
                 pass
 
         R = float(self.sim_params.surface_radius)
-        T = float(self.sim_params.surface_tension)
-        F = float(self.sim_params.center_mass) * float(self.sim_params.g)
+        cone_slope = float(self.sim_params.cone_slope)
         center_radius = float(self.sim_params.center_radius)
 
         samples = 140
@@ -212,7 +216,7 @@ class Plot3d(Plot):
         r = np.sqrt(X**2 + Y**2)
         Z = np.where(
             r <= R,
-            deformation(r, R=R, T=T, F=F, center_radius=center_radius),
+            deformation(r, R=R, cone_slope=cone_slope, center_radius=center_radius),
             np.nan,
         )
 
@@ -227,10 +231,12 @@ class Plot3d(Plot):
         self.widget.addItem(self.surface)
 
     def _draw_center_sphere(self) -> None:
-        """Rebuild the central heavy sphere mesh.
+        """Rebuild the central sphere mesh.
 
-        The sphere is positioned so its equator sits at the membrane level
-        at r = center_radius.
+        The sphere is positioned so its equator sits at the cone surface level
+        at r = center_radius.  This is achieved by placing the sphere centre at
+        z_surface(center_radius) + center_radius, i.e. one radius above the
+        surface, so the equator (at centre - radius) is flush with the surface.
         """
         if self.center_sphere is not None:
             try:
@@ -239,15 +245,14 @@ class Plot3d(Plot):
                 pass
 
         R = self.sim_params.surface_radius
-        T = self.sim_params.surface_tension
-        F = self.sim_params.center_mass * self.sim_params.g
+        cone_slope = self.sim_params.cone_slope
         center_radius = self.sim_params.center_radius
 
         z_offset = (
             _deformation_scalar(
-                center_radius, R=R, T=T, F=F, center_radius=center_radius
+                center_radius, R=R, cone_slope=cone_slope, center_radius=center_radius
             )
-            + center_radius / 2
+            + center_radius  # centre = surface + rayon → équateur au niveau de la surface
         )
 
         self.center_sphere = gl.GLMeshItem(
@@ -266,6 +271,18 @@ class Plot3d(Plot):
 
         Uses fan triangles at the poles to avoid degenerate quads that cause
         pyqtgraph's MeshData normaliser to emit divide warnings.
+
+        Known limitation — orphan pole vertices:
+            _sphere_verts_at produces samples_phi vertices for each pole ring
+            (theta=0 and theta=pi), all sharing the same 3-D coordinates.
+            The fan triangles here only reference index 0 (north pole) and
+            index (samples_theta-1)*samples_phi (south pole), leaving the
+            remaining samples_phi-1 pole duplicates as orphan vertices.
+            This does not affect visual correctness (they are never rendered)
+            but wastes a small amount of GPU memory.  A proper fix would
+            require refactoring _sphere_verts_at to emit a single pole vertex
+            for each pole, which would also require adjusting all body-quad
+            indices by -1 for rows above the south pole.
         """
         faces = []
 

@@ -69,11 +69,14 @@ class Plot(ABC):
         raise NotImplementedError
 
     def _draw_initial_frame(self) -> None:
-        """Draw static geometry and render frame 0.
+        """Render frame 0 to initialise the display.
 
-        The default implementation calls _update_frame(0) when frames exist.
+        The base implementation simply calls ``_update_frame(0)`` when at
+        least one frame is available.  It does **not** draw any static
+        geometry — that responsibility is delegated to subclasses.
         Subclasses that need persistent background elements should override
-        this, draw those elements, then call _update_frame(0) explicitly.
+        this method, draw those elements first, then call
+        ``_update_frame(0)`` explicitly.
         """
         if self._n_frames > 0:
             try:
@@ -86,9 +89,23 @@ class Plot(ABC):
     # -----------------------------------------------------------------------
 
     def setup_animation(self) -> None:
-        """Prepare simulation data and draw the initial frame."""
+        """Prepare simulation data and draw the initial frame.
+
+        Sets ``_prepared`` to True only if ``_prepare_simulation`` completes
+        without raising an exception.  On failure the error is logged and the
+        method returns early, leaving ``_prepared`` as False.
+        """
         log.debug("%s.setup_animation — preparing simulation", type(self).__name__)
-        self._prepare_simulation()
+        self._prepared = False
+        try:
+            self._prepare_simulation()
+        except Exception as exc:
+            log.error(
+                "%s.setup_animation — _prepare_simulation failed: %s",
+                type(self).__name__,
+                exc,
+            )
+            return
         self._prepared = True
         self.current_frame = 0
         log.info(
@@ -199,6 +216,10 @@ class Plot(ABC):
         to the original field type so that integer fields stay integers.
         Calls setup_animation once if at least one known field was present in kwargs.
 
+        ``stop_animation()`` is called only when at least one recognised
+        parameter key is present in *kwargs* and a recompute is actually
+        needed — it is **not** called unconditionally at the top of the method.
+
         The previous design compared old vs new values to detect changes, but
         ParamsController writes values directly to sim_params before calling this
         method, so the comparison always saw identical values and setup_animation
@@ -209,7 +230,6 @@ class Plot(ABC):
         Subclasses that need extra logic should override this and call
         super().update_params(**kwargs) at the end.
         """
-        self.stop_animation()
         if not kwargs:
             return
 
@@ -218,6 +238,18 @@ class Plot(ABC):
             type(self).__name__,
             list(kwargs.keys()),
         )
+
+        need_prepare = False
+
+        if self.sim_params is not None:
+            for k, v in kwargs.items():
+                if not hasattr(self.sim_params, k):
+                    continue
+                need_prepare = True
+                break
+
+        if need_prepare:
+            self.stop_animation()
 
         need_prepare = False
 
