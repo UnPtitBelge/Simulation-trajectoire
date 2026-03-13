@@ -7,7 +7,7 @@ from simulations.Plot import Plot
 from simulations.sim3d.simulate_trajectory import simulate_trajectory
 from utils.math_helpers import _deformation_scalar, deformation
 from utils.params import Simulation3dParams
-from utils.stylesheet import CLR_PLOT_BG
+from utils.stylesheet import CLR_PLOT_BG, CLR_PLOT_CENTER, CLR_PLOT_PARTICLE, CLR_PLOT_DRAP
 
 
 def _hex_to_qcolor(h: str) -> QColor:
@@ -166,7 +166,7 @@ class Plot3d(Plot):
         self.particle_trace = gl.GLMeshItem(
             vertexes=self._sphere_verts_at(0.0, 0.0, 0.0, r),
             faces=self._sphere_faces,
-            color=(0.88, 0.11, 0.27, 1.0),
+            color=_hex_to_qcolor(CLR_PLOT_PARTICLE),
             shader="balloon",
             smooth=True,
             drawEdges=False,
@@ -224,8 +224,8 @@ class Plot3d(Plot):
             x=xs,
             y=ys,
             z=Z,
-            color=(0.31, 0.27, 0.90, 0.82),
-            shader="shaded",
+            color=_hex_to_qcolor(CLR_PLOT_DRAP),
+            shader=None,
             smooth=True,
         )
         self.widget.addItem(self.surface)
@@ -258,7 +258,7 @@ class Plot3d(Plot):
         self.center_sphere = gl.GLMeshItem(
             vertexes=self._sphere_verts_at(0.0, 0.0, z_offset, center_radius),
             faces=self._sphere_faces,
-            color=(0.09, 0.64, 0.29, 1.0),
+            color=_hex_to_qcolor(CLR_PLOT_CENTER),
             shader="balloon",
             smooth=True,
         )
