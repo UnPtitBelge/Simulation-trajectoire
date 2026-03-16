@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 from simulations.sim2d.Plot2d import Plot2d
 from simulations.sim3d.Plot3d import Plot3d
 from simulations.simML.PlotML import PlotML
+from widgets.LiveInfoWidget import LiveInfoWidget
 from utils.params_controller import ParamsController
 from utils.stylesheet import (
     HINT_BAR_STYLE,
@@ -71,9 +72,10 @@ class SimWidget(QWidget):
                              None here and assigned by subclasses.
     """
 
-    def __init__(self, plot: "Plot2d | Plot3d | PlotML") -> None:
+    def __init__(self, plot: "Plot2d | Plot3d | PlotML", libre_mode: bool = False) -> None:
         super().__init__()
-
+        
+        self.libre_mode = libre_mode
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(0)
@@ -82,13 +84,12 @@ class SimWidget(QWidget):
         self._controls_scroll: QScrollArea | None = None
         log.debug("SimWidget.__init__ — plot type: %s", type(plot).__name__)
 
-        # Use QStackedLayout(StackAll) so the GL/plot widget is ALWAYS painted
-        # (its OpenGL context initialises immediately) while the loading overlay
-        # sits on top until the worker thread finishes.
         self._plot_container = QWidget()
-        _stack = QStackedLayout(self._plot_container)
-        _stack.setStackingMode(QStackedLayout.StackingMode.StackAll)
-        _stack.addWidget(self.plot.widget)  # layer 0 — always painted
+        from PySide6.QtWidgets import QGridLayout
+        _grid = QGridLayout(self._plot_container)
+        _grid.setContentsMargins(0, 0, 0, 0)
+        
+        _grid.addWidget(self.plot.widget, 0, 0)
 
         self._loading_widget = QWidget()
         self._loading_widget.setStyleSheet("background: rgba(20,20,20,210);")
@@ -96,7 +97,15 @@ class SimWidget(QWidget):
         self._loading_label = QLabel("Calcul en cours…")
         self._loading_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         _llo.addWidget(self._loading_label)
-        _stack.addWidget(self._loading_widget)  # layer 1 — covers the plot
+        _grid.addWidget(self._loading_widget, 0, 0)
+
+        # Layer 2 - Live Info widget overlay (for libre_mode)
+        self.live_info = None
+        if self.libre_mode:
+            is_3d = type(self.plot).__name__ == "Plot3d"
+            self.live_info = LiveInfoWidget(self._plot_container, is_3d=is_3d)
+            # Use negative margins to position it properly inside the grid
+            _grid.addWidget(self.live_info, 0, 0, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)
 
         self.main_layout.addWidget(self._plot_container, stretch=1)
 
@@ -286,9 +295,9 @@ def _make_panel_scroll(controls_widget: QWidget) -> QScrollArea:
 class SimWidget3d(SimWidget):
     """SimWidget for the 3-D surface simulation."""
 
-    def __init__(self, plot: Plot3d) -> None:
+    def __init__(self, plot: Plot3d, libre_mode: bool = False) -> None:
         log.debug("SimWidget3d — initialising")
-        super().__init__(plot)
+        super().__init__(plot, libre_mode=libre_mode)
 
         self.params_controller = ParamsController(
             plot.sim_params, type(plot.sim_params), plot
@@ -297,15 +306,30 @@ class SimWidget3d(SimWidget):
 
         self._controls_scroll = _make_panel_scroll(self.controls_widget)
         self.main_layout.addWidget(self._controls_scroll)
+        
+        if self.live_info is not None:
+            self.plot.frame_updated.connect(self._on_frame_updated)
+            
         log.debug("SimWidget3d — ready")
+        
+    def _on_frame_updated(self, idx: int):
+        if hasattr(self.plot, 'trajectory_xs') and self.plot.trajectory_xs:
+            if idx < len(self.plot.trajectory_xs) and hasattr(self.plot, 'trajectory_vxs') and self.plot.trajectory_vxs:
+                x = self.plot.trajectory_xs[idx]
+                y = self.plot.trajectory_ys[idx]
+                z = self.plot.trajectory_zs[idx]
+                vx = self.plot.trajectory_vxs[idx]
+                vy = self.plot.trajectory_vys[idx]
+                dt = self.plot.sim_params.time_step
+                self.live_info.update_info(idx, dt, x, y, vx, vy, z)
 
 
 class SimWidget2d(SimWidget):
     """SimWidget for the 2-D orbital simulation."""
 
-    def __init__(self, plot: Plot2d) -> None:
+    def __init__(self, plot: Plot2d, libre_mode: bool = False) -> None:
         log.debug("SimWidget2d — initialising")
-        super().__init__(plot)
+        super().__init__(plot, libre_mode=libre_mode)
 
         self.params_controller = ParamsController(
             plot.sim_params, type(plot.sim_params), plot
@@ -314,7 +338,21 @@ class SimWidget2d(SimWidget):
 
         self._controls_scroll = _make_panel_scroll(self.controls_widget)
         self.main_layout.addWidget(self._controls_scroll)
+        
+        if self.live_info is not None:
+            self.plot.frame_updated.connect(self._on_frame_updated)
+
         log.debug("SimWidget2d — ready")
+
+    def _on_frame_updated(self, idx: int):
+        if hasattr(self.plot, 'trajectory_xs') and self.plot.trajectory_xs:
+            if idx < len(self.plot.trajectory_xs) and hasattr(self.plot, 'trajectory_vxs') and self.plot.trajectory_vxs:
+                x = self.plot.trajectory_xs[idx]
+                y = self.plot.trajectory_ys[idx]
+                vx = self.plot.trajectory_vxs[idx]
+                vy = self.plot.trajectory_vys[idx]
+                dt = self.plot.sim_params.dt
+                self.live_info.update_info(idx, dt, x, y, vx, vy)
 
 
 class SimWidgetML(SimWidget):

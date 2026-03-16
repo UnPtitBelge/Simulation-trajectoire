@@ -126,6 +126,8 @@ def simulate_trajectory(
     xs: list[float] = []
     ys: list[float] = []
     zs: list[float] = []
+    vxs: list[float] = []
+    vys: list[float] = []
 
     steps_run = 0
 
@@ -176,6 +178,8 @@ def simulate_trajectory(
         xs.append(x)
         ys.append(y)
         zs.append(float(z))
+        vxs.append(vx)
+        vys.append(vy)
 
         steps_run += 1
 
@@ -195,4 +199,4 @@ def simulate_trajectory(
         if steps_run >= steps:
             break
 
-    return {"xs": xs, "ys": ys, "zs": zs}
+    return {"xs": xs, "ys": ys, "zs": zs, "vxs": vxs, "vys": vys}

@@ -72,9 +72,10 @@ class LazyTabWidget(QTabWidget):
 class MainWindow(QMainWindow):
     """Top-level application window."""
 
-    def __init__(self, presentation_mode: bool = False) -> None:
+    def __init__(self, presentation_mode: bool = False, libre_mode: bool = False) -> None:
         super().__init__()
         self.presentation_mode = presentation_mode
+        self.libre_mode = libre_mode
         self.setWindowTitle("Models & Simulations")
 
         container = QWidget()
@@ -123,10 +124,10 @@ class MainWindow(QMainWindow):
         if self.presentation_mode:
             self.sim_tab_widget.tabBar().hide()
             self.sim_tab_widget.setStyleSheet("background-color: #000000;")
-        self.sim_tab_widget.addLazyTab(self._make_2d, "2D Simulation")
-        self.sim_tab_widget.addLazyTab(self._make_3d, "3D Simulation")
-        self.sim_tab_widget.addLazyTab(self._make_ml, "ML Simulation")
-        self.sim_tab_widget.addLazyTab(self._make_video, "Video Player")
+        self.sim_tab_widget.addLazyTab(lambda: self._make_2d(self.libre_mode), "2D Simulation")
+        self.sim_tab_widget.addLazyTab(lambda: self._make_3d(self.libre_mode), "3D Simulation")
+        self.sim_tab_widget.addLazyTab(lambda: self._make_ml(), "ML Simulation")
+        self.sim_tab_widget.addLazyTab(lambda: self._make_video(), "Video Player")
         root_layout.addWidget(self.sim_tab_widget, stretch=1)
 
         if not self.presentation_mode:
@@ -180,29 +181,25 @@ class MainWindow(QMainWindow):
         log.info("Close button clicked — quitting")
         QApplication.quit()
 
-    @staticmethod
-    def _make_2d() -> QWidget:
+    def _make_2d(self, libre_mode: bool = False) -> QWidget:
         from simulations.sim2d.Plot2d import Plot2d
         from widgets.SimWidget import SimWidget2d
 
-        return SimWidget2d(Plot2d())
+        return SimWidget2d(Plot2d(), libre_mode=libre_mode)
 
-    @staticmethod
-    def _make_3d() -> QWidget:
+    def _make_3d(self, libre_mode: bool = False) -> QWidget:
         from simulations.sim3d.Plot3d import Plot3d
         from widgets.SimWidget import SimWidget3d
 
-        return SimWidget3d(Plot3d())
+        return SimWidget3d(Plot3d(), libre_mode=libre_mode)
 
-    @staticmethod
-    def _make_ml() -> QWidget:
+    def _make_ml(self) -> QWidget:
         from simulations.simML.PlotML import PlotML
         from widgets.SimWidget import SimWidgetML
 
         return SimWidgetML(PlotML())
 
-    @staticmethod
-    def _make_video() -> QWidget:
+    def _make_video(self) -> QWidget:
         from widgets.VideoPlayerWidget import VideoPlayerWidget
 
         return VideoPlayerWidget()
@@ -218,12 +215,16 @@ def main() -> None:
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
     parser.add_argument("--presentation", action="store_true", help="Start in presentation mode (fullscreen, keys 1/2/3 auto-start views)")
+    parser.add_argument("--libre", action="store_true", help="Start in libre mode (fullscreen + live info widgets)")
     args, remaining_argv = parser.parse_known_args()
 
     setup_logging(debug=args.debug)
 
+    is_presentation = args.presentation
+    is_libre = args.libre
+
     log.info(
-        "Application starting — debug=%s | presentation=%s | log file: %s", args.debug, args.presentation, get_log_path()
+        "Application starting — debug=%s | presentation=%s | libre=%s | log file: %s", args.debug, args.presentation, args.libre, get_log_path()
     )
 
     app = QApplication(remaining_argv)
@@ -238,8 +239,8 @@ def main() -> None:
 
     signal.signal(signal.SIGINT, handle_interrupt)
 
-    window = MainWindow(presentation_mode=args.presentation)
-    if args.presentation:
+    window = MainWindow(presentation_mode=is_presentation, libre_mode=args.libre)
+    if is_presentation or args.libre:
         window.showFullScreen()
         log.info("Window shown fullscreen — entering Qt event loop")
     else:

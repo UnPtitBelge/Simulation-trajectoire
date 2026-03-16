@@ -2,7 +2,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QObject, QTimer, Signal
 from utils.params import (
     Simulation2dParams,
     Simulation3dParams,
@@ -12,7 +12,7 @@ from utils.params import (
 log = logging.getLogger(__name__)
 
 
-class Plot(ABC):
+class Plot(QObject):
     """Abstract base class for simulation plot wrappers.
 
     Subclasses must set self.widget in their __init__ before calling any
@@ -27,6 +27,8 @@ class Plot(ABC):
         _n_frames:       Total frames produced by _prepare_simulation.
         _prepared:       True once setup_animation has run successfully.
     """
+    
+    frame_updated = Signal(int)
 
     def __init__(
         self,
@@ -35,6 +37,7 @@ class Plot(ABC):
         ) = None,
         frame_ms: int = 100,
     ) -> None:
+        super().__init__()
         self.widget: Any = None
         self.sim_params = sim_params
 
@@ -81,6 +84,7 @@ class Plot(ABC):
         if self._n_frames > 0:
             try:
                 self._update_frame(0)
+                self.frame_updated.emit(0)
             except Exception:
                 pass
 
@@ -189,6 +193,7 @@ class Plot(ABC):
                 )
             try:
                 self._update_frame(self.current_frame)
+                self.frame_updated.emit(self.current_frame)
             except Exception as exc:
                 log.error(
                     "%s._on_timer — _update_frame(%d) raised: %s",

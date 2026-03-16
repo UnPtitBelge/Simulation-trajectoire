@@ -53,6 +53,8 @@ class Plot3d(Plot):
         self.trajectory_xs: list[float] = []
         self.trajectory_ys: list[float] = []
         self.trajectory_zs: list[float] = []
+        self.trajectory_vxs: list[float] = []
+        self.trajectory_vys: list[float] = []
 
         self.trajectory_line: Optional[Any] = None
         self.show_trajectory_trail = True
@@ -92,6 +94,8 @@ class Plot3d(Plot):
         self.trajectory_xs = results.get("xs", [])
         self.trajectory_ys = results.get("ys", [])
         self.trajectory_zs = results.get("zs", [])
+        self.trajectory_vxs = results.get("vxs", [])
+        self.trajectory_vys = results.get("vys", [])
         self._n_frames = len(self.trajectory_xs) if self.trajectory_xs else 0
 
     def _draw_initial_frame(self) -> None:
@@ -126,6 +130,7 @@ class Plot3d(Plot):
 
         if self._n_frames > 0:
             self._update_frame(0)
+            self.frame_updated.emit(0)
 
     def _update_frame(self, frame_index: int) -> None:
         if self.particle_trace is None:

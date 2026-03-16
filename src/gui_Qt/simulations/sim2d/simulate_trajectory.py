@@ -174,12 +174,16 @@ def simulate_trajectory(
 
     trajectory_xs: List[float] = []
     trajectory_ys: List[float] = []
+    trajectory_vxs: List[float] = []
+    trajectory_vys: List[float] = []
     step = 0
 
     while step < max_steps:
         # Record the current position as one animation frame.
         trajectory_xs.append(float(r[0]))
         trajectory_ys.append(float(r[1]))
+        trajectory_vxs.append(float(v[0]))
+        trajectory_vys.append(float(v[1]))
 
         # Check stopping condition *after* recording so the final position
         # (on or inside the central body) is included in the output.
@@ -230,5 +234,7 @@ def simulate_trajectory(
     return {
         "xs": trajectory_xs,
         "ys": trajectory_ys,
+        "vxs": trajectory_vxs,
+        "vys": trajectory_vys,
         "n_frames": len(trajectory_xs),
     }

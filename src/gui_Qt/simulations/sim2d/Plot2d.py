@@ -50,6 +50,8 @@ class Plot2d(Plot):
 
         self.trajectory_xs: list[float] = []
         self.trajectory_ys: list[float] = []
+        self.trajectory_vxs: list[float] = []
+        self.trajectory_vys: list[float] = []
         
         self.trajectory_line = pg.PlotCurveItem(
             pen=pg.mkPen(width=1.5, color=(1, 1, 1, 120))
@@ -76,6 +78,8 @@ class Plot2d(Plot):
         results = simulate_trajectory(self.sim_params)
         self.trajectory_xs = results.get("xs", [])
         self.trajectory_ys = results.get("ys", [])
+        self.trajectory_vxs = results.get("vxs", [])
+        self.trajectory_vys = results.get("vys", [])
         self._n_frames = len(self.trajectory_xs) if self.trajectory_xs else 0
 
     def _update_frame(self, frame_index: int) -> None:
@@ -120,6 +124,7 @@ class Plot2d(Plot):
 
         if self._n_frames > 0:
             self._update_frame(0)
+            self.frame_updated.emit(0)
         else:
             self.moving_ball.setData([], [])
 
