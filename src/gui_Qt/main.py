@@ -126,7 +126,7 @@ class MainWindow(QMainWindow):
             self.sim_tab_widget.setStyleSheet("background-color: #000000;")
         self.sim_tab_widget.addLazyTab(lambda: self._make_2d(self.libre_mode), "2D Simulation")
         self.sim_tab_widget.addLazyTab(lambda: self._make_3d(self.libre_mode), "3D Simulation")
-        self.sim_tab_widget.addLazyTab(lambda: self._make_ml(), "ML Simulation")
+        self.sim_tab_widget.addLazyTab(lambda: self._make_ml(self.libre_mode), "ML Simulation")
         self.sim_tab_widget.addLazyTab(lambda: self._make_video(), "Video Player")
         root_layout.addWidget(self.sim_tab_widget, stretch=1)
 
@@ -193,11 +193,11 @@ class MainWindow(QMainWindow):
 
         return SimWidget3d(Plot3d(), libre_mode=libre_mode)
 
-    def _make_ml(self) -> QWidget:
+    def _make_ml(self, libre_mode: bool = False) -> QWidget:
         from simulations.simML.PlotML import PlotML
         from widgets.SimWidget import SimWidgetML
 
-        return SimWidgetML(PlotML())
+        return SimWidgetML(PlotML(), libre_mode=libre_mode)
 
     def _make_video(self) -> QWidget:
         from widgets.VideoPlayerWidget import VideoPlayerWidget

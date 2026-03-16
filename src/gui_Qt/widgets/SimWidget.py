@@ -102,10 +102,11 @@ class SimWidget(QWidget):
         # Layer 2 - Live Info widget overlay (for libre_mode)
         self.live_info = None
         if self.libre_mode:
-            is_3d = type(self.plot).__name__ == "Plot3d"
-            self.live_info = LiveInfoWidget(self._plot_container, is_3d=is_3d)
-            # Use negative margins to position it properly inside the grid
-            _grid.addWidget(self.live_info, 0, 0, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)
+            plot_type = type(self.plot).__name__
+            sim_type = "3d" if plot_type == "Plot3d" else "ml" if plot_type == "PlotML" else "2d"
+            self.live_info = LiveInfoWidget(self._plot_container, sim_type=sim_type)
+            # AlignRight spans full height vertically when used with QGridLayout and minimum requirements are met
+            _grid.addWidget(self.live_info, 0, 0, Qt.AlignmentFlag.AlignRight)
 
         self.main_layout.addWidget(self._plot_container, stretch=1)
 
@@ -358,9 +359,9 @@ class SimWidget2d(SimWidget):
 class SimWidgetML(SimWidget):
     """SimWidget for the ML regression demo."""
 
-    def __init__(self, plot: PlotML) -> None:
+    def __init__(self, plot: PlotML, libre_mode: bool = False) -> None:
         log.debug("SimWidgetML — initialising")
-        super().__init__(plot)
+        super().__init__(plot, libre_mode=libre_mode)
 
         self.params_controller = ParamsController(
             plot.sim_params, type(plot.sim_params), plot
@@ -369,4 +370,24 @@ class SimWidgetML(SimWidget):
 
         self._controls_scroll = _make_panel_scroll(self.controls_widget)
         self.main_layout.addWidget(self._controls_scroll)
+        
+        if self.live_info is not None:
+            self.plot.frame_updated.connect(self._on_frame_updated)
+            
         log.debug("SimWidgetML — ready")
+
+    def _on_frame_updated(self, idx: int):
+        if hasattr(self.plot, '_pred_traj') and self.plot._pred_traj.shape[0] > 0:
+            idx = min(idx, self.plot._pred_traj.shape[0] - 1)
+            x, y = self.plot._pred_traj[idx]
+            
+            # approximate velocity
+            if idx > 0:
+                prev_x, prev_y = self.plot._pred_traj[idx-1]
+                dt = self.plot.sim_params.frame_ms / 1000.0  # maybe use frame_ms as a proxy for time step
+                vx = (x - prev_x) / dt
+                vy = (y - prev_y) / dt
+            else:
+                vx, vy = 0.0, 0.0
+                
+            self.live_info.update_info(idx, 0.03, x, y, vx, vy)

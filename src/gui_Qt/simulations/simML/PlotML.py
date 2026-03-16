@@ -321,6 +321,7 @@ class PlotML(Plot):
             self.pred_curve.setData(self._pred_traj[:, 0], self._pred_traj[:, 1])
             x0, y0 = self._pred_traj[0]
             self.current_point.setData([x0], [y0], size=self.sim_params.marker_size)
+            self.frame_updated.emit(0)
         else:
             self.current_point.setData([], [])
 
