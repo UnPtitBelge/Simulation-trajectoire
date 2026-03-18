@@ -3,8 +3,8 @@ import numpy as np
 import os
 from scipy import interpolate as interp
 
-from utils import *
-from path import *
+from utils import create_necessary_dirs, set_video_filename
+from path import DEFAULT_TRACKING_DIR, OUTPUT_IMAGES_DIR, OUTPUT_VIDEO_DIR
 
 """
 Module for tracking a single colored ball in a video and creating an output video showing its trajectory.
@@ -68,7 +68,7 @@ class TrackBall:
         self.tracker = positions
         self._create_video(canvas, positions, fps=60)
 
-    def findBallFrame(self, frame: np.ndarray) -> tuple or None:
+    def findBallFrame(self, frame: np.ndarray) -> tuple[int, int] | None:
         """
         Find the position of the ball in a single frame.
         """
@@ -102,7 +102,7 @@ class TrackBall:
         upper = np.array([color['max'], saturation['max'], luminance['max']])
         return lower, upper
 
-    def _create_video(self, canvas: np.array, positions: np.array, fps:int =30):
+    def _create_video(self, canvas: np.ndarray, positions: list, fps: int = 30):
         """
         Draw the trajectory of the ball on the canvas.
         """
@@ -129,7 +129,7 @@ class TrackBall:
         cv2.imwrite(imagePath, trajectory)
         out.release()
 
-    def _interpolate_positions(self, positions: np.array, smoothing: int = 0) -> np.array:
+    def _interpolate_positions(self, positions: list, smoothing: int = 0) -> list:
         """
         Interpolate the ball positions using spline interpolation.
         """

@@ -14,11 +14,9 @@ from path import DEFAULT_TRACKING_DIR
 FIRST_LINE = "expID; temps; x; y; speedX; speedY"
 
 class DataWriter:
-    finalFile = ""
-    expID = 0
-
     def __init__(self, finaleFile: str):
         self.finalFile = DEFAULT_TRACKING_DIR + finaleFile
+        self.expID = 0
 
     def appendData(self, data: list) -> None:
         self.expID = self._findLastExpID() + 1

@@ -110,7 +110,6 @@ class Simulation:
         ax.set_ylabel("y")
         ax.set_zlabel("z")
         ax.set_title("Object moving on a curved surface around a central mass")
-        ax.set_title("Object moving on a curved surface around a central mass")
         self._set_axes_equal(ax)
         plt.show()
 

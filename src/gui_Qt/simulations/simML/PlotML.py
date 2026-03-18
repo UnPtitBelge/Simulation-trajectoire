@@ -102,8 +102,11 @@ _MARKER = _hex_to_rgb(CLR_PLOT_MARKER)
 class PlotML(Plot):
     """ML regression demo plot backed by a pyqtgraph PlotWidget."""
 
-    def __init__(self) -> None:
-        sim_params = SimulationMLParams()
+    SIM_TYPE = "ml"
+
+    def __init__(self, sim_params: SimulationMLParams | None = None) -> None:
+        if sim_params is None:
+            sim_params = SimulationMLParams()
         super().__init__(sim_params, frame_ms=sim_params.frame_ms)
         self.sim_params: SimulationMLParams = sim_params
 

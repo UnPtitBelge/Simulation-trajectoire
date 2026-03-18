@@ -58,14 +58,15 @@ class ParamControlWidget(QWidget):
         min_value=None,
         max_value=None,
         step=None,
+        display_label: str | None = None,
     ) -> None:
         super().__init__()
         self.param_name = param_name
         self.default_value = default_value
         self.setStyleSheet(PARAM_CELL_STYLE)
 
-        display_name = param_name.replace("_", " ").title()
-        self.label = QLabel(display_name)
+        label_text = display_label if display_label else param_name.replace("_", " ").title()
+        self.label = QLabel(label_text)
         self.label.setObjectName("cellLabel")
         self.label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
 
@@ -165,6 +166,10 @@ class ParamsController(QWidget):
     Changes are written to params immediately and forwarded to
     plot.update_params(**changes) after a 50 ms debounce. A Reset button
     restores factory defaults and calls plot.update_params immediately.
+
+    Field metadata keys used:
+        label   Human-readable name (e.g. "Pente α")
+        unit    Physical unit string (e.g. "m/s²", "°", "")
     """
 
     def __init__(self, params, param_type, plot=None) -> None:
@@ -207,7 +212,7 @@ class ParamsController(QWidget):
         dot.setObjectName("headerDot")
         header_layout.addWidget(dot)
 
-        title_text = param_type.__name__.replace("Params", " Params").strip()
+        title_text = param_type.__name__.replace("Simulation", "").replace("Params", " Params").strip()
         title = QLabel(title_text)
         title.setObjectName("headerTitle")
         header_layout.addWidget(title)
@@ -230,13 +235,18 @@ class ParamsController(QWidget):
         grid.setColumnStretch(0, 1)
         grid.setColumnStretch(1, 1)
 
-        for idx, field in enumerate(fields(self.params)):
-            param_name = field.name
+        for idx, f in enumerate(fields(self.params)):
+            param_name = f.name
             default_value = getattr(self.params, param_name)
             row, col = divmod(idx, 2)
 
+            # Build human-readable label with optional unit
+            meta_label = f.metadata.get("label", param_name.replace("_", " ").title())
+            meta_unit  = f.metadata.get("unit", "")
+            display_label = f"{meta_label} ({meta_unit})" if meta_unit else meta_label
+
             if isinstance(default_value, bool):
-                control = ParamControlWidget(param_name, default_value)
+                control = ParamControlWidget(param_name, default_value, display_label=display_label)
                 log.debug(
                     "ParamsController — bool field: %s = %r", param_name, default_value
                 )
@@ -252,7 +262,8 @@ class ParamsController(QWidget):
                     min_value = default_value * 10.0
                     max_value = default_value * 0.1
                 control = ParamControlWidget(
-                    param_name, default_value, min_value, max_value, step
+                    param_name, default_value, min_value, max_value, step,
+                    display_label=display_label,
                 )
                 log.debug(
                     "ParamsController — numeric field: %s = %r (step=%g, range=[%g, %g])",
@@ -268,7 +279,7 @@ class ParamsController(QWidget):
                     param_name,
                     type(default_value).__name__,
                 )
-                control = ParamControlWidget(param_name, 0.0, 0.0, 100.0, 1.0)
+                control = ParamControlWidget(param_name, 0.0, 0.0, 100.0, 1.0, display_label=display_label)
 
             control.setStyleSheet(control.styleSheet() + PARAM_CELL_OVERLAY)
             control.value_changed.connect(self.on_value_changed)
@@ -296,7 +307,7 @@ class ParamsController(QWidget):
         footer_layout.setContentsMargins(10, 6, 10, 6)
         footer_layout.addStretch()
 
-        reset_button = QPushButton("↺  Reset to defaults")
+        reset_button = QPushButton("↺  Réinitialiser")
         reset_button.setObjectName("resetBtn")
         reset_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         reset_button.clicked.connect(self._reset_to_default)
@@ -317,37 +328,12 @@ class ParamsController(QWidget):
 
     @staticmethod
     def _calculate_decimals(value: float, is_int: bool = False) -> int:
-        """Return the number of decimal places needed to display ``value``.
-
-        If ``is_int`` is True, returns 0 immediately because integer fields
-        require no decimal places regardless of magnitude.
-
-        For float fields, ensures the step (one order of magnitude below the
-        value) is always visible in the spin-box.  Minimum is 1, maximum is 10.
-
-        Parameters
-        ----------
-        value:
-            The field's current or default value.
-        is_int:
-            Pass True when the field holds a Python ``int``; the method will
-            return 0 without any further computation.
-
-        Examples
-        --------
-        value = 42,    is_int=True  → 0 decimals
-        value = 50.0,  is_int=False → step = 1.0    → 1 decimal
-        value = 0.5,   is_int=False → step = 0.01   → 2 decimals
-        value = 0.002, is_int=False → step = 0.0001 → 4 decimals
-        value = 0.0,   is_int=False → fallback       → 4 decimals
-        """
+        """Return the number of decimal places needed to display value."""
         if is_int:
             return 0
         abs_val = abs(value)
         if abs_val < 1e-12:
             return 4
-        # step is 10^(floor(log10(abs_val)) - 1)
-        # we need enough decimals to show that step
         step_exp = floor(log10(abs_val)) - 1
         decimals = max(1, ceil(-step_exp))
         return min(decimals, 10)
@@ -379,8 +365,8 @@ class ParamsController(QWidget):
         log.info(
             "ParamsController — resetting %s to defaults", self.param_type.__name__
         )
-        for field in fields(self.params):
-            param_name = field.name
+        for f in fields(self.params):
+            param_name = f.name
             default_value = getattr(self.default_params, param_name)
             setattr(self.params, param_name, default_value)
 
@@ -406,8 +392,8 @@ class ParamsController(QWidget):
 
         if self.plot is not None:
             all_defaults = {
-                field.name: getattr(self.default_params, field.name)
-                for field in fields(self.params)
+                f.name: getattr(self.default_params, f.name)
+                for f in fields(self.params)
             }
             log.debug(
                 "ParamsController — pushing %d default values to %s",

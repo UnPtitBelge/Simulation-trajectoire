@@ -7,97 +7,97 @@
 # ---------------------------------------------------------------------------
 
 # Backgrounds
-CLR_BASE = "#f5f5f7"
-CLR_MANTLE = "#eaeaed"
-CLR_CRUST = "#dededf"
-CLR_SURFACE0 = "#d0d0d5"
-CLR_SURFACE1 = "#b0b0ba"
-CLR_SURFACE2 = "#88889a"
+CLR_BASE      = "#0e0f15"
+CLR_MANTLE    = "#131520"
+CLR_CRUST     = "#191c2a"
+CLR_SURFACE0  = "#1f2235"
+CLR_SURFACE1  = "#272b40"
+CLR_SURFACE2  = "#363b58"
 
 # Text
-CLR_TEXT = "#1c1c28"
-CLR_SUBTEXT = "#44445a"
-CLR_DIM = "#7878a0"
+CLR_TEXT      = "#dde1f0"
+CLR_SUBTEXT   = "#8890b0"
+CLR_DIM       = "#4f5472"
 
 # Structural
-CLR_PANEL_BG = "#ededf0"
-CLR_TOPBAR_BG = "#e2e2e8"
-CLR_BORDER = "#c8c8d4"
-CLR_BORDER_LIGHT = "#dcdce6"
+CLR_PANEL_BG      = "#131520"
+CLR_TOPBAR_BG     = "#0e0f15"
+CLR_BORDER        = "#232640"
+CLR_BORDER_LIGHT  = "#1e2135"
 
-# Accent — indigo / violet
-CLR_ACCENT = "#4f46e5"
-CLR_ACCENT2 = "#7c3aed"
-CLR_ACCENT_LIGHT = "#e0e7ff"
-CLR_ACCENT_HOVER = "#4338ca"  # darker indigo for pressed/hover fills
+# Accent — electric blue
+CLR_ACCENT        = "#5b8ff9"
+CLR_ACCENT2       = "#4a7bef"
+CLR_ACCENT_LIGHT  = "#1a2350"
+CLR_ACCENT_HOVER  = "#7aa3fb"
 
 # Status
-CLR_GREEN = "#16a34a"
-CLR_GREEN_BG = "#dcfce7"
-CLR_GREEN_BORDER = "#86efac"
-CLR_GREEN_HOVER = "#15803d"
-CLR_GREEN_PRESS = "#166534"
+CLR_GREEN         = "#4ade80"
+CLR_GREEN_BG      = "#0d2a1a"
+CLR_GREEN_BORDER  = "#1a5c32"
+CLR_GREEN_HOVER   = "#22c55e"
+CLR_GREEN_PRESS   = "#15803d"
 
-CLR_AMBER = "#d97706"
-CLR_AMBER_BG = "#fef3c7"
-CLR_AMBER_BORDER = "#fcd34d"
-CLR_AMBER_HOVER = "#b45309"
-CLR_AMBER_PRESS = "#92400e"
+CLR_AMBER         = "#fbbf24"
+CLR_AMBER_BG      = "#2a1d00"
+CLR_AMBER_BORDER  = "#5c3d00"
+CLR_AMBER_HOVER   = "#f59e0b"
+CLR_AMBER_PRESS   = "#d97706"
 
-CLR_SLATE = "#475569"
-CLR_SLATE_BG = "#f1f5f9"
-CLR_SLATE_BORDER = "#cbd5e1"
-CLR_SLATE_HOVER = "#e2e8f0"
-CLR_SLATE_PRESS = "#cbd5e1"
+CLR_SLATE         = "#8890b0"
+CLR_SLATE_BG      = "#1f2235"
+CLR_SLATE_BORDER  = "#363b58"
+CLR_SLATE_HOVER   = "#272b40"
+CLR_SLATE_PRESS   = "#363b58"
 
-CLR_RED = "#dc2626"
-CLR_RED_BG = "#fee2e2"
-CLR_RED_BORDER = "#fca5a5"
-CLR_RED_HOVER = "#b91c1c"
+CLR_RED           = "#f87171"
+CLR_RED_BG        = "#2a0d0d"
+CLR_RED_BORDER    = "#5c1a1a"
+CLR_RED_HOVER     = "#ef4444"
 
 # ParamControlWidget / ParamsController internal palette
-PC_BG = "#f5f5f7"
-PC_HEADER_BG = "#ffffff"
-PC_HEADER_BG2 = "#eaeaed"
-PC_FOOTER_BG = "#ededf0"
-PC_GRID_BG = "#f9f9fb"
-PC_CELL_BG = "#ffffff"
-PC_BORDER = "#c8c8d4"
-PC_BORDER_MID = "#d0d0d5"
-PC_BORDER_FOCUS = "#4f46e5"
-PC_LABEL = "#1c1c28"
-PC_LABEL_DIM = "#7878a0"
-PC_LABEL_MID = "#44445a"
-PC_ACCENT = "#4f46e5"
-PC_ACCENT2 = "#7c3aed"
-PC_ACCENT2_HOVER = "#9f67fa"
-PC_SPINBOX_BG = "#ffffff"
-PC_BTN_BG = "#f1f5f9"
-PC_BTN_HOVER = "#e0e7ff"
-PC_BTN_PRESS = "#c7d2fe"
-PC_RESET_BG = "#f1f5f9"
-PC_RESET_HOVER = "#e2e8f0"
-PC_RESET_PRESS = "#cbd5e1"
+PC_BG             = "#131520"
+PC_HEADER_BG      = "#0e0f15"
+PC_HEADER_BG2     = "#131520"
+PC_FOOTER_BG      = "#131520"
+PC_GRID_BG        = "#1f2235"
+PC_CELL_BG        = "#272b40"
+PC_BORDER         = "#232640"
+PC_BORDER_MID     = "#2a2d45"
+PC_BORDER_FOCUS   = "#5b8ff9"
+PC_LABEL          = "#dde1f0"
+PC_LABEL_DIM      = "#4f5472"
+PC_LABEL_MID      = "#8890b0"
+PC_ACCENT         = "#5b8ff9"
+PC_ACCENT2        = "#4a7bef"
+PC_ACCENT2_HOVER  = "#6a9eff"
+PC_SPINBOX_BG     = "#191c2a"
+PC_BTN_BG         = "#1f2235"
+PC_BTN_HOVER      = "#1a2350"
+PC_BTN_PRESS      = "#363b58"
+PC_RESET_BG       = "#1f2235"
+PC_RESET_HOVER    = "#272b40"
+PC_RESET_PRESS    = "#363b58"
 
 # Plot colours
-CLR_PLOT_BG = "#ffffff"
-CLR_PLOT_GRID = "#e2e8f0"
-CLR_PLOT_AXIS = "#94a3b8"
-CLR_PLOT_PARTICLE = "#090707"
-CLR_PLOT_CENTER = "#CC7F1D"
-CLR_PLOT_DRAP = "#F5D1A1"
-CLR_PLOT_TRUE = "#16a34a"
-CLR_PLOT_PRED = "#e11d48"
-CLR_PLOT_MARKER = "#090707"
+CLR_PLOT_BG       = "#070810"
+CLR_PLOT_GRID     = "#1a1d2e"
+CLR_PLOT_AXIS     = "#363b58"
+CLR_PLOT_PARTICLE = "#f0f4ff"
+CLR_PLOT_CENTER   = "#e07a10"
+CLR_PLOT_DRAP     = "#7a5c30"
+CLR_PLOT_TRUE     = "#4ade80"
+CLR_PLOT_PRED     = "#f87171"
+CLR_PLOT_MARKER   = "#60a5fa"
 
 # Button palette aliases
-CLR_START_BG = CLR_GREEN_BG
+CLR_START_BG    = CLR_GREEN_BG
 CLR_START_HOVER = CLR_GREEN_HOVER
 CLR_START_PRESS = CLR_GREEN_PRESS
-CLR_PAUSE_BG = CLR_AMBER_BG
+CLR_PAUSE_BG    = CLR_AMBER_BG
 CLR_PAUSE_HOVER = CLR_AMBER_HOVER
 CLR_PAUSE_PRESS = CLR_AMBER_PRESS
-CLR_RESET_BG = CLR_SLATE_BG
+CLR_RESET_BG    = CLR_SLATE_BG
 CLR_RESET_HOVER = CLR_SLATE_HOVER
 CLR_RESET_PRESS = CLR_SLATE_PRESS
 
@@ -119,7 +119,7 @@ BTN_BASE = (
     "}}"
     "QPushButton:hover   {{ background-color: {hover}; border-color: {hover_border}; color: {hover_text}; }}"
     "QPushButton:pressed {{ background-color: {press}; }}"
-    "QPushButton:disabled {{ color: #b0b0ba; background-color: #ededf0; border-color: #dcdce6; }}"
+    "QPushButton:disabled {{ color: #363b58; background-color: #131520; border-color: #1e2135; }}"
 )
 
 START_STYLE = BTN_BASE.format(
@@ -128,7 +128,7 @@ START_STYLE = BTN_BASE.format(
     border=CLR_GREEN_BORDER,
     hover=CLR_GREEN,
     hover_border=CLR_GREEN,
-    hover_text="#ffffff",
+    hover_text="#000000",
     press=CLR_GREEN_PRESS,
 )
 PAUSE_STYLE = BTN_BASE.format(
@@ -137,7 +137,7 @@ PAUSE_STYLE = BTN_BASE.format(
     border=CLR_AMBER_BORDER,
     hover=CLR_AMBER,
     hover_border=CLR_AMBER,
-    hover_text="#ffffff",
+    hover_text="#000000",
     press=CLR_AMBER_PRESS,
 )
 RESET_STYLE = BTN_BASE.format(
@@ -145,7 +145,7 @@ RESET_STYLE = BTN_BASE.format(
     text=CLR_SLATE,
     border=CLR_SLATE_BORDER,
     hover=CLR_SLATE_HOVER,
-    hover_border=CLR_SURFACE1,
+    hover_border=CLR_SURFACE2,
     hover_text=CLR_TEXT,
     press=CLR_SLATE_PRESS,
 )
@@ -166,7 +166,7 @@ QWidget {{
 /* ── Top bar ─────────────────────────────────────────────────────── */
 QWidget#topBar {{
     background: qlineargradient(x1:0,y1:0,x2:0,y2:1,
-                    stop:0 #ffffff, stop:1 {CLR_TOPBAR_BG});
+                    stop:0 {CLR_MANTLE}, stop:1 {CLR_BASE});
     border-bottom: 1px solid {CLR_BORDER};
 }}
 QLabel#topBarTitle {{
@@ -185,6 +185,19 @@ QPushButton#closeBtn {{
 QPushButton#closeBtn:hover   {{ background-color: {CLR_RED}; border-color: {CLR_RED}; color: #ffffff; }}
 QPushButton#closeBtn:pressed {{ background-color: {CLR_RED_HOVER}; color: #ffffff; }}
 
+/* ── Libre nav bar ───────────────────────────────────────────────── */
+QWidget#libreNavBar {{
+    background-color: {CLR_MANTLE};
+    border-bottom: 1px solid {CLR_BORDER};
+}}
+QLabel#libreNavTitle {{
+    color: {CLR_SUBTEXT};
+    background: transparent;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}}
+
 /* ── Tab bar ─────────────────────────────────────────────────────── */
 QTabWidget::pane {{
     border: none;
@@ -197,7 +210,7 @@ QTabBar {{
 }}
 QTabBar::tab {{
     background-color: transparent;
-    color: {CLR_SURFACE2};
+    color: {CLR_DIM};
     padding: 10px 28px;
     border: none;
     border-bottom: 2px solid transparent;
@@ -213,7 +226,7 @@ QTabBar::tab:selected {{
 }}
 QTabBar::tab:hover:!selected {{
     color: {CLR_SUBTEXT};
-    background-color: {CLR_CRUST};
+    background-color: {CLR_SURFACE0};
 }}
 
 /* ── Scroll bars ─────────────────────────────────────────────────── */
@@ -223,7 +236,7 @@ QScrollBar:vertical {{
     margin: 2px 1px;
 }}
 QScrollBar::handle:vertical {{
-    background: {CLR_SURFACE1};
+    background: {CLR_SURFACE2};
     border-radius: 3px;
     min-height: 28px;
 }}
@@ -236,7 +249,7 @@ QScrollBar:horizontal {{
     margin: 1px 2px;
 }}
 QScrollBar::handle:horizontal {{
-    background: {CLR_SURFACE1};
+    background: {CLR_SURFACE2};
     border-radius: 3px;
     min-width: 28px;
 }}
@@ -246,9 +259,9 @@ QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {{ background: 
 
 /* ── Tooltip ─────────────────────────────────────────────────────── */
 QToolTip {{
-    background-color: {CLR_TEXT};
-    color: #ffffff;
-    border: none;
+    background-color: {CLR_CRUST};
+    color: {CLR_TEXT};
+    border: 1px solid {CLR_BORDER};
     border-radius: 6px;
     padding: 5px 10px;
     font-size: 12px;
@@ -291,8 +304,7 @@ PANEL_STYLE = f"""
 
 HINT_BAR_STYLE = f"""
     QWidget#hintBar {{
-        background: qlineargradient(x1:0,y1:0,x2:0,y2:1,
-                        stop:0 {CLR_BASE}, stop:1 {CLR_PANEL_BG});
+        background: {CLR_MANTLE};
         border-top: 1px solid {CLR_BORDER};
     }}
     QLabel#hintLabel {{
@@ -305,7 +317,7 @@ HINT_BAR_STYLE = f"""
     QPushButton#hintToggleBtn {{
         background-color: {CLR_ACCENT_LIGHT};
         color: {CLR_ACCENT};
-        border: 1.5px solid {CLR_ACCENT};
+        border: 1px solid {CLR_ACCENT};
         border-radius: 6px;
         padding: 3px 12px;
         font-size: 11px;
@@ -315,7 +327,7 @@ HINT_BAR_STYLE = f"""
     }}
     QPushButton#hintToggleBtn:hover {{
         background-color: {CLR_ACCENT};
-        color: #ffffff;
+        color: #000000;
         border-color: {CLR_ACCENT};
     }}
     QPushButton#hintToggleBtn:pressed {{
@@ -326,7 +338,7 @@ HINT_BAR_STYLE = f"""
 
 PLAYBACK_BAR_STYLE = f"""
     QWidget#playbackBar {{
-        background-color: {CLR_TOPBAR_BG};
+        background-color: {CLR_MANTLE};
         border-bottom: 1px solid {CLR_BORDER};
     }}
     QLabel#playbackTitle {{
@@ -338,14 +350,9 @@ PLAYBACK_BAR_STYLE = f"""
     }}
 """
 
-# Separator line used inside SimWidget (QFrame inline style replacement)
 SEPARATOR_STYLE = f"background: {CLR_BORDER}; border: none;"
-
-# Scroll area inside SimWidget
 SCROLL_AREA_STYLE = "border: none; background: transparent;"
-
-# Vertical separator inside the video controls strip (sits against the dark view)
-VIDEO_SEP_STYLE = f"background: {CLR_TEXT}; border: none;"
+VIDEO_SEP_STYLE = f"background: {CLR_BORDER}; border: none;"
 
 # ---------------------------------------------------------------------------
 # ParamControlWidget / ParamsController stylesheets
@@ -359,7 +366,7 @@ PARAM_CELL_STYLE = f"""
         color: {PC_LABEL_DIM};
         font-size: 10px;
         font-weight: 700;
-        letter-spacing: 0.8px;
+        letter-spacing: 0.6px;
         background: transparent;
     }}
     _NoScrollSpinBox, QDoubleSpinBox {{
@@ -394,7 +401,7 @@ PARAM_CELL_STYLE = f"""
         min-height: 24px;
         max-height: 24px;
     }}
-    QPushButton#stepBtn:hover   {{ background-color: {PC_BTN_HOVER}; color: {PC_LABEL}; border-color: {PC_BORDER_FOCUS}; }}
+    QPushButton#stepBtn:hover   {{ background-color: {PC_BTN_HOVER}; color: {PC_ACCENT}; border-color: {PC_BORDER_FOCUS}; }}
     QPushButton#stepBtn:pressed {{ background-color: {PC_BTN_PRESS}; color: {PC_LABEL}; }}
     QCheckBox {{
         color: {PC_LABEL};
@@ -429,7 +436,7 @@ PARAM_PANEL_STYLE = f"""
     }}
     QWidget#headerBar {{
         background: qlineargradient(x1:0,y1:0,x2:0,y2:1,
-                        stop:0 {PC_HEADER_BG}, stop:1 {PC_HEADER_BG2});
+                        stop:0 {PC_HEADER_BG2}, stop:1 {PC_HEADER_BG});
         border-top-left-radius: 10px;
         border-top-right-radius: 10px;
     }}
@@ -480,103 +487,5 @@ PARAM_CELL_OVERLAY = f"""
         background-color: {PC_CELL_BG};
         border: 1px solid {PC_BORDER_MID};
         border-radius: 7px;
-    }}
-"""
-
-# ---------------------------------------------------------------------------
-# Video player stylesheet
-# ---------------------------------------------------------------------------
-
-VIDEO_PLAYER_STYLE = f"""
-    QWidget#videoPlayerOuter {{
-        background-color: {CLR_MANTLE};
-    }}
-    QGraphicsView#videoView {{
-        background-color: #1c1c28;
-        border: none;
-        border-bottom: 1px solid {CLR_BORDER};
-    }}
-    QWidget#videoControls {{
-        background-color: {CLR_PANEL_BG};
-        border-top: 1px solid {CLR_BORDER};
-    }}
-    QFrame#videoSep {{
-        background: {CLR_BORDER};
-        border: none;
-    }}
-    QPushButton#videoBtn {{
-        background-color: {CLR_SLATE_BG};
-        color: {CLR_SLATE};
-        border: 1.5px solid {CLR_SLATE_BORDER};
-        border-radius: 7px;
-        padding: 6px 18px;
-        font-size: 12px;
-        font-weight: 600;
-        letter-spacing: 0.3px;
-        min-width: 72px;
-    }}
-    QPushButton#videoBtn:hover   {{ background-color: {CLR_SLATE}; color: #ffffff; border-color: {CLR_SLATE}; }}
-    QPushButton#videoBtn:pressed {{ background-color: {CLR_SLATE_PRESS}; color: #ffffff; }}
-    QPushButton#videoBtn:disabled {{
-        color: {CLR_SURFACE2};
-        background-color: {CLR_CRUST};
-        border-color: {CLR_BORDER_LIGHT};
-    }}
-    QPushButton#videoBtnPlay {{
-        background-color: {CLR_GREEN_BG};
-        color: {CLR_GREEN};
-        border: 1.5px solid {CLR_GREEN_BORDER};
-        border-radius: 7px;
-        padding: 6px 18px;
-        font-size: 12px;
-        font-weight: 700;
-        letter-spacing: 0.3px;
-        min-width: 80px;
-    }}
-    QPushButton#videoBtnPlay:hover   {{ background-color: {CLR_GREEN}; color: #ffffff; border-color: {CLR_GREEN}; }}
-    QPushButton#videoBtnPlay:pressed {{ background-color: {CLR_GREEN_PRESS}; color: #ffffff; }}
-    QPushButton#videoBtnLoad {{
-        background-color: {CLR_ACCENT_LIGHT};
-        color: {CLR_ACCENT};
-        border: 1.5px solid {CLR_ACCENT};
-        border-radius: 7px;
-        padding: 6px 18px;
-        font-size: 12px;
-        font-weight: 600;
-        letter-spacing: 0.3px;
-        min-width: 80px;
-    }}
-    QPushButton#videoBtnLoad:hover   {{ background-color: {CLR_ACCENT}; color: #ffffff; border-color: {CLR_ACCENT}; }}
-    QPushButton#videoBtnLoad:pressed {{ background-color: {CLR_ACCENT2}; color: #ffffff; }}
-    QSlider#videoSlider::groove:horizontal {{
-        height: 4px;
-        background: {CLR_SURFACE0};
-        border-radius: 2px;
-    }}
-    QSlider#videoSlider::handle:horizontal {{
-        background: {CLR_ACCENT};
-        border: 2px solid #ffffff;
-        width: 14px;
-        height: 14px;
-        margin: -5px 0;
-        border-radius: 7px;
-    }}
-    QSlider#videoSlider::handle:horizontal:hover {{ background: {CLR_ACCENT2}; }}
-    QSlider#videoSlider::sub-page:horizontal {{
-        background: {CLR_ACCENT};
-        border-radius: 2px;
-    }}
-    QLabel#videoTimeLabel {{
-        color: {CLR_DIM};
-        font-size: 11px;
-        background: transparent;
-        min-width: 90px;
-    }}
-    QLabel#videoPlaceholder {{
-        color: {CLR_SURFACE2};
-        font-size: 14px;
-        font-style: italic;
-        background: transparent;
-        letter-spacing: 0.3px;
     }}
 """

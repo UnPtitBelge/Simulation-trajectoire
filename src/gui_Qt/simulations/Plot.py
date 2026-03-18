@@ -4,8 +4,9 @@ from typing import Any
 
 from PySide6.QtCore import QObject, QTimer, Signal
 from utils.params import (
-    Simulation2dParams,
-    Simulation3dParams,
+    SimulationConeParams,
+    SimulationMCUParams,
+    SimulationMembraneParams,
     SimulationMLParams,
 )
 
@@ -33,7 +34,11 @@ class Plot(QObject):
     def __init__(
         self,
         sim_params: (
-            Simulation2dParams | Simulation3dParams | SimulationMLParams | None
+            SimulationMCUParams
+            | SimulationConeParams
+            | SimulationMembraneParams
+            | SimulationMLParams
+            | None
         ) = None,
         frame_ms: int = 100,
     ) -> None:

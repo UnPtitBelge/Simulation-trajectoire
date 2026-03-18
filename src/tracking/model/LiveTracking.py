@@ -1,3 +1,4 @@
+import collections
 import cv2
 import os
 
@@ -14,7 +15,7 @@ class LiveTracking:
         self.videoSource = videoSource
         self.width = width
         self.height = height
-        self.positions = []
+        self.positions = collections.deque(maxlen=20)
         self.records = []
 
         self.tb = TrackBall(ballColor=[204, 114, 234])
@@ -51,8 +52,6 @@ class LiveTracking:
         centre = self.tb.findBallFrame(frame)
         if centre is not None:
             self.positions.append(centre)
-
-        self.positions = self.positions[-20:]  # trajectoire courte
         for i in range(1, len(self.positions)):
             cv2.line(frame, self.positions[i-1], self.positions[i], (0,255,0), 2)
         return frame
