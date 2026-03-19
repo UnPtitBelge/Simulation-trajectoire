@@ -29,11 +29,14 @@ import pyqtgraph.opengl as gl
 from PySide6.QtGui import QColor, QKeySequence, QShortcut
 from simulations.Plot import Plot
 from utils.stylesheet import CLR_PLOT_CENTER, CLR_PLOT_PARTICLE, CLR_PLOT_BG
+from utils.ui_constants import (
+    SIM3D_TRAIL_CAP, SIM3D_TRAIL_SKIP, SIM3D_SPHERE_RES,
+    SIM3D_TRAIL_W, SIM3D_TRAIL_ALPHA,
+    SIM3D_POLAR_NR, SIM3D_POLAR_NPHI,
+    SIM3D_CAM_DIST, SIM3D_CAM_ELEV, SIM3D_CAM_AZ,
+)
 
 log = logging.getLogger(__name__)
-
-_TRAIL_CAP  = 500   # points max conservés dans le trait de trajectoire
-_TRAIL_SKIP = 3     # mettre à jour le trait tous les N frames
 
 
 def _hex_to_qcolor(h: str) -> QColor:
@@ -60,12 +63,12 @@ class Plot3dBase(Plot):
         self.sim_params = sim_params
 
         self.widget = gl.GLViewWidget()
-        self.widget.setCameraPosition(distance=5, elevation=25, azimuth=5)
+        self.widget.setCameraPosition(distance=SIM3D_CAM_DIST, elevation=SIM3D_CAM_ELEV, azimuth=SIM3D_CAM_AZ)
         self.widget.setBackgroundColor(_hex_to_qcolor(CLR_PLOT_BG))
 
         # Face indices are constant regardless of sphere radius or position;
         # pre-computing them avoids repeating the triangulation on every rebuild.
-        self._sphere_faces = self._generate_sphere_faces(32, 32)
+        self._sphere_faces = self._generate_sphere_faces(SIM3D_SPHERE_RES, SIM3D_SPHERE_RES)
 
         self.surface:         Optional[Any] = None
         self.center_sphere:   Optional[Any] = None
@@ -142,10 +145,10 @@ class Plot3dBase(Plot):
         self.particle_trace.resetTransform()
         self.particle_trace.translate(x, y, z + r)
 
-        # Trait de trajectoire : cappé à _TRAIL_CAP points, mis à jour tous les
-        # _TRAIL_SKIP frames pour éviter un setData croissant à chaque tick.
-        if self.show_trajectory_trail and frame_index % _TRAIL_SKIP == 0:
-            start = max(0, frame_index + 1 - _TRAIL_CAP)
+        # Trait de trajectoire : cappé à SIM3D_TRAIL_CAP points, mis à jour tous les
+        # SIM3D_TRAIL_SKIP frames pour éviter un setData croissant à chaque tick.
+        if self.show_trajectory_trail and frame_index % SIM3D_TRAIL_SKIP == 0:
+            start = max(0, frame_index + 1 - SIM3D_TRAIL_CAP)
             pts = np.column_stack((
                 self.trajectory_xs[start:frame_index + 1],
                 self.trajectory_ys[start:frame_index + 1],
@@ -153,8 +156,8 @@ class Plot3dBase(Plot):
             ))
             if self.trajectory_line is None:
                 self.trajectory_line = gl.GLLinePlotItem(
-                    pos=pts, color=(1.0, 1.0, 1.0, 0.5),
-                    width=2, antialias=True,
+                    pos=pts, color=(1.0, 1.0, 1.0, SIM3D_TRAIL_ALPHA),
+                    width=SIM3D_TRAIL_W, antialias=True,
                 )
                 self.widget.addItem(self.trajectory_line)
             else:
@@ -165,7 +168,11 @@ class Plot3dBase(Plot):
     # -----------------------------------------------------------------------
 
     def toggle_trajectory(self) -> None:
-        """Toggle the particle trail (Ctrl+T shortcut)."""
+        """Toggle the particle trail visibility (Ctrl+T shortcut).
+
+        When re-enabled the trail is rebuilt from the already-computed
+        trajectory data up to the current frame.
+        """
         self.show_trajectory_trail = not self.show_trajectory_trail
         if not self.show_trajectory_trail:
             if self.trajectory_line is not None:
@@ -175,15 +182,15 @@ class Plot3dBase(Plot):
                     pass
                 self.trajectory_line = None
         elif self.trajectory_xs:
-            start = max(0, self.current_frame - _TRAIL_CAP)
+            start = max(0, self.current_frame - SIM3D_TRAIL_CAP)
             pts = np.column_stack((
                 self.trajectory_xs[start:self.current_frame],
                 self.trajectory_ys[start:self.current_frame],
                 self.trajectory_zs[start:self.current_frame],
             ))
             self.trajectory_line = gl.GLLinePlotItem(
-                pos=pts, color=(1.0, 1.0, 1.0, 0.5),
-                width=2, antialias=True,
+                pos=pts, color=(1.0, 1.0, 1.0, SIM3D_TRAIL_ALPHA),
+                width=SIM3D_TRAIL_W, antialias=True,
             )
             self.widget.addItem(self.trajectory_line)
 
@@ -192,7 +199,12 @@ class Plot3dBase(Plot):
     # -----------------------------------------------------------------------
 
     def _draw_center_sphere(self) -> None:
-        """Rebuild the central sphere, equator flush with the surface."""
+        """Rebuild the central sphere, positioning its equator flush with the surface.
+
+        Removes the old ``center_sphere`` item (if any) and creates a new
+        ``GLMeshItem`` centred so that the sphere's equator sits at the
+        surface height ``_surface_z(center_radius)``.
+        """
         if self.center_sphere is not None:
             try:
                 self.widget.removeItem(self.center_sphere)
@@ -214,7 +226,11 @@ class Plot3dBase(Plot):
         self.widget.addItem(self.center_sphere)
 
     def _build_particle_mesh(self) -> None:
-        """Create the moving-particle GLMeshItem at the origin."""
+        """Create the moving-particle GLMeshItem placed at the world origin.
+
+        The mesh is not added to the widget here — ``_draw_initial_frame``
+        calls ``widget.addItem`` after calling this method.
+        """
         r = float(self.sim_params.particle_radius)
         self.particle_trace = gl.GLMeshItem(
             vertexes=self._sphere_verts_at(0.0, 0.0, 0.0, r),
@@ -234,8 +250,8 @@ class Plot3dBase(Plot):
         z_func,
         R: float,
         center_r: float,
-        n_r: int = 60,
-        n_phi: int = 120,
+        n_r: int = SIM3D_POLAR_NR,
+        n_phi: int = SIM3D_POLAR_NPHI,
     ) -> tuple[np.ndarray, np.ndarray]:
         """Construit un maillage circulaire en coordonnées polaires.
 
@@ -335,4 +351,9 @@ class Plot3dBase(Plot):
         return np.array(faces, dtype=np.uint32)
 
     def update_params(self, **kwargs) -> None:
+        """Update simulation parameters and recompute.
+
+        Delegates to ``Plot.update_params`` which applies the changes to
+        ``sim_params`` and re-runs ``setup_animation``.
+        """
         super().update_params(**kwargs)

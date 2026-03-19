@@ -60,17 +60,17 @@ MCU = SimulationMCUParams(
 
 CONE = SimulationConeParams(
     cone_slope     = 0.10,    # pente radiale constante [sans unité]
-    surface_radius = 0.80,    # rayon du bord [m]
-    center_radius  = 0.035,   # rayon de la sphère centrale [m]
+    surface_radius = 0.40,    # rayon du bord [m]  ← mesure réelle
+    center_radius  = 0.030,   # rayon de la sphère centrale [m]  ← mesure réelle
     time_step      = 0.010,   # pas d'intégration [s]
     num_steps      = 20_000,  # nombre maximum de pas
     g              = 9.810,   # accélération gravitationnelle [m/s²]
-    particle_radius = 0.010,  # rayon de la bille [m]
+    particle_radius = 0.005,  # rayon de la bille [m]  ← mesure réelle
     particle_mass   = 0.010,  # masse de la bille [kg]
-    x0            = 0.60,     # position initiale x [m]
-    y0            = 0.00,     # position initiale y [m]
-    v_i           = 0.60,     # vitesse initiale [m/s]
-    theta         = 88.0,     # angle de lancement [°] (quasi-tangentiel)
+    x0            = 0.00,     # position initiale x [m]  ← mesure réelle
+    y0            = 0.38,     # position initiale y [m]  ← mesure réelle (r = 0.38 m)
+    v_i           = 1.00,     # vitesse initiale [m/s]  ← mesure réelle
+    theta         = 90.0,     # angle de lancement [°] (tangentiel pur)  ← mesure réelle
     friction_coef = 0.012,    # coefficient de frottement cinétique μ
 )
 
@@ -88,17 +88,17 @@ CONE = SimulationConeParams(
 MEMBRANE = SimulationMembraneParams(
     surface_tension = 10.0,   # tension de la membrane T [N/m]
     center_weight   = 4.905,  # charge centrale F = 0.5 kg × g [N]
-    surface_radius  = 0.40,   # rayon du bord [m]
-    center_radius   = 0.035,  # rayon de la sphère centrale [m]
+    surface_radius  = 0.40,   # rayon du bord [m]  ← mesure réelle
+    center_radius   = 0.030,  # rayon de la sphère centrale [m]  ← mesure réelle
     time_step       = 0.010,  # pas d'intégration [s]
     num_steps       = 20_000, # nombre maximum de pas
     g               = 9.810,  # accélération gravitationnelle [m/s²]
-    particle_radius = 0.010,  # rayon de la bille [m]
+    particle_radius = 0.005,  # rayon de la bille [m]  ← mesure réelle
     particle_mass   = 0.010,  # masse de la bille [kg]
-    x0            = 0.30,     # position initiale x [m]  (r/R = 0.75)
-    y0            = 0.00,     # position initiale y [m]
-    v_i           = 0.60,     # vitesse initiale [m/s]   (identique au cône)
-    theta         = 88.0,     # angle de lancement [°]   (identique au cône)
+    x0            = 0.00,     # position initiale x [m]  ← mesure réelle
+    y0            = 0.38,     # position initiale y [m]  ← mesure réelle (r = 0.38 m)
+    v_i           = 1.00,     # vitesse initiale [m/s]   ← mesure réelle
+    theta         = 90.0,     # angle de lancement [°]   ← mesure réelle (tangentiel pur)
     friction_coef = 0.012,    # coefficient de frottement cinétique μ
 )
 

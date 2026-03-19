@@ -1,20 +1,26 @@
-"""Application entry point and main window.
+"""Point d'entrée et fenêtre principale de l'application.
 
 Modes
 -----
-Normal (default)    Maximised window, all tabs.
-``--presentation``  Fullscreen, tab bar hidden, keys 1–4 select and
-                    auto-start each simulation.
-``--libre``         Fullscreen with live info overlays on every simulation.
-``--debug``         Verbose logging to file and console.
+Normal (défaut)     Fenêtre maximisée, onglets LazyTabWidget.
+``--presentation``  Plein écran, simulation seule (aucun chrome),
+                    touches 1–4 pour naviguer, Ctrl+P pour les paramètres,
+                    Espace pour lancer/pause.
+``--libre``         Plein écran, interface MD3 avec rail de navigation,
+                    tableau de bord en temps réel, page scénarios.
+``--light``         Thème clair (forcé en mode libre).
+``--debug``         Journalisation détaillée.
 
-Tab layout
-----------
-1. 2D MCU         — uniform circular motion
-2. 3D Cône        — Newton cone (constant slope, semi-implicit Euler)
-3. 3D Membrane    — Laplace membrane (logarithmic surface, velocity-Verlet)
-4. Machine Learning — linear regression trajectory demo
-5. Vidéo          — real-world tracking video
+Architecture des modes
+----------------------
+Mode présentation
+    ``_PresentationSlot`` × 4 — chaque slot contient un plot + overlay
+    de chargement.  Les slots sont créés et préparés à la demande (lazy).
+    Aucune barre d'outils, aucun panneau de contrôle visible.
+
+Mode libre
+    ``LibreNavRail`` (80 px, gauche) + ``QStackedWidget`` (droite).
+    Stack : 4 × ``LibreSimPage`` + 1 × ``ScenariosPage`` (toutes lazy).
 """
 from __future__ import annotations
 
@@ -22,155 +28,136 @@ import argparse
 import logging
 import signal
 import sys
-from collections.abc import Callable
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QFont, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QMainWindow,
     QPushButton,
     QSizePolicy,
-    QTabWidget,
+    QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
+
+from utils import stylesheet as _ss
 from utils.logger import get_log_path, setup_logging
+from utils.ui_constants import (
+    TOPBAR_H, TOPBAR_TITLE_PT, TOPBAR_LETTER_SP, TOPBAR_MARGINS,
+    CLOSE_W, CLOSE_H, APP_FONT_FAMILY, APP_FONT_PT,
+)
+from utils.ui_strings import WINDOW_TITLE, TOPBAR_TITLE, CLOSE_BTN, TAB_MCU, TAB_CONE, TAB_MEMBRANE, TAB_ML
 
 log = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Libre mode navigation bar
+# Mode présentation — slot de simulation (plot + overlay)
 # ---------------------------------------------------------------------------
 
-class _LibreNavBar(QWidget):
-    """Barre de navigation du mode libre : question + 4 boutons-onglets."""
+class _PrepareWorker(QThread):
+    """Exécute ``_prepare_simulation()`` hors du thread principal."""
 
-    tab_selected = Signal(int)
+    done = Signal()
 
-    _LABELS = ["2D MCU", "3D Cône", "3D Membrane", "ML"]
-    _COLORS = ["#06d6a0", "#ff6b35", "#118ab2", "#ef476f"]
+    def __init__(self, plot) -> None:
+        super().__init__()
+        self._plot = plot
 
-    def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self.setFixedHeight(48)
-        self.setObjectName("libreNavBar")
-        self._btns: list[QPushButton] = []
-
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(16, 0, 16, 0)
-        layout.setSpacing(0)
-
-        question = QLabel("Comment les ordinateurs simulent la réalité ?")
-        question.setObjectName("libreNavTitle")
-        layout.addWidget(question)
-        layout.addStretch()
-
-        btn_container = QWidget()
-        btn_container.setStyleSheet("background: transparent;")
-        bc = QHBoxLayout(btn_container)
-        bc.setContentsMargins(0, 0, 0, 0)
-        bc.setSpacing(6)
-
-        for i, (label, color) in enumerate(zip(self._LABELS, self._COLORS)):
-            btn = QPushButton(label)
-            btn.setCheckable(True)
-            btn.setChecked(i == 0)
-            btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-            btn.setFixedHeight(32)
-            btn.clicked.connect(lambda checked, idx=i: self.tab_selected.emit(idx))
-            self._btns.append(btn)
-            bc.addWidget(btn)
-
-        layout.addWidget(btn_container)
-        self._refresh_styles(0)
-
-    def set_active(self, idx: int) -> None:
-        for btn in self._btns:
-            btn.setChecked(False)
-        if 0 <= idx < len(self._btns):
-            self._btns[idx].setChecked(True)
-        self._refresh_styles(idx)
-
-    def _refresh_styles(self, active: int) -> None:
-        for i, (btn, color) in enumerate(zip(self._btns, self._COLORS)):
-            if btn.isChecked():
-                btn.setStyleSheet(
-                    f"QPushButton {{ background: {color}22; color: {color}; "
-                    f"border: 1px solid {color}; border-radius: 6px; "
-                    f"font-size: 11px; font-weight: 700; padding: 4px 14px; min-width: 0; }}"
-                )
-            else:
-                btn.setStyleSheet(
-                    f"QPushButton {{ background: transparent; color: #4f5472; "
-                    f"border: 1px solid #232640; border-radius: 6px; "
-                    f"font-size: 11px; padding: 4px 14px; min-width: 0; }}"
-                    f"QPushButton:hover {{ color: {color}; border-color: {color}44; }}"
-                )
+    def run(self) -> None:
+        self._plot._prepare_simulation()
+        self.done.emit()
 
 
-# ---------------------------------------------------------------------------
-# Lazy tab widget
-# ---------------------------------------------------------------------------
+class _PresentationSlot(QWidget):
+    """Slot de simulation pour le mode présentation.
 
-class LazyTabWidget(QTabWidget):
-    """QTabWidget that defers widget construction until a tab is first shown.
+    Affiche uniquement le ``plot.widget`` (plein espace), sans aucun
+    chrome applicatif.  Une barre de chargement semi-transparente couvre
+    la zone jusqu'à la fin de la préparation.
 
-    Each tab is registered with a factory callable.  The factory is
-    invoked once — on first activation — and its result replaces the
-    placeholder widget.  This keeps startup fast even when some simulations
-    require several seconds of computation.
+    Attributs publics
+    -----------------
+    plot : Plot
+        Backend de simulation.
+    sim_key : str
+        Clé JSON du slot (``"mcu"``, ``"cone"``, ``"membrane"``, ``"ml"``).
     """
 
-    def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self._factories: dict[int, Callable[[], QWidget]] = {}
-        self._swapping = False
-        self.currentChanged.connect(self._on_tab_changed)
+    def __init__(self, sim_key: str, plot) -> None:
+        super().__init__()
+        self.sim_key = sim_key
+        self.plot = plot
+        self.setStyleSheet("background: #000000;")
 
-    def addLazyTab(self, factory: Callable[[], QWidget], label: str) -> None:
-        """Register a tab factory.  The tab shows a blank placeholder until activated."""
-        placeholder = QWidget()
-        index = self.addTab(placeholder, label)
-        self._factories[index] = factory
-        log.debug("Lazy tab registered — index=%d label=%r", index, label)
+        grid = QGridLayout(self)
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.addWidget(self.plot.widget, 0, 0)
 
-    def _on_tab_changed(self, index: int) -> None:
-        if self._swapping or index not in self._factories:
+        self._loading = QWidget()
+        self._loading.setStyleSheet("background: rgba(0,0,0,220);")
+        ll = QVBoxLayout(self._loading)
+        ll.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl = QLabel("Calcul en cours…")
+        lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl.setStyleSheet("color: #ffffff; font-size: 16px; background: transparent;")
+        ll.addWidget(lbl)
+        grid.addWidget(self._loading, 0, 0)
+
+        self._worker = _PrepareWorker(self.plot)
+        self._worker.done.connect(self._on_ready)
+        self._worker.finished.connect(self._worker.deleteLater)
+        self._worker.start()
+
+    def _on_ready(self) -> None:
+        self.plot._prepared = True
+        self.plot.current_frame = 0
+        self.plot._draw_initial_frame()
+        self._loading.setVisible(False)
+        self._worker = None
+        log.info("_PresentationSlot prêt — %s", self.sim_key)
+
+    def space_pressed(self) -> None:
+        """Gère Espace : lance/pause selon l'état courant.
+
+        Si le plot n'est pas encore préparé (paramètres modifiés avec
+        Ctrl+P), recalcule la simulation en synchrone avant de démarrer.
+        """
+        if not self.plot._prepared:
+            # Paramètres ont changé → recalcul synchrone (acceptable en
+            # mode présentation où le présentateur contrôle l'exécution).
+            self.plot.setup_animation()
+            self.plot._prepared = True
+            self._loading.setVisible(False)
+            self.plot.start_animation()
             return
-        label   = self.tabText(index)
-        factory = self._factories.pop(index)
-        log.info("Building tab — index=%d label=%r", index, label)
-        widget  = factory()
-        self._swapping = True
-        self.removeTab(index)
-        self.insertTab(index, widget, label)
-        self.setCurrentIndex(index)
-        self._swapping = False
 
-    def preload_all(self) -> None:
-        """Build all pending tabs immediately, keep tab 0 selected."""
-        for index in sorted(self._factories.keys()):
-            label   = self.tabText(index)
-            factory = self._factories.pop(index)
-            widget  = factory()
-            self._swapping = True
-            self.removeTab(index)
-            self.insertTab(index, widget, label)
-            self._swapping = False
-        self.setCurrentIndex(0)
-        log.info("All tabs preloaded")
+        if self.plot.animation_timer.isActive():
+            self.plot.stop_animation()
+        else:
+            # Redémarre depuis le début
+            self.plot.reset_animation()
+            self.plot.start_animation()
+
+    def activate(self) -> None:
+        """Appelé lors du passage vers ce slot (optionnel : auto-start)."""
+        pass  # Le démarrage est volontaire (Espace)
+
+    def deactivate(self) -> None:
+        """Arrête l'animation quand on quitte ce slot."""
+        self.plot.stop_animation()
 
 
 # ---------------------------------------------------------------------------
-# Main window
+# Fenêtre principale
 # ---------------------------------------------------------------------------
 
 class MainWindow(QMainWindow):
-    """Top-level application window."""
+    """Fenêtre principale gérant les trois modes d'affichage."""
 
     def __init__(
         self,
@@ -180,46 +167,267 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.presentation_mode = presentation_mode
         self.libre_mode = libre_mode
-        self.setWindowTitle("Models & Simulations")
-
-        # Charger les configs de conditions initiales une seule fois.
-        # En mode normal les deux restent None → les Plot utilisent leurs défauts.
-        self._pconf = None
-        self._lconf = None
-        if presentation_mode:
-            from utils import presentation_config
-            self._pconf = presentation_config
-            log.info("Presentation mode — config loaded from utils.presentation_config")
-        elif libre_mode:
-            from utils import libre_config
-            self._lconf = libre_config
-            log.info("Libre mode — config loaded from utils.libre_config")
+        self.setWindowTitle(WINDOW_TITLE)
 
         container = QWidget()
         self.setCentralWidget(container)
-
         root = QVBoxLayout(container)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        # ── Top bar ───────────────────────────────────────────────────────
+        if presentation_mode:
+            self._build_presentation_mode(root)
+        elif libre_mode:
+            self._build_libre_mode(root)
+        else:
+            self._build_normal_mode(root)
+
+        log.info(
+            "MainWindow prête — presentation=%s libre=%s",
+            presentation_mode, libre_mode,
+        )
+
+    # =========================================================================
+    # Mode présentation
+    # =========================================================================
+
+    def _build_presentation_mode(self, root: QVBoxLayout) -> None:
+        """Construit l'interface de présentation : simulation seule + raccourcis."""
+        from utils import config_manager as _cfg
+        from simulations.sim2d.PlotMCU import PlotMCU
+        from simulations.sim3d.PlotCone import PlotCone
+        from simulations.sim3d.PlotMembrane import PlotMembrane
+        from simulations.simML.PlotML import PlotML
+
+        # Créer les 4 plots depuis les fichiers de config JSON.
+        plots = [
+            PlotMCU(_cfg.load_params("mcu")),
+            PlotCone(_cfg.load_params("cone")),
+            PlotMembrane(_cfg.load_params("membrane")),
+            PlotML(_cfg.load_params("ml")),
+        ]
+        keys = ["mcu", "cone", "membrane", "ml"]
+
+        # Un QStackedWidget avec 4 slots.
+        self._pres_stack = QStackedWidget()
+        self._pres_slots: list[_PresentationSlot] = []
+        for key, plot in zip(keys, plots):
+            slot = _PresentationSlot(key, plot)
+            self._pres_slots.append(slot)
+            self._pres_stack.addWidget(slot)
+
+        root.addWidget(self._pres_stack, stretch=1)
+        self._pres_current_idx = 0
+
+        self._setup_presentation_shortcuts()
+        log.info("Mode présentation — 4 slots créés")
+
+    def _setup_presentation_shortcuts(self) -> None:
+        ctx = Qt.ShortcutContext.ApplicationShortcut
+
+        # 1–4 : changer de simulation
+        for key, idx in [("1", 0), ("2", 1), ("3", 2), ("4", 3)]:
+            QShortcut(QKeySequence(key), self, context=ctx).activated.connect(
+                lambda i=idx: self._pres_switch(i)
+            )
+
+        # Espace : lancer / pause
+        QShortcut(QKeySequence("Space"), self, context=ctx).activated.connect(
+            self._pres_space
+        )
+
+        # Ctrl+P : dialogue de paramètres
+        QShortcut(QKeySequence("Ctrl+P"), self, context=ctx).activated.connect(
+            self._pres_open_config
+        )
+
+        # Échap : quitter
+        QShortcut(QKeySequence("Esc"), self, context=ctx).activated.connect(
+            QApplication.quit
+        )
+
+    def _pres_switch(self, idx: int) -> None:
+        """Passe au slot *idx* (0-basé) en arrêtant l'animation courante."""
+        if idx == self._pres_current_idx:
+            return
+        self._pres_slots[self._pres_current_idx].deactivate()
+        self._pres_current_idx = idx
+        self._pres_stack.setCurrentIndex(idx)
+        self._pres_slots[idx].activate()
+        log.debug("Présentation — slot actif : %d", idx)
+
+    def _pres_space(self) -> None:
+        """Délègue la pression d'Espace au slot courant."""
+        self._pres_slots[self._pres_current_idx].space_pressed()
+
+    def _pres_open_config(self) -> None:
+        """Ouvre le dialogue Ctrl+P pour les conditions initiales."""
+        from widgets.PresentationConfigDialog import PresentationConfigDialog
+        slot = self._pres_slots[self._pres_current_idx]
+        dlg = PresentationConfigDialog(slot.sim_key, slot.plot, parent=self)
+        dlg.exec()
+        # Après "Appliquer" : _prepared = False (mis par le dialogue).
+        # L'utilisateur appuie sur Espace pour relancer.
+
+    # =========================================================================
+    # Mode libre (MD3)
+    # =========================================================================
+
+    def _build_libre_mode(self, root: QVBoxLayout) -> None:
+        """Construit l'interface MD3 : rail de navigation + pages lazy."""
+        from utils import libre_config
+        from utils.libre_config import SCENARIOS, SIM_TYPE_ORDER, CONTENT
+        from widgets.LibreNavRail import LibreNavRail
+
+        # Le mode libre impose le thème clair MD3.
+        _ss.set_theme(light=True)
+
+        content_area = QWidget()
+        content_area.setStyleSheet(f"background: {_ss.MD3_BG};")
+        outer = QHBoxLayout(content_area)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+
+        # Rail de navigation gauche
+        self._nav_rail = LibreNavRail()
+        outer.addWidget(self._nav_rail)
+
+        # Stack de contenu (4 pages sim + 1 page scénarios)
+        self._lib_stack = QStackedWidget()
+        self._lib_stack.setStyleSheet(f"background: {_ss.MD3_BG};")
+        outer.addWidget(self._lib_stack, stretch=1)
+
+        root.addWidget(content_area, stretch=1)
+
+        # Pages lazies — None jusqu'au premier accès.
+        self._libre_pages: list[object | None] = [None] * 4  # sim pages
+        self._scenarios_page = None
+        self._lib_placeholders: list[QWidget] = []
+
+        # Créer des placeholders légers dans le stack.
+        for _ in range(5):
+            ph = QWidget()
+            ph.setStyleSheet(f"background: {_ss.MD3_BG};")
+            self._lib_stack.addWidget(ph)
+            self._lib_placeholders.append(ph)
+
+        # Connexions rail ↔ stack
+        self._nav_rail.page_selected.connect(self._libre_switch)
+        self._nav_rail.exit_requested.connect(QApplication.quit)
+
+        # Raccourcis clavier
+        ctx = Qt.ShortcutContext.ApplicationShortcut
+        for key, idx in [("1", 0), ("2", 1), ("3", 2), ("4", 3)]:
+            QShortcut(QKeySequence(key), self, context=ctx).activated.connect(
+                lambda i=idx: self._libre_switch(i)
+            )
+        QShortcut(QKeySequence("Esc"), self, context=ctx).activated.connect(
+            QApplication.quit
+        )
+
+        # Charger la première page de simulation par défaut.
+        self._libre_switch(0)
+        log.info("Mode libre — interface MD3 construite")
+
+    def _libre_switch(self, page_idx: int) -> None:
+        """Navigue vers la page *page_idx* (0–3 = sim, 4 = scénarios)."""
+        from utils import libre_config
+        from utils.libre_config import SCENARIOS, SIM_TYPE_ORDER, CONTENT
+
+        self._nav_rail.set_active(page_idx)
+
+        if page_idx < 4:
+            # Page simulation
+            if self._libre_pages[page_idx] is None:
+                stype = SIM_TYPE_ORDER[page_idx]
+                params = libre_config.fresh(
+                    [libre_config.MCU, libre_config.CONE,
+                     libre_config.MEMBRANE, libre_config.ML][page_idx]
+                )
+                from widgets.LibreSimPage import LibreSimPage
+                page = LibreSimPage(stype, params, CONTENT[stype])
+                self._libre_pages[page_idx] = page
+                # Remplacer le placeholder dans le stack
+                ph = self._lib_placeholders[page_idx]
+                idx_in_stack = self._lib_stack.indexOf(ph)
+                self._lib_stack.removeWidget(ph)
+                self._lib_stack.insertWidget(idx_in_stack, page)
+                ph.deleteLater()
+                self._lib_placeholders[page_idx] = page  # keep ref
+                log.debug("LibreSimPage créée — type=%s", stype)
+
+            self._lib_stack.setCurrentWidget(self._libre_pages[page_idx])
+
+        else:
+            # Page scénarios
+            if self._scenarios_page is None:
+                from widgets.ScenariosPage import ScenariosPage
+                self._scenarios_page = ScenariosPage(SCENARIOS, SIM_TYPE_ORDER)
+                self._scenarios_page.scenario_launch_requested.connect(
+                    self._on_scenario_launch
+                )
+                ph = self._lib_placeholders[4]
+                idx_in_stack = self._lib_stack.indexOf(ph)
+                self._lib_stack.removeWidget(ph)
+                self._lib_stack.insertWidget(idx_in_stack, self._scenarios_page)
+                ph.deleteLater()
+                self._lib_placeholders[4] = self._scenarios_page
+                log.debug("ScenariosPage créée")
+
+            self._lib_stack.setCurrentWidget(self._scenarios_page)
+
+    def _on_scenario_launch(self, type_idx: int, scen_idx: int) -> None:
+        """Charge le scénario dans la page de simulation et y navigue.
+
+        Parameters
+        ----------
+        type_idx : int
+            Index du type de simulation (0 = MCU, 1 = Cône, …).
+        scen_idx : int
+            Index du scénario au sein du groupe de ce type.
+        """
+        from utils.libre_config import SCENARIOS, SIM_TYPE_ORDER
+        import dataclasses
+
+        stype = SIM_TYPE_ORDER[type_idx]
+        type_scenarios = [s for s in SCENARIOS if s.sim_type == stype]
+        if scen_idx >= len(type_scenarios):
+            return
+
+        scenario = type_scenarios[scen_idx]
+        params = dataclasses.replace(scenario.params)
+
+        # S'assurer que la page est construite, puis recharger.
+        self._libre_switch(type_idx)
+        page = self._libre_pages[type_idx]
+        if page is not None:
+            page.reload_with_params(params)
+
+        log.info(
+            "Scénario lancé — %s / %s", stype, scenario.title
+        )
+
+    # =========================================================================
+    # Mode normal (onglets)
+    # =========================================================================
+
+    def _build_normal_mode(self, root: QVBoxLayout) -> None:
+        """Construit l'interface normale avec barre supérieure et onglets."""
+        # Barre supérieure
         top_bar = QWidget()
         top_bar.setObjectName("topBar")
-        if presentation_mode or libre_mode:
-            top_bar.setVisible(False)
-        else:
-            top_bar.setFixedHeight(38)
+        top_bar.setFixedHeight(TOPBAR_H)
 
         tb_layout = QHBoxLayout(top_bar)
-        tb_layout.setContentsMargins(14, 0, 8, 0)
+        tb_layout.setContentsMargins(*TOPBAR_MARGINS)
         tb_layout.setSpacing(0)
 
-        title_label = QLabel("⬡  Models & Simulations")
+        title_label = QLabel(TOPBAR_TITLE)
         title_label.setObjectName("topBarTitle")
         title_font = QFont()
-        title_font.setPointSize(11)
+        title_font.setPointSize(TOPBAR_TITLE_PT)
         title_font.setWeight(QFont.Weight.DemiBold)
-        title_font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, 0.6)
+        title_font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, TOPBAR_LETTER_SP)
         title_label.setFont(title_font)
         tb_layout.addWidget(title_label)
 
@@ -227,139 +435,64 @@ class MainWindow(QMainWindow):
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         tb_layout.addWidget(spacer)
 
-        close_btn = QPushButton("✕  Close")
+        close_btn = QPushButton(CLOSE_BTN)
         close_btn.setObjectName("closeBtn")
-        close_btn.setFixedSize(96, 28)
+        close_btn.setFixedSize(CLOSE_W, CLOSE_H)
         close_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        close_btn.clicked.connect(self._on_close_clicked)
+        close_btn.clicked.connect(QApplication.quit)
         tb_layout.addWidget(close_btn)
 
         root.addWidget(top_bar)
 
-        # ── Libre nav bar (libre mode only) ───────────────────────────────
-        if libre_mode:
-            self._libre_nav = _LibreNavBar()
-            root.addWidget(self._libre_nav)
-
-        # ── Tab widget ────────────────────────────────────────────────────
+        # Onglets lazy
+        from widgets.ScenarioHub import LazyTabWidget
         self.tabs = LazyTabWidget()
-        if presentation_mode:
-            self.tabs.tabBar().hide()
-            self.tabs.setStyleSheet("background-color: #000000;")
-        elif libre_mode:
-            self.tabs.tabBar().hide()
-
-        lm = libre_mode  # shorthand for lambdas below
-        self.tabs.addLazyTab(lambda: self._make_mcu(lm),      "2D MCU")
-        self.tabs.addLazyTab(lambda: self._make_cone(lm),     "3D Cône")
-        self.tabs.addLazyTab(lambda: self._make_membrane(lm), "3D Membrane")
-        self.tabs.addLazyTab(lambda: self._make_ml(lm),       "Machine Learning")
-
+        self.tabs.addLazyTab(self._make_mcu,      TAB_MCU)
+        self.tabs.addLazyTab(self._make_cone,     TAB_CONE)
+        self.tabs.addLazyTab(self._make_membrane, TAB_MEMBRANE)
+        self.tabs.addLazyTab(self._make_ml,       TAB_ML)
         root.addWidget(self.tabs, stretch=1)
+        self.tabs._on_tab_changed(1)  # Cône par défaut
 
-        if libre_mode:
-            self._libre_nav.tab_selected.connect(self._switch_and_run)
-            self.tabs.currentChanged.connect(self._libre_nav.set_active)
-
-        # Build the first visible tab immediately.
-        # Mode présentation : MCU en premier (le présentateur navigue avec 1-4).
-        # Mode libre        : MCU en premier (auto-start intégré dans SimWidget).
-        # Mode normal        : 3D Cône par défaut.
-        if presentation_mode or libre_mode:
-            self.tabs._on_tab_changed(0)
-        else:
-            self.tabs._on_tab_changed(1)
-
-        log.info("MainWindow ready")
-
-        if presentation_mode:
-            self._setup_presentation_shortcuts()
-        if libre_mode:
-            self._setup_libre_shortcuts()
-
-    # ── Presentation-mode keyboard shortcuts ─────────────────────────────
-
-    def _setup_presentation_shortcuts(self) -> None:
         ctx = Qt.ShortcutContext.ApplicationShortcut
-        for key, idx in [("1", 0), ("2", 1), ("3", 2), ("4", 3)]:
-            QShortcut(QKeySequence(key), self, context=ctx).activated.connect(
-                lambda i=idx: self._switch_and_run(i)
-            )
-        QShortcut(
-            QKeySequence("Esc"), self, context=ctx
-        ).activated.connect(self._on_close_clicked)
+        QShortcut(QKeySequence("Esc"), self, context=ctx).activated.connect(
+            QApplication.quit
+        )
 
-    def _setup_libre_shortcuts(self) -> None:
-        ctx = Qt.ShortcutContext.ApplicationShortcut
-        for key, idx in [("1", 0), ("2", 1), ("3", 2), ("4", 3)]:
-            QShortcut(QKeySequence(key), self, context=ctx).activated.connect(
-                lambda i=idx: self._switch_and_run(i)
-            )
-        QShortcut(
-            QKeySequence("Esc"), self, context=ctx
-        ).activated.connect(self._on_close_clicked)
+    # ── Factories onglets normaux ──────────────────────────────────────────
 
-    def _switch_and_run(self, index: int) -> None:
-        """Pause current tab, switch, then start the new tab."""
-        current = self.tabs.currentWidget()
-        if current is not None and current is not self.tabs.widget(index):
-            if hasattr(current, "plot") and hasattr(current.plot, "animation_timer"):
-                if current.plot.animation_timer.isActive():
-                    current.plot.stop_animation()
-                    current.pause_button.setText("▶  Resume")
-
-        self.tabs.setCurrentIndex(index)
-        self.tabs._on_tab_changed(index)   # build if not yet built
-
-        widget = self.tabs.currentWidget()
-        if hasattr(widget, "reset_animation") and hasattr(widget, "start_animation"):
-            widget.reset_animation()
-            widget.start_animation()
-
-    # ── Tab factory methods ───────────────────────────────────────────────
-
-    def _params(self, key: str):
-        """Retourne les paramètres scriptés selon le mode actif, ou None."""
-        if self._pconf:
-            return self._pconf.fresh(getattr(self._pconf, key.upper()))
-        if self._lconf:
-            return self._lconf.fresh(getattr(self._lconf, key.upper()))
-        return None
-
-    def _make_mcu(self, libre_mode: bool = False) -> QWidget:
+    def _make_mcu(self) -> QWidget:
+        from utils import presentation_config as pc
         from simulations.sim2d.PlotMCU import PlotMCU
         from widgets.SimWidget import SimWidgetMCU
-        return SimWidgetMCU(PlotMCU(self._params("mcu")), libre_mode=libre_mode)
+        return SimWidgetMCU(PlotMCU(pc.fresh(pc.MCU)))
 
-    def _make_cone(self, libre_mode: bool = False) -> QWidget:
+    def _make_cone(self) -> QWidget:
+        from utils import presentation_config as pc
         from simulations.sim3d.PlotCone import PlotCone
         from widgets.SimWidget import SimWidget3d
-        return SimWidget3d(PlotCone(self._params("cone")), libre_mode=libre_mode)
+        return SimWidget3d(PlotCone(pc.fresh(pc.CONE)))
 
-    def _make_membrane(self, libre_mode: bool = False) -> QWidget:
+    def _make_membrane(self) -> QWidget:
+        from utils import presentation_config as pc
         from simulations.sim3d.PlotMembrane import PlotMembrane
         from widgets.SimWidget import SimWidget3d
-        return SimWidget3d(PlotMembrane(self._params("membrane")), libre_mode=libre_mode)
+        return SimWidget3d(PlotMembrane(pc.fresh(pc.MEMBRANE)))
 
-    def _make_ml(self, libre_mode: bool = False) -> QWidget:
+    def _make_ml(self) -> QWidget:
+        from utils import presentation_config as pc
         from simulations.simML.PlotML import PlotML
         from widgets.SimWidget import SimWidgetML
-        return SimWidgetML(PlotML(self._params("ml")), libre_mode=libre_mode)
-
-    # ── Close ─────────────────────────────────────────────────────────────
-
-    def _on_close_clicked(self) -> None:
-        log.info("Close — quitting")
-        QApplication.quit()
+        return SimWidgetML(PlotML(pc.fresh(pc.ML)))
 
 
 # ---------------------------------------------------------------------------
-# Entry point
+# Point d'entrée
 # ---------------------------------------------------------------------------
 
 def handle_interrupt(signum, frame) -> None:
-    log.info("SIGINT received — shutting down")
-    print("\nShutting down…")
+    log.info("SIGINT reçu — fermeture")
+    print("\nFermeture…")
     QApplication.quit()
 
 
@@ -368,20 +501,23 @@ def main() -> None:
     parser.add_argument("--debug",        action="store_true")
     parser.add_argument("--presentation", action="store_true")
     parser.add_argument("--libre",        action="store_true")
+    parser.add_argument("--light",        action="store_true")
     args, remaining = parser.parse_known_args()
 
     setup_logging(debug=args.debug)
     log.info(
-        "Starting — debug=%s presentation=%s libre=%s  log=%s",
-        args.debug, args.presentation, args.libre, get_log_path(),
+        "Démarrage — debug=%s presentation=%s libre=%s light=%s  log=%s",
+        args.debug, args.presentation, args.libre, args.light, get_log_path(),
     )
 
+    # Appliquer le thème AVANT toute création de widget.
+    # Le mode libre force toujours le thème clair (MD3).
+    _ss.set_theme(light=args.light or args.libre)
+
     app = QApplication(remaining)
+    app.setStyleSheet(_ss.APP_STYLESHEET)
 
-    from utils.stylesheet import APP_STYLESHEET
-    app.setStyleSheet(APP_STYLESHEET)
-
-    font = QFont("Inter", 10)
+    font = QFont(APP_FONT_FAMILY, APP_FONT_PT)
     font.setStyleHint(QFont.StyleHint.SansSerif)
     app.setFont(font)
 

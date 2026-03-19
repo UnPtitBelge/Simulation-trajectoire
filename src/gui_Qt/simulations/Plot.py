@@ -1,3 +1,22 @@
+"""Plot.py — Abstract base class for all simulation plot backends.
+
+``Plot`` is a QObject that owns:
+* a ``widget`` (the pyqtgraph / OpenGL rendering surface),
+* an ``animation_timer`` that fires ``_update_frame`` each tick,
+* ``_prepare_simulation()`` — runs once (off the main thread via SimWidget's
+  worker) to compute all trajectory data and set ``_n_frames``.
+
+Subclass contract
+-----------------
+Concrete subclasses must implement:
+* ``_prepare_simulation()`` — populate trajectory data and set ``_n_frames``.
+* ``_update_frame(frame_index)`` — render the visual state for that frame.
+
+Optional override:
+* ``_draw_initial_frame()`` — draw static geometry then call
+  ``_update_frame(0)``; the base implementation calls ``_update_frame(0)``
+  directly.
+"""
 import logging
 from abc import ABC, abstractmethod
 from typing import Any

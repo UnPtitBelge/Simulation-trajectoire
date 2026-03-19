@@ -37,21 +37,18 @@ from simulations.sim2d.PlotMCU import PlotMCU
 from simulations.sim3d.Plot3dBase import Plot3dBase
 from simulations.simML.PlotML import PlotML
 from utils.params_controller import ParamsController
-from utils.stylesheet import (
-    HINT_BAR_STYLE,
-    PANEL_STYLE,
-    PAUSE_STYLE,
-    PLAYBACK_BAR_STYLE,
-    RESET_STYLE,
-    SCROLL_AREA_STYLE,
-    SEPARATOR_STYLE,
-    START_STYLE,
+from utils import stylesheet as _ss
+from utils.ui_constants import (
+    SIM_PANEL_MAX_H, SIM_HINT_H, SIM_HINT_BTN_H, SIM_HINT_MARGINS,
+    SIM_HINT_SPACING, SIM_PLAYBACK_H, SIM_PLAYBACK_MARGINS, SIM_PLAYBACK_SPACING,
+    SIM_SEP_H, SIM_PARAMS_MARGINS, SIM_PARAMS_SPACING, SIM_LOADING_FS,
+)
+from utils.ui_strings import (
+    LOADING_TEXT, HINT_TEXT, CONTROLS_BTN, PLAYBACK_TITLE,
+    START_BTN, PAUSE_BTN, RESUME_BTN, RESET_BTN,
 )
 
 log = logging.getLogger(__name__)
-
-# Maximum height the control-panel scroll area is allowed to grow to.
-_PANEL_MAX_HEIGHT = 520
 
 
 # ---------------------------------------------------------------------------
@@ -83,9 +80,9 @@ def _make_panel_scroll(controls_widget: QWidget) -> QScrollArea:
     scroll.setWidgetResizable(True)
     scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
     scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-    scroll.setMaximumHeight(_PANEL_MAX_HEIGHT)
+    scroll.setMaximumHeight(SIM_PANEL_MAX_H)
     scroll.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-    scroll.setStyleSheet(SCROLL_AREA_STYLE)
+    scroll.setStyleSheet(_ss.SCROLL_AREA_STYLE)
     scroll.setVisible(False)
     return scroll
 
@@ -141,10 +138,11 @@ class SimWidget(QWidget):
 
         # Loading overlay — hidden once simulation is ready
         self._loading_widget = QWidget()
-        self._loading_widget.setStyleSheet("background: rgba(20,20,20,210);")
+        self._loading_widget.setStyleSheet(f"background: {_ss.CLR_OVERLAY_BG};")
         _llo = QVBoxLayout(self._loading_widget)
-        self._loading_label = QLabel("Calcul en cours…")
+        self._loading_label = QLabel(LOADING_TEXT)
         self._loading_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._loading_label.setStyleSheet(f"color: {_ss.CLR_TEXT}; font-size: {SIM_LOADING_FS}px;")
         _llo.addWidget(self._loading_label)
         grid.addWidget(self._loading_widget, 0, 0)
 
@@ -165,22 +163,22 @@ class SimWidget(QWidget):
         # ── Hint bar ──────────────────────────────────────────────────────
         self.hint_bar = QWidget()
         self.hint_bar.setObjectName("hintBar")
-        self.hint_bar.setFixedHeight(30)
-        self.hint_bar.setStyleSheet(HINT_BAR_STYLE)
+        self.hint_bar.setFixedHeight(SIM_HINT_H)
+        self.hint_bar.setStyleSheet(_ss.HINT_BAR_STYLE)
 
         hint_layout = QHBoxLayout(self.hint_bar)
-        hint_layout.setContentsMargins(12, 0, 8, 0)
-        hint_layout.setSpacing(8)
+        hint_layout.setContentsMargins(*SIM_HINT_MARGINS)
+        hint_layout.setSpacing(SIM_HINT_SPACING)
 
-        hint_label = QLabel("Space  Pause   ·   Ctrl+R  Reset")
+        hint_label = QLabel(HINT_TEXT)
         hint_label.setObjectName("hintLabel")
         hint_layout.addWidget(hint_label)
         hint_layout.addStretch()
 
-        self._hint_toggle_btn = QPushButton("⚙  Controls  (Ctrl+P)")
+        self._hint_toggle_btn = QPushButton(CONTROLS_BTN)
         self._hint_toggle_btn.setObjectName("hintToggleBtn")
         self._hint_toggle_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self._hint_toggle_btn.setFixedHeight(22)
+        self._hint_toggle_btn.setFixedHeight(SIM_HINT_BTN_H)
         self._hint_toggle_btn.clicked.connect(self.toggle_controls)
         hint_layout.addWidget(self._hint_toggle_btn)
 
@@ -192,7 +190,7 @@ class SimWidget(QWidget):
         # ── Control panel ─────────────────────────────────────────────────
         self.controls_widget = QWidget()
         self.controls_widget.setObjectName("controlsWidget")
-        self.controls_widget.setStyleSheet(PANEL_STYLE)
+        self.controls_widget.setStyleSheet(_ss.PANEL_STYLE)
 
         self.controls_layout = QVBoxLayout(self.controls_widget)
         self.controls_layout.setContentsMargins(0, 0, 0, 0)
@@ -201,32 +199,32 @@ class SimWidget(QWidget):
         # Playback row
         playback_bar = QWidget()
         playback_bar.setObjectName("playbackBar")
-        playback_bar.setStyleSheet(PLAYBACK_BAR_STYLE)
-        playback_bar.setFixedHeight(52)
+        playback_bar.setStyleSheet(_ss.PLAYBACK_BAR_STYLE)
+        playback_bar.setFixedHeight(SIM_PLAYBACK_H)
 
         pb_layout = QHBoxLayout(playback_bar)
-        pb_layout.setContentsMargins(14, 0, 14, 0)
-        pb_layout.setSpacing(10)
+        pb_layout.setContentsMargins(*SIM_PLAYBACK_MARGINS)
+        pb_layout.setSpacing(SIM_PLAYBACK_SPACING)
 
-        pb_title = QLabel("PLAYBACK")
+        pb_title = QLabel(PLAYBACK_TITLE)
         pb_title.setObjectName("playbackTitle")
         pb_layout.addWidget(pb_title)
         pb_layout.addStretch()
 
-        self.start_button = QPushButton("▶  Start")
-        self.start_button.setStyleSheet(START_STYLE)
+        self.start_button = QPushButton(START_BTN)
+        self.start_button.setStyleSheet(_ss.START_STYLE)
         self.start_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.start_button.clicked.connect(self.start_animation)
         pb_layout.addWidget(self.start_button)
 
-        self.pause_button = QPushButton("⏸  Pause")
-        self.pause_button.setStyleSheet(PAUSE_STYLE)
+        self.pause_button = QPushButton(PAUSE_BTN)
+        self.pause_button.setStyleSheet(_ss.PAUSE_STYLE)
         self.pause_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.pause_button.clicked.connect(self.toggle_pause_animation)
         pb_layout.addWidget(self.pause_button)
 
-        self.reset_button = QPushButton("↺  Reset")
-        self.reset_button.setStyleSheet(RESET_STYLE)
+        self.reset_button = QPushButton(RESET_BTN)
+        self.reset_button.setStyleSheet(_ss.RESET_STYLE)
         self.reset_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.reset_button.clicked.connect(self.reset_animation)
         pb_layout.addWidget(self.reset_button)
@@ -236,13 +234,13 @@ class SimWidget(QWidget):
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.HLine)
         sep.setFrameShadow(QFrame.Shadow.Plain)
-        sep.setFixedHeight(1)
-        sep.setStyleSheet(SEPARATOR_STYLE)
+        sep.setFixedHeight(SIM_SEP_H)
+        sep.setStyleSheet(_ss.SEPARATOR_STYLE)
         self.controls_layout.addWidget(sep)
 
         self._params_area_layout = QVBoxLayout()
-        self._params_area_layout.setSpacing(6)
-        self._params_area_layout.setContentsMargins(10, 8, 10, 8)
+        self._params_area_layout.setSpacing(SIM_PARAMS_SPACING)
+        self._params_area_layout.setContentsMargins(*SIM_PARAMS_MARGINS)
         self.controls_layout.addLayout(self._params_area_layout)
 
         self.controls_widget.setVisible(False)
@@ -272,6 +270,7 @@ class SimWidget(QWidget):
             self.start_animation()
 
     def _setup_shortcuts(self) -> None:
+        """Register keyboard shortcuts: Space (pause), Ctrl+R (reset), Ctrl+P (controls)."""
         self.pause_shortcut    = QShortcut(QKeySequence("Space"),  self)
         self.reset_shortcut    = QShortcut(QKeySequence("Ctrl+R"), self)
         self.controls_shortcut = QShortcut(QKeySequence("Ctrl+P"), self)
@@ -282,6 +281,7 @@ class SimWidget(QWidget):
     # ── Control panel toggle ──────────────────────────────────────────────
 
     def toggle_controls(self) -> None:
+        """Show or hide the scrollable control panel."""
         target = self._controls_scroll if self._controls_scroll is not None \
                  else self.controls_widget
         if target.isHidden():
@@ -298,23 +298,23 @@ class SimWidget(QWidget):
             return
         self.plot.stop_animation()
         self.plot.start_animation()
-        self.pause_button.setText("⏸  Pause")
+        self.pause_button.setText(PAUSE_BTN)
 
     def toggle_pause_animation(self) -> None:
         if not self.plot._prepared:
             return
         if self.plot.animation_timer.isActive():
             self.plot.stop_animation()
-            self.pause_button.setText("▶  Resume")
+            self.pause_button.setText(RESUME_BTN)
         else:
             self.plot.start_animation()
-            self.pause_button.setText("⏸  Pause")
+            self.pause_button.setText(PAUSE_BTN)
 
     def reset_animation(self) -> None:
         if not self.plot._prepared:
             return
         self.plot.reset_animation()
-        self.pause_button.setText("⏸  Pause")
+        self.pause_button.setText(PAUSE_BTN)
 
 
 # ---------------------------------------------------------------------------
@@ -325,6 +325,7 @@ class SimWidget3d(SimWidget):
     """SimWidget for Plot3dBase subclasses (cone or membrane)."""
 
     def __init__(self, plot: Plot3dBase, libre_mode: bool = False) -> None:
+        """Attach a 3-D plot backend and create the parameter controller."""
         log.debug("SimWidget3d — init")
         super().__init__(plot, libre_mode=libre_mode)
 
@@ -341,6 +342,7 @@ class SimWidget3d(SimWidget):
         log.debug("SimWidget3d — ready")
 
     def _on_frame_updated(self, idx: int) -> None:
+        """Forward the current frame's position/velocity to the libre dashboard."""
         if not self.plot.trajectory_xs:
             return
         if idx >= len(self.plot.trajectory_xs) or not self.plot.trajectory_vxs:
@@ -358,6 +360,7 @@ class SimWidgetMCU(SimWidget):
     """SimWidget for the 2-D MCU circular motion simulation."""
 
     def __init__(self, plot: PlotMCU, libre_mode: bool = False) -> None:
+        """Attach the MCU plot backend and create the parameter controller."""
         log.debug("SimWidgetMCU — init")
         super().__init__(plot, libre_mode=libre_mode)
 
@@ -374,6 +377,7 @@ class SimWidgetMCU(SimWidget):
         log.debug("SimWidgetMCU — ready")
 
     def _on_frame_updated(self, idx: int) -> None:
+        """Forward the current frame's 2-D position/velocity to the libre dashboard."""
         if not self.plot.trajectory_xs:
             return
         if idx >= len(self.plot.trajectory_xs):
@@ -390,6 +394,7 @@ class SimWidgetML(SimWidget):
     """SimWidget for the ML regression demo."""
 
     def __init__(self, plot: PlotML, libre_mode: bool = False) -> None:
+        """Attach the ML plot backend and create the parameter controller."""
         log.debug("SimWidgetML — init")
         super().__init__(plot, libre_mode=libre_mode)
 
@@ -406,6 +411,10 @@ class SimWidgetML(SimWidget):
         log.debug("SimWidgetML — ready")
 
     def _on_frame_updated(self, idx: int) -> None:
+        """Forward the predicted trajectory position/velocity to the libre dashboard.
+
+        Velocity is estimated as a finite difference from the previous frame.
+        """
         if self.plot._pred_traj.shape[0] == 0:
             return
         idx = min(idx, self.plot._pred_traj.shape[0] - 1)

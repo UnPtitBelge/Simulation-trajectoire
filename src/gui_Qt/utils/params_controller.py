@@ -1,3 +1,18 @@
+"""params_controller.py — Qt control panel generated from a simulation dataclass.
+
+Two public classes:
+
+* ``ParamControlWidget`` — a single row controlling one parameter field
+  (QCheckBox for bool, _NoScrollSpinBox flanked by ± buttons for numeric).
+* ``ParamsController``   — a two-column grid of ParamControlWidget rows,
+  with a header, dividers, a Reset button, and 50 ms debounced forwarding
+  of changes to the plot backend.
+
+Usage
+-----
+    ctrl = ParamsController(plot.sim_params, type(plot.sim_params), plot)
+    layout.addWidget(ctrl)
+"""
 import logging
 from dataclasses import fields
 from math import ceil, floor, log10
@@ -16,11 +31,14 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from utils.stylesheet import (
-    PARAM_CELL_OVERLAY,
-    PARAM_CELL_STYLE,
-    PARAM_PANEL_STYLE,
+from utils import stylesheet as _ss
+from utils.ui_constants import (
+    PC_CELL_MARGINS, PC_CELL_SPACING, PC_SPIN_SPACING,
+    PC_HEADER_H, PC_HEADER_MARGINS, PC_HEADER_SPACING,
+    PC_DIV_H, PC_GRID_MARGINS, PC_GRID_SPACING,
+    PC_FOOTER_MARGINS, PC_DEBOUNCE_MS,
 )
+from utils.ui_strings import PC_RESET_BTN
 
 log = logging.getLogger(__name__)
 
@@ -63,7 +81,7 @@ class ParamControlWidget(QWidget):
         super().__init__()
         self.param_name = param_name
         self.default_value = default_value
-        self.setStyleSheet(PARAM_CELL_STYLE)
+        self.setStyleSheet(_ss.PARAM_CELL_STYLE)
 
         label_text = display_label if display_label else param_name.replace("_", " ").title()
         self.label = QLabel(label_text)
@@ -71,8 +89,8 @@ class ParamControlWidget(QWidget):
         self.label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
 
         cell_layout = QVBoxLayout(self)
-        cell_layout.setContentsMargins(8, 6, 8, 6)
-        cell_layout.setSpacing(4)
+        cell_layout.setContentsMargins(*PC_CELL_MARGINS)
+        cell_layout.setSpacing(PC_CELL_SPACING)
         cell_layout.addWidget(self.label)
 
         if isinstance(default_value, bool):
@@ -133,19 +151,22 @@ class ParamControlWidget(QWidget):
 
             spin_row = QHBoxLayout()
             spin_row.setContentsMargins(0, 0, 0, 0)
-            spin_row.setSpacing(4)
+            spin_row.setSpacing(PC_SPIN_SPACING)
             spin_row.addWidget(self.decrement_button)
             spin_row.addWidget(self.spin_box)
             spin_row.addWidget(self.increment_button)
             cell_layout.addLayout(spin_row)
 
     def _checkbox_changed(self, _state: int) -> None:
+        """Emit value_changed with the new boolean state."""
         self.value_changed.emit(self.param_name, self.checkbox.isChecked())
 
     def emit_value_changed(self, value: float) -> None:
+        """Emit value_changed with the current spinbox value."""
         self.value_changed.emit(self.param_name, value)
 
     def get_value(self):
+        """Return the current value of this control (float or bool)."""
         if hasattr(self, "spin_box"):
             return self.spin_box.value()
         if hasattr(self, "checkbox"):
@@ -187,13 +208,13 @@ class ParamsController(QWidget):
         self.default_params: object = param_type()
         self.param_controls: dict[str, ParamControlWidget] = {}
 
-        self.setStyleSheet(PARAM_PANEL_STYLE)
+        self.setStyleSheet(_ss.PARAM_PANEL_STYLE)
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
 
         self._pending_updates: dict = {}
         self._debounce_timer = QTimer(self)
         self._debounce_timer.setSingleShot(True)
-        self._debounce_timer.setInterval(50)
+        self._debounce_timer.setInterval(PC_DEBOUNCE_MS)
         self._debounce_timer.timeout.connect(self._flush_pending_update)
 
         root_vbox = QVBoxLayout(self)
@@ -203,10 +224,10 @@ class ParamsController(QWidget):
         # Header
         header_bar = QWidget()
         header_bar.setObjectName("headerBar")
-        header_bar.setFixedHeight(36)
+        header_bar.setFixedHeight(PC_HEADER_H)
         header_layout = QHBoxLayout(header_bar)
-        header_layout.setContentsMargins(12, 0, 12, 0)
-        header_layout.setSpacing(8)
+        header_layout.setContentsMargins(*PC_HEADER_MARGINS)
+        header_layout.setSpacing(PC_HEADER_SPACING)
 
         dot = QLabel("●")
         dot.setObjectName("headerDot")
@@ -223,15 +244,15 @@ class ParamsController(QWidget):
         divider_top = QFrame()
         divider_top.setObjectName("divider")
         divider_top.setFrameShape(QFrame.Shape.HLine)
-        divider_top.setFixedHeight(1)
+        divider_top.setFixedHeight(PC_DIV_H)
         root_vbox.addWidget(divider_top)
 
         # Grid
         grid_area = QWidget()
         grid_area.setObjectName("gridArea")
         grid = QGridLayout(grid_area)
-        grid.setContentsMargins(8, 8, 8, 8)
-        grid.setSpacing(6)
+        grid.setContentsMargins(*PC_GRID_MARGINS)
+        grid.setSpacing(PC_GRID_SPACING)
         grid.setColumnStretch(0, 1)
         grid.setColumnStretch(1, 1)
 
@@ -281,7 +302,7 @@ class ParamsController(QWidget):
                 )
                 control = ParamControlWidget(param_name, 0.0, 0.0, 100.0, 1.0, display_label=display_label)
 
-            control.setStyleSheet(control.styleSheet() + PARAM_CELL_OVERLAY)
+            control.setStyleSheet(control.styleSheet() + _ss.PARAM_CELL_OVERLAY)
             control.value_changed.connect(self.on_value_changed)
             self.param_controls[param_name] = control
             grid.addWidget(control, row, col)
@@ -297,17 +318,17 @@ class ParamsController(QWidget):
         divider_bot = QFrame()
         divider_bot.setObjectName("divider")
         divider_bot.setFrameShape(QFrame.Shape.HLine)
-        divider_bot.setFixedHeight(1)
+        divider_bot.setFixedHeight(PC_DIV_H)
         root_vbox.addWidget(divider_bot)
 
         # Footer
         footer = QWidget()
         footer.setObjectName("footerBar")
         footer_layout = QHBoxLayout(footer)
-        footer_layout.setContentsMargins(10, 6, 10, 6)
+        footer_layout.setContentsMargins(*PC_FOOTER_MARGINS)
         footer_layout.addStretch()
 
-        reset_button = QPushButton("↺  Réinitialiser")
+        reset_button = QPushButton(PC_RESET_BTN)
         reset_button.setObjectName("resetBtn")
         reset_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         reset_button.clicked.connect(self._reset_to_default)

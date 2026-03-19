@@ -1,0 +1,8 @@
+{
+  "R": 50.0,
+  "omega": 0.5,
+  "n_orbits": 3.0,
+  "initial_angle": 0.0,
+  "center_radius": 6.0,
+  "particle_radius": 2.0
+}
