@@ -23,6 +23,7 @@ class SimToRealParams(BaseParams):
     """
 
     model_type: MLModel = field(default=MLModel.LINEAR)
+    n_sims:     int     = 90_000       # trajectoires d'entraînement chargées du pool
     r0:         float   = LAUNCH_R0    # m   — CI de présentation (cône)
     v0:         float   = LAUNCH_SPEED # m/s — CI de présentation (cône)
     phi0:       float   = LAUNCH_ANGLE # °   — angle de la vitesse initiale

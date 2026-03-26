@@ -21,7 +21,7 @@ from PySide6.QtCore import QEvent, QObject, Qt
 
 from src.core.content.chapters import CHAPTERS
 from src.core.params.integrators import MLModel
-from src.core.ml.data_utils import _PRESET_LABELS
+from src.core.ml.data_utils import _CONTEXT_LABELS
 from src.ui.modes.base import BaseMode
 
 
@@ -61,7 +61,7 @@ class _PresentationFilter(QObject):
             if p is not None and hasattr(p, "apply_context_preset"):
                 idx = k - Qt.Key.Key_1
                 p.apply_context_preset(idx)
-                win.set_status(f"Contexte : {_PRESET_LABELS[idx]}")
+                win.set_status(f"Contexte : {_CONTEXT_LABELS[idx]}")
             return True
 
         # 1-4 sans modificateur : navigation chapitres

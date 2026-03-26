@@ -18,6 +18,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+import pyqtgraph as pg
+
+from src.core.params.integrators import MLModel
 from src.core.params.sim_to_real import SimToRealParams as _P, SimToRealParams
 from src.simulation.engines.base import Plot
 from src.utils.theme import (
@@ -25,6 +28,7 @@ from src.utils.theme import (
     CLR_ML_PRED,
     CLR_ML_TRUE,
     CLR_PRIMARY,
+    CLR_SUCCESS,
     CLR_TEXT_SECONDARY,
     FS_LG,
     FS_MD,
@@ -36,63 +40,23 @@ from src.utils.theme import (
 from .data_utils import (
     _N_IN, _N_OUT, _MIN_TRAJ_LEN, _POOL_SIZE,
     _SYNTHETIC_CSV, _SYNTHETIC_NPZ, _PRESETS_NPZ, _MODELS_PKL,
+    _PRESET_LABELS, _PRESET_N_SIMS, _CONTEXT_LABELS,
     generate_and_save_pool, pool_is_ready, load_pool,
+    _run_cone, _make_feat,
 )
 from .model_utils import (
     train_and_evaluate, save_trained_models, load_trained_models, models_are_ready,
     get_cached_models, set_cached_models,
 )
+from .preset_utils import load_presets, presets_are_ready
 
 log = logging.getLogger(__name__)
 
-# Cache global des modèles (chargés au démarrage dans MainApplication._load_models_into_memory)
-_CACHED_MODELS: dict | None = None
+# ── Pens pyqtgraph ────────────────────────────────────────────────────────────
 
-# Liste des modèles pour les presets de comparaison
-
-class PlotSimToReal(Plot):
-    """Simulation Sim-to-Real : génère un dataset cône synthétique et entraîne le ML.
-
-    Utilisation en mode présentation :
-      - _compute()       : génère les trajectoires + entraîne le modèle (QThread)
-      - _draw_initial()  : bascule sur la vue résultats, affiche les trajectoires
-      - _draw(i)         : anime la trajectoire prédite frame par frame
-
-    La vérité terrain (courbe verte) n'est affichée que si les CI courantes
-    correspondent exactement à l'un des 3 presets de présentation.
-    Les 3 trajectoires de référence sont pré-calculées hors dataset d'entraînement.
-
-    Seules les CI (r0, v0, phi0) sont passées à ConeParams ; tous les autres
-    paramètres physiques utilisent les valeurs par défaut de ConeParams.
-
-    Un signal `progress(current, total)` est émis depuis le thread de calcul
-    pour mettre à jour la barre de progression visible pendant le chargement.
-    """
-
-    SIM_KEY = "sim_to_real"
-
-    # Émis depuis le thread de calcul — connexion automatiquement queued (thread-safe)
-    progress: Signal = Signal(int, int)
-
-    def __init__(self, params: SimToRealParams | None = None):
-        _p = params or SimToRealParams()
-        super().__init__(_p)
-        self.params: SimToRealParams = _p
-
-        self._result:       dict       = {}
-        self._n_frames:     int        = 0
-        self.metrics:      dict       = {}
-        self._lr_x:         object     = None
-        self._lr_y:         object     = None
-        self._mlp_x:        object     = None
-        self._mlp_y:        object     = None
-        self._ref_trajs:    dict       = {}     # preset_key → (N, 2)
-        self._precomputed:  dict       = {}     # key → {pred_np, metrics, model_type, …}
-        self._preset_btns:  dict[str, QPushButton] = {}
-
-        # Registres des sliders CI — peuplés par _build_ci_bar()
-        self._ci_sliders:    dict[str, QSlider] = {}
-        self._ci_val_labels: dict[str, QLabel]  = {}
+_PEN_TRUTH = pg.mkPen(CLR_ML_TRUE,  width=2)
+_PEN_PRED  = pg.mkPen(CLR_ML_PRED,  width=2)
+_PEN_TRAIN = pg.mkPen("#374151",     width=1, style=pg.QtCore.Qt.PenStyle.SolidLine)
 
 class PlotSimToReal(Plot):
     """Simulation Sim-to-Real : génère un dataset cône synthétique et entraîne le ML.
@@ -734,3 +698,61 @@ class PlotSimToReal(Plot):
         if self.metrics:
             d.update({k: self.metrics.get(k, 0.0) for k in ("r2_x", "r2_y", "rmse_x", "rmse_y")})
         return d
+
+    # ── Cache ─────────────────────────────────────────────────────────────────────
+
+    def _get_params_hash(self) -> int | None:
+        """Hash uniquement sur (n_sims, model_type) — r0/v0/phi0 n'affectent pas l'entraînement."""
+        if self.params is None:
+            return None
+        return hash((self.params.n_sims, self.params.model_type))
+
+    # ── Méthodes de présentation ──────────────────────────────────────────────────
+
+    def _refresh_prediction(self) -> None:
+        """Prédit depuis les CI courantes et met à jour métriques + animation."""
+        if self._lr_x is None:
+            return
+        self._do_predict()
+        self._update_truth_visibility()
+        self._update_metrics_bar()
+        self._reset_animation()
+
+    def apply_presentation_preset(self, index: int) -> None:
+        """Applique un preset CI sans réentraîner — O(_N_IN) simulation + O(1) ML."""
+        presets = type(self.params).PRESENTATION_PRESETS
+        if not (0 <= index < len(presets)):
+            return
+        preset = list(presets.values())[index]
+        self.params.r0   = preset["r0"]
+        self.params.v0   = preset["v0"]
+        self.params.phi0 = preset["phi0"]
+        self._refresh_prediction()
+        if self._lr_x is not None:
+            self._sync_ci_sliders()
+
+    def toggle_model(self) -> None:
+        """Bascule entre RL et MLP sans réentraîner."""
+        self.params.model_type = (
+            MLModel.MLP if self.params.model_type == MLModel.LINEAR else MLModel.LINEAR
+        )
+        self._refresh_prediction()
+
+    def apply_context_preset(self, idx: int) -> None:
+        """Change la taille du contexte (n_sims) et déclenche un réentraînement."""
+        if not (0 <= idx < len(_PRESET_N_SIMS)):
+            return
+        self.params.n_sims = _PRESET_N_SIMS[idx]
+        self.restart()
+
+    def _update_train_curve_visibility(self, n_sims: int) -> None:
+        """Affiche un nombre de courbes grises proportionnel à n_sims (5 à max)."""
+        n_curves = len(self._train_curves)
+        if not n_curves:
+            return
+        max_n = _PRESET_N_SIMS[-1]
+        n_display = max(5, min(n_curves, int(n_curves * n_sims / max_n)))
+        for i, curve in enumerate(self._train_curves):
+            visible = i < n_display
+            if curve.isVisible() != visible:
+                curve.setVisible(visible)

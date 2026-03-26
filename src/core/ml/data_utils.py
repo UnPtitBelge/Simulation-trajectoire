@@ -17,9 +17,10 @@ log = logging.getLogger(__name__)
 
 __all__ = [
     "_N_IN", "_N_OUT", "_MIN_TRAJ_LEN", "_POOL_SIZE",
-    "_PRESET_LABELS",
+    "_PRESET_LABELS", "_PRESET_N_SIMS", "_CONTEXT_LABELS",
     "_SYNTHETIC_CSV", "_SYNTHETIC_NPZ", "_PRESETS_NPZ", "_MODELS_PKL",
     "generate_and_save_pool", "pool_is_ready", "load_pool",
+    "_run_cone", "_make_feat",
 ]
 
 # Nombre de points de contexte utilisés comme features d'entrée de la régression.
@@ -41,8 +42,12 @@ _MAX_DISPLAY_TRAJS = 100
 # Note : le filtrage des trajectoires trop courtes réduit le nombre final à ~93k.
 _POOL_SIZE = 100_000
 
-# Liste des modèles pour les presets de comparaison
+# Labels des modèles ML disponibles
 _PRESET_LABELS: list[str] = ["RL", "MLP"]
+
+# Tailles de contexte pour Ctrl+1/2/3 en présentation
+_PRESET_N_SIMS: list[int] = [50, 45_000, 90_000]
+_CONTEXT_LABELS: list[str] = ["50 trajectoires", "45 000 trajectoires", "90 000 trajectoires"]
 
 # Chemins des fichiers de données
 _SYNTHETIC_CSV = os.path.normpath(
@@ -80,8 +85,10 @@ def _run_cone(r0: float, v0: float, phi0: float, n_frames: int | None = None) ->
         Liste de tuples (x, y) de longueur n_frames (ou jusqu'à arrêt).
     """
     params = ConeParams(r0=r0, v0=v0, phi0=phi0)
-    traj = simulate_cone(params, n_frames=n_frames)
-    return [(pt[0], pt[1]) for pt in traj]
+    if n_frames is not None:
+        params = ConeParams(r0=r0, v0=v0, phi0=phi0, n_frames=n_frames)
+    result = simulate_cone(params)
+    return [(pt[0], pt[1]) for pt in result["trajectory"]]
 
 
 def _latin_hypercube_ci(n: int, rng: random.Random) -> list[tuple[float, float, float]]:
@@ -213,8 +220,8 @@ def generate_and_save_pool(
     # Sauvegarder en .npz (format optimisé pour numpy)
     np.savez_compressed(
         path,
-        trajectories=trajectories,
-        ref_trajs=ref_trajs,
+        trajectories=np.array(trajectories, dtype=object),  # type: ignore[arg-type]
+        ref_trajs=np.array(ref_trajs, dtype=object),        # type: ignore[arg-type]
     )
     log.info("Pool sauvegardé : %d trajectoires → %s", len(trajectories), path)
 

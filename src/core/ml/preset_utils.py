@@ -1,17 +1,22 @@
 """Preset management utilities for sim-to-real."""
 
+import logging
 import os
 
 import numpy as np
 
-from .data_utils import _PRESET_LABELS,  _N_IN, _N_OUT, _PRESETS_NPZ, _PRESET_LABELS
+from src.core.params.integrators import MLModel
+from src.core.params.sim_to_real import SimToRealParams as _P
+from .data_utils import _PRESET_LABELS, _N_IN, _N_OUT, _PRESETS_NPZ, load_pool
 from .model_utils import _predict_trajectory, train_and_evaluate, save_trained_models
+
+log = logging.getLogger(__name__)
 
 
 def compute_and_save_presets(
     path: str = _PRESETS_NPZ,
-    models_path: str = None,
-    ci_key: str = "nominale",
+    models_path: str | None = None,
+    ci_key: str = "pres_standard",
     progress_cb=None,
 ) -> None:
     """Pré-calcule les trajectoires prédites pour les 2 modèles (RL/MLP).
@@ -22,14 +27,15 @@ def compute_and_save_presets(
         ci_key     : clé du preset de CI ("nominale", "pres_standard", etc.)
         progress_cb: callback de progression (current, total, msg)
     """
-    ci = _P.PRESENTATION_PRESETS.get(ci_key, _P.PRESENTATION_PRESETS["nominale"])
+    presets = _P.PRESENTATION_PRESETS
+    ci = presets.get(ci_key, presets[next(iter(presets))])
     r0, v0, phi0 = ci["r0"], ci["v0"], ci["phi0"]
 
     arrays: dict[str, np.ndarray] = {}
     models_dict: dict[str, dict] = {}  # Structure : {model_type: {model_name: model}}
     total_steps = len(_PRESET_LABELS)
 
-    for step_i, model_type in enumerate([_P.MLModel.LINEAR, _P.MLModel.MLP]):
+    for step_i, model_type in enumerate([MLModel.LINEAR, MLModel.MLP]):
         label = _PRESET_LABELS[step_i]
         config_key = model_type.value
         
@@ -73,7 +79,7 @@ def compute_and_save_presets(
 
     # Sauvegarder les trajectoires prédites (npz)
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-    np.savez_compressed(path, **arrays)
+    np.savez_compressed(path, **arrays)  # type: ignore[arg-type]
     log.info("Presets sauvegardés : %s", path)
     
     # Sauvegarder les modèles entraînés (pickle)
@@ -99,7 +105,7 @@ def load_presets(path: str = _PRESETS_NPZ) -> dict | None:
         return None
 
     presets: dict = {}
-    for model_tag, model_type in [("rl", _P.MLModel.LINEAR), ("mlp", _P.MLModel.MLP)]:
+    for model_tag, model_type in [("rl", MLModel.LINEAR), ("mlp", MLModel.MLP)]:
         pred_key = f"pred_{model_tag}"
         meta_key = f"meta_{model_tag}"
         if pred_key not in data or meta_key not in data:

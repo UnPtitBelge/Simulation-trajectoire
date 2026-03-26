@@ -16,7 +16,7 @@ log = logging.getLogger(__name__)
 
 def _ensure_synthetic_pool(qt_app) -> None:
     """Vérifie que le pool synthétique existe (sans génération automatique)."""
-    from src.simulation.sim_to_real import pool_is_ready, _SYNTHETIC_NPZ
+    from src.core.ml.data_utils import pool_is_ready, _SYNTHETIC_NPZ
     
     if not pool_is_ready(_SYNTHETIC_NPZ):
         log.error("Dataset synthétique manquant : %s", _SYNTHETIC_NPZ)
@@ -33,9 +33,8 @@ def _ensure_presets(qt_app) -> None:
 
     Nécessite que le pool soit déjà prêt (appeler après _ensure_synthetic_pool).
     """
-    from src.simulation.sim_to_real import (
-        presets_are_ready, models_are_ready,
-    )
+    from src.core.ml.preset_utils import presets_are_ready
+    from src.core.ml.model_utils import models_are_ready
     
     # Vérifier si les presets ET les modèles sont déjà prêts
     if presets_are_ready() and models_are_ready():
@@ -67,7 +66,7 @@ class MainApplication:
     
     def _load_models_into_memory(self):
         """Charge les modèles ML en mémoire au démarrage pour prédictions instantanées."""
-        from src.simulation.sim_to_real import load_trained_models, set_cached_models
+        from src.core.ml.model_utils import load_trained_models, set_cached_models
         
         models = load_trained_models()
         if models:

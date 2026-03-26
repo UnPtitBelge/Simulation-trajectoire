@@ -1,6 +1,7 @@
 """Model training and preset management utilities."""
 
 import logging
+import os
 import pickle
 
 import numpy as np
@@ -10,7 +11,9 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
-from .data_utils import _N_IN, _N_OUT, _PRESETS_NPZ, _MODELS_PKL, load_pool
+from .data_utils import _N_IN, _N_OUT, _PRESETS_NPZ, _MODELS_PKL, load_pool, _run_cone, _make_feat
+
+_CACHED_MODELS: dict | None = None
 
 log = logging.getLogger(__name__)
 
@@ -195,12 +198,10 @@ def models_are_ready(path: str = _MODELS_PKL) -> bool:
 
 def get_cached_models() -> dict | None:
     """Retourne les modèles chargés en mémoire (si disponibles)."""
-    from .sim_to_real import _CACHED_MODELS
     return _CACHED_MODELS
 
 
 def set_cached_models(models: dict) -> None:
     """Stocke les modèles en mémoire pour accès instantané."""
-    from .sim_to_real import _CACHED_MODELS
     global _CACHED_MODELS
     _CACHED_MODELS = models
