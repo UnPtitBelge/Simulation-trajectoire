@@ -19,10 +19,10 @@ from typing import Any
 
 from PySide6.QtCore import QEvent, QObject, Qt
 
-from src.core.content.chapters import CHAPTERS
-from src.core.params.integrators import MLModel
-from src.core.ml.data_utils import _CONTEXT_LABELS
-from src.ui.modes.base import BaseMode
+from src.content.chapters import CHAPTERS
+from src.model.params.integrators import MLModel
+from src.model.ml.sim_to_real.data_utils import _CONTEXT_LABELS
+from src.view.modes.base import BaseMode
 
 
 class _PresentationFilter(QObject):

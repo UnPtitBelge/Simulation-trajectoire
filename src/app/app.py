@@ -5,10 +5,10 @@ import logging
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QProgressDialog
 
-from src.ui import MainWindow
-from src.ui.modes import PresentationMode
-from src.utils.logging import setup_logger
-from src.utils.theme import apply_theme
+from src.view import MainWindow
+from src.view.modes import PresentationMode
+from src.util.logging import setup_logger
+from src.util.theme import apply_theme
 
 log = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ log = logging.getLogger(__name__)
 
 def _ensure_synthetic_pool(qt_app) -> None:
     """Vérifie que le pool synthétique existe (sans génération automatique)."""
-    from src.core.ml.data_utils import pool_is_ready, _SYNTHETIC_NPZ
+    from src.model.ml.sim_to_real.data_utils import pool_is_ready, _SYNTHETIC_NPZ
     
     if not pool_is_ready(_SYNTHETIC_NPZ):
         log.error("Dataset synthétique manquant : %s", _SYNTHETIC_NPZ)
@@ -33,8 +33,8 @@ def _ensure_presets(qt_app) -> None:
 
     Nécessite que le pool soit déjà prêt (appeler après _ensure_synthetic_pool).
     """
-    from src.core.ml.preset_utils import presets_are_ready
-    from src.core.ml.model_utils import models_are_ready
+    from src.model.ml.sim_to_real.preset_utils import presets_are_ready
+    from src.model.ml.sim_to_real.model_utils import models_are_ready
     
     # Vérifier si les presets ET les modèles sont déjà prêts
     if presets_are_ready() and models_are_ready():

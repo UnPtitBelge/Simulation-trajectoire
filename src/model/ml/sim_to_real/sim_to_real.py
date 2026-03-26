@@ -20,10 +20,10 @@ from PySide6.QtWidgets import (
 
 import pyqtgraph as pg
 
-from src.core.params.integrators import MLModel
-from src.core.params.sim_to_real import SimToRealParams as _P, SimToRealParams
-from src.simulation.engines.base import Plot
-from src.utils.theme import (
+from src.model.params.integrators import MLModel
+from src.model.params.sim_to_real import SimToRealParams as _P, SimToRealParams
+from src.model.simulation.base import Plot
+from src.util.theme import (
     CLR_ML_BG,
     CLR_ML_PRED,
     CLR_ML_TRUE,

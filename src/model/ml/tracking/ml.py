@@ -23,10 +23,10 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
-from src.core.params.integrators import MLModel
-from src.core.params.ml import MLParams, TEST_ICS
-from src.simulation.engines.base import Plot
-from src.utils.theme import (
+from src.model.params.integrators import MLModel
+from src.model.params.ml import MLParams, TEST_ICS
+from src.model.simulation.base import Plot
+from src.util.theme import (
     CLR_DANGER,
     CLR_ML_BG,
     CLR_ML_PRED,

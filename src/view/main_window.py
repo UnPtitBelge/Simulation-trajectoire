@@ -15,11 +15,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.core.content import APP_TITLE, SIM
-from src.core.content.chapters import CHAPTERS
-from src.simulation import SIMULATIONS
-from src.simulation.engines.base import Plot3dBase
-from src.utils.theme import (
+from src.content import APP_TITLE, SIM
+from src.content.chapters import CHAPTERS
+from src.model.simulation import SIMULATIONS
+from src.model.simulation.base import Plot3dBase
+from src.util.theme import (
     CLR_HEADER_BG,
     CLR_HEADER_SUBTITLE,
     CLR_STATUS_TEXT,
