@@ -21,7 +21,7 @@ from PySide6.QtCore import QEvent, QObject, Qt
 
 from src.core.content.chapters import CHAPTERS
 from src.core.params.integrators import MLModel
-from src.core.ml.sim_to_real import _PRESET_LABELS
+from src.core.ml.data_utils import _PRESET_LABELS
 from src.ui.modes.base import BaseMode
 
 

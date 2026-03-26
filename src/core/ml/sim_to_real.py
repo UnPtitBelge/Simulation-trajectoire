@@ -1,30 +1,7 @@
-"""Sim-to-Real — génération de données synthétiques depuis la simulation cône.
+"""Sim-to-Real visualization and main integration."""
 
-Pipeline :
-  1. Lancer N simulations cône avec des CI aléatoires (r0, v0, phi0)
-     → seules r0, v0, phi0 sont modifiées ; tous les autres paramètres (pente,
-       frottement, dt, n_frames, R_cone…) utilisent les défauts de ConeParams.
-  2. Chaque simulation tourne jusqu'à l'arrêt naturel de la bille (via early
-     stopping de simulate_cone) — aucune troncature artificielle.
-  3. Enregistrer (expID, temps, x, y, speedX, speedY) dans un CSV.
-  4. Entraîner la régression linéaire ML sur ces données synthétiques.
-     Features : [x₀,y₀, x₁,y₁, …, x_{N_IN-1},y_{N_IN-1}, vx₀, vy₀]
-              = 2·_N_IN + 2 = 12 valeurs (5 points de contexte + CI vitesse).
-  5. Évaluer les métriques sur 2 trajectoires holdout (jamais vues).
-  6. Pré-calculer 3 trajectoires de référence (une par preset) hors dataset.
-
-Plages CI utilisées dans le dataset synthétique :
-  r0   ∈ [0.08, 0.35] m  (R_cone = 0.40 m par défaut)
-  v0   ∈ [0.30, 2.50] m/s
-  phi0 ∈ [0°, 360°]
-"""
-
-import csv
 import logging
 import math
-import os
-import pickle
-import random
 
 import numpy as np
 import pyqtgraph as pg
@@ -40,21 +17,14 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error, r2_score
-from sklearn.neural_network import MLPRegressor
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
 
-from src.core.params.integrators import MLModel
-from src.core.params.cone import ConeParams
-from src.core.params.sim_to_real import SimToRealParams
+from src.core.params.sim_to_real import SimToRealParams as _P, SimToRealParams
 from src.simulation.engines.base import Plot
-from src.simulation.engines.cone import simulate_cone
 from src.utils.theme import (
     CLR_ML_BG,
+    CLR_ML_PRED,
+    CLR_ML_TRUE,
     CLR_PRIMARY,
-    CLR_SUCCESS,
     CLR_TEXT_SECONDARY,
     FS_LG,
     FS_MD,
@@ -62,747 +32,67 @@ from src.utils.theme import (
     FS_XS,
 )
 
+# Re-export des constantes et fonctions depuis les modules dédiés
+from .data_utils import (
+    _N_IN, _N_OUT, _MIN_TRAJ_LEN, _POOL_SIZE,
+    _SYNTHETIC_CSV, _SYNTHETIC_NPZ, _PRESETS_NPZ, _MODELS_PKL,
+    generate_and_save_pool, pool_is_ready, load_pool,
+)
+from .model_utils import (
+    train_and_evaluate, save_trained_models, load_trained_models, models_are_ready,
+    get_cached_models, set_cached_models,
+)
+
 log = logging.getLogger(__name__)
 
-# ── Cache global des modèles ──────────────────────────────────────────────────
+# Cache global des modèles (chargés au démarrage dans MainApplication._load_models_into_memory)
+_CACHED_MODELS: dict | None = None
 
-_CACHED_MODELS: dict | None = None  # Modèles chargés en mémoire au démarrage
+# Liste des modèles pour les presets de comparaison
 
-_SYNTHETIC_CSV = os.path.normpath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "data", "synthetic_data.csv")
-)
-_SYNTHETIC_NPZ = os.path.normpath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "data", "synthetic_data.npz")
-)
-_PRESETS_NPZ = os.path.normpath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "data", "sim_to_real_presets.npz")
-)
-_MODELS_PKL = os.path.normpath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "data", "trained_models.pkl")
-)
+class PlotSimToReal(Plot):
+    """Simulation Sim-to-Real : génère un dataset cône synthétique et entraîne le ML.
 
-# ── Constantes ML ─────────────────────────────────────────────────────────────
+    Utilisation en mode présentation :
+      - _compute()       : génère les trajectoires + entraîne le modèle (QThread)
+      - _draw_initial()  : bascule sur la vue résultats, affiche les trajectoires
+      - _draw(i)         : anime la trajectoire prédite frame par frame
 
-# Nombre de points de contexte utilisés comme features d'entrée de la régression.
-# Features = [x₀,y₀, x₁,y₁, …, x_{N_IN-1},y_{N_IN-1}, vx₀, vy₀]
-# Soit 2·_N_IN + 2 = 12 features (avec _N_IN=5).
-_N_IN  = 5
+    La vérité terrain (courbe verte) n'est affichée que si les CI courantes
+    correspondent exactement à l'un des 3 presets de présentation.
+    Les 3 trajectoires de référence sont pré-calculées hors dataset d'entraînement.
 
-# Nombre de positions prédites par le modèle après les _N_IN points de contexte.
-_N_OUT = 600
+    Seules les CI (r0, v0, phi0) sont passées à ConeParams ; tous les autres
+    paramètres physiques utilisent les valeurs par défaut de ConeParams.
 
-# Nombre maximum de courbes d'entraînement affichées (perf. graphique).
-_MAX_DISPLAY_TRAJS = 100
-
-# Longueur minimale requise : _N_IN points de contexte + _N_OUT positions cibles.
-# dt = 0.01 s → 605 frames = 6.05 s ≥ 5 s minimum (bille peut sortir du bord).
-_MIN_TRAJ_LEN = _N_IN + _N_OUT
-
-# Taille cible du pool pré-généré (stocké dans synthetic_data.npz).
-# Note : le filtrage des trajectoires trop courtes réduit le nombre final à ~93k.
-_POOL_SIZE = 100_000
-
-# Valeurs de n_sims pour les 3 presets de comparaison (min / moitié / max).
-# Basées sur les ~93k trajectoires réellement disponibles après filtrage.
-_PRESET_N_SIMS: list[int] = [50, 45_000, 90_000]
-_PRESET_LABELS: list[str] = ["50", "45k", "90k"]
-
-
-def _make_feat(ctx_x: np.ndarray, ctx_y: np.ndarray, vx0: float, vy0: float) -> np.ndarray:
-    """Construit le vecteur de features 1-D pour la régression.
-
-    Format : [x₀, y₀, x₁, y₁, …, x_{N_IN-1}, y_{N_IN-1}, vx₀, vy₀]
-    Taille  : 2·_N_IN + 2
+    Un signal `progress(current, total)` est émis depuis le thread de calcul
+    pour mettre à jour la barre de progression visible pendant le chargement.
     """
-    return np.append(np.column_stack([ctx_x, ctx_y]).ravel(), [vx0, vy0])
 
-
-def _run_cone(r0: float, v0: float, phi0: float, n_frames: int | None = None) -> list:
-    """Lance une simulation cône avec les défauts de ConeParams, CI seules modifiées.
-
-    n_frames est un paramètre de calcul (durée max), pas un paramètre physique.
-    Si None, utilise le défaut de ConeParams (3000 frames = 30 s).
-    """
-    kw: dict = {"n_frames": n_frames} if n_frames is not None else {}
-    p = ConeParams(r0=r0, v0=v0, phi0=phi0, **kw)
-    return simulate_cone(p)["trajectory"]
-
-
-def _latin_hypercube_ci(n: int, rng: random.Random) -> list[tuple[float, float, float]]:
-    """Latin Hypercube Sampling sur (r0, v0, phi0).
-
-    Garantit une couverture uniforme de l'espace des CI : chaque dimension est
-    divisée en n intervalles égaux et exactement un échantillon est placé dans
-    chaque intervalle, puis les dimensions sont appairées aléatoirement.
-
-    Plages : r0 ∈ [0.08, 0.35] m, v0 ∈ [0.30, 2.50] m/s, phi0 ∈ [0°, 360°]
-    """
-    def _dim(lo: float, hi: float) -> list[float]:
-        step = (hi - lo) / n
-        vals = [lo + (i + rng.random()) * step for i in range(n)]
-        rng.shuffle(vals)
-        return vals
-
-    r0s  = _dim(0.08, 0.35)
-    v0s  = _dim(0.30, 2.50)
-    phis = _dim(0.0,  360.0)
-    return list(zip(r0s, v0s, phis))
-
-
-def generate_cone_dataset(
-    n_sims: int,
-    csv_path: str = _SYNTHETIC_CSV,
-    seed: int = 42,
-    progress_cb=None,
-) -> dict | None:
-    """Lance n_sims simulations cône avec des CI aléatoires et écrit le CSV.
-
-    Seules r0, v0, phi0 sont modifiées ; slope, friction, dt, n_frames utilisent
-    les valeurs par défaut de ConeParams (pas de constantes locales hardcodées).
-    Chaque simulation tourne jusqu'à l'arrêt naturel (early stopping de simulate_cone).
-
-    Retourne un dict :
-      "trajectories" : list[dict]          — données d'entraînement (>= _MIN_TRAJ_LEN pts)
-      "ref_trajs"    : dict[str, ndarray]  — trajectoires de référence (presets)
-    ou None si aucune trajectoire n'a pu être générée.
-
-    Chaque trajectoire d'entraînement contient :
-      x, y       : _MIN_TRAJ_LEN premiers points — contexte + cibles pour le ML
-      x_full, y_full : trajectoire complète          — pour l'affichage
-      vx, vy     : vitesse initiale analytique       — feature ML
-
-    progress_cb(current, total) est appelé après chaque trajectoire acceptée.
-    """
-    rng = random.Random(seed)
-    trajectories = []
-
-    # Latin Hypercube Sampling : couverture uniforme de l'espace des CI.
-    # On génère plus de candidats que nécessaire (×3) pour absorber les rejets
-    # (trajectoires trop courtes). Le surplus est tiré aléatoirement.
-    n_lhs = n_sims * 3
-    lhs_candidates = _latin_hypercube_ci(n_lhs, rng)
-    lhs_iter = iter(lhs_candidates)
-
-    def _next_ci() -> tuple[float, float, float]:
-        """Renvoie le prochain candidat LHS, ou un tirage aléatoire si épuisé."""
-        try:
-            return next(lhs_iter)
-        except StopIteration:
-            return (
-                rng.uniform(0.08, 0.35),
-                rng.uniform(0.30, 2.50),
-                rng.uniform(0.0, 360.0),
-            )
-
-    attempts = 0
-    while len(trajectories) < n_sims and attempts < n_sims * 8:
-        attempts += 1
-        r0, v0, phi0 = _next_ci()
-
-        traj_xyz = _run_cone(r0, v0, phi0)
-
-        # On exige au moins _N_IN points de contexte + _N_OUT points cibles
-        if len(traj_xyz) < _MIN_TRAJ_LEN:
-            continue
-
-        phi_rad = math.radians(phi0)
-        xy      = np.array([[pt[0], pt[1]] for pt in traj_xyz])
-
-        keep_full = len(trajectories) < _MAX_DISPLAY_TRAJS
-        trajectories.append({
-            "exp_id": len(trajectories) + 1,
-            # Portion ML : _N_IN contexte + _N_OUT cibles
-            "x":      xy[:_MIN_TRAJ_LEN, 0],
-            "y":      xy[:_MIN_TRAJ_LEN, 1],
-            # Trajectoire complète pour l'affichage — seulement pour les _MAX_DISPLAY_TRAJS premières
-            # (évite la consommation mémoire explosive pour n_sims > 5 000)
-            "x_full": xy[:, 0] if keep_full else None,
-            "y_full": xy[:, 1] if keep_full else None,
-            # Vitesse initiale analytique (feature ML)
-            "vx": v0 * math.cos(phi_rad),
-            "vy": v0 * math.sin(phi_rad),
-        })
-
-        if progress_cb:
-            progress_cb(len(trajectories), n_sims)
-
-    if not trajectories:
-        log.warning("Aucune trajectoire générée après %d tentatives", attempts)
-        return None
-
-    # ── Écriture CSV ──────────────────────────────────────────────────────────
-    try:
-        os.makedirs(os.path.dirname(os.path.abspath(csv_path)), exist_ok=True)
-        with open(csv_path, "w", encoding="utf-8", newline="") as f:
-            writer = csv.writer(f, delimiter=";")
-            writer.writerow(["expID", "temps", "x", "y", "speedX", "speedY"])
-            for traj in trajectories:
-                vx0, vy0 = traj["vx"], traj["vy"]
-                xs, ys   = traj["x"], traj["y"]
-                for j in range(len(xs)):
-                    writer.writerow([
-                        traj["exp_id"], j,
-                        f"{xs[j]:.6f}", f"{ys[j]:.6f}",
-                        f"{vx0:.6f}", f"{vy0:.6f}",
-                    ])
-    except Exception as e:
-        log.error("Écriture CSV échouée : %s", e)
-
-    # ── Trajectoires de référence (presets, hors dataset) ────────────────────
-    # Accepte toute longueur ≥ 2 — pas de filtre par _MIN_TRAJ_LEN ici.
-    ref_trajs: dict[str, np.ndarray] = {}
-    for key, preset in SimToRealParams.PRESENTATION_PRESETS.items():
-        traj_ref = _run_cone(preset["r0"], preset["v0"], preset["phi0"])
-        if len(traj_ref) >= 2:
-            ref_trajs[key] = np.array([[pt[0], pt[1]] for pt in traj_ref])
-
-    log.info(
-        "Dataset : %d trajectoires, %d références → %s",
-        len(trajectories), len(ref_trajs), csv_path,
-    )
-    return {"trajectories": trajectories, "ref_trajs": ref_trajs}
-
-
-# ── Pool pré-généré (synthetic_data.npz) ──────────────────────────────────────
-
-def generate_and_save_pool(
-    n: int = _POOL_SIZE,
-    path: str = _SYNTHETIC_NPZ,
-    seed: int = 42,
-    progress_cb=None,
-) -> None:
-    """Génère n trajectoires cônes et les sauvegarde dans un fichier numpy compressé.
-
-    Filtre automatiquement les trajectoires trop courtes (< _MIN_TRAJ_LEN frames,
-    soit 6.05 s avec dt=0.01 — garantit ≥ 5 s même si la bille sort du bord).
-
-    Le fichier .npz contient :
-      x_traj : (N, _MIN_TRAJ_LEN) float32 — coordonnées x
-      y_traj : (N, _MIN_TRAJ_LEN) float32 — coordonnées y
-      vx0    : (N,)               float32 — vitesse initiale x
-      vy0    : (N,)               float32 — vitesse initiale y
-
-    Format beaucoup plus compact que le CSV :
-      100 000 trajectoires × 605 pts ≈ 485 MB non compressé → ~50 MB compressé.
-    """
-    rng = random.Random(seed)
-    x_list:  list[np.ndarray] = []
-    y_list:  list[np.ndarray] = []
-    vx0_list: list[float] = []
-    vy0_list: list[float] = []
-
-    n_lhs = n * 3
-    lhs_candidates = _latin_hypercube_ci(n_lhs, rng)
-    lhs_iter = iter(lhs_candidates)
-
-    def _next_ci() -> tuple[float, float, float]:
-        try:
-            return next(lhs_iter)
-        except StopIteration:
-            return (
-                rng.uniform(0.08, 0.35),
-                rng.uniform(0.30, 2.50),
-                rng.uniform(0.0, 360.0),
-            )
-
-    attempts = 0
-    while len(x_list) < n and attempts < n * 8:
-        attempts += 1
-        r0, v0, phi0 = _next_ci()
-        traj_xyz = _run_cone(r0, v0, phi0)
-
-        if len(traj_xyz) < _MIN_TRAJ_LEN:
-            continue
-
-        phi_rad = math.radians(phi0)
-        xy = np.array([[pt[0], pt[1]] for pt in traj_xyz], dtype=np.float32)
-        x_list.append(xy[:_MIN_TRAJ_LEN, 0])
-        y_list.append(xy[:_MIN_TRAJ_LEN, 1])
-        vx0_list.append(float(v0 * math.cos(phi_rad)))
-        vy0_list.append(float(v0 * math.sin(phi_rad)))
-
-        if progress_cb:
-            progress_cb(len(x_list), n)
-
-    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-    np.savez_compressed(
-        path,
-        x_traj = np.stack(x_list),
-        y_traj = np.stack(y_list),
-        vx0    = np.array(vx0_list, dtype=np.float32),
-        vy0    = np.array(vy0_list, dtype=np.float32),
-    )
-    log.info("Pool sauvegardé : %d trajectoires → %s", len(x_list), path)
-
-
-def load_pool(
-    path: str = _SYNTHETIC_NPZ,
-    n_sims: int | None = None,
-    seed: int = 0,
-) -> dict | None:
-    """Charge le pool pré-généré et retourne un dict compatible avec train_and_evaluate.
-
-    n_sims : nombre de trajectoires d'entraînement à échantillonner depuis le pool.
-             Les indices 0 et 1 sont toujours réservés comme holdout (résultats
-             comparables quelle que soit la valeur de n_sims).
-             Si None, utilise tout le pool (hors holdout).
-
-    Retourne {"trajectories": list[dict], "ref_trajs": dict}
-    ou None si le fichier est absent.
-    """
-    if not os.path.exists(path):
-        log.warning("Pool introuvable : %s", path)
-        return None
-
-    with np.load(path) as data:
-        x_traj = data["x_traj"]   # (N, 605)
-        y_traj = data["y_traj"]
-        vx0    = data["vx0"]       # (N,)
-        vy0    = data["vy0"]
-        N = len(x_traj)
-
-        # Indices 0-1 : holdout fixe (cohérence des métriques entre n_sims différents)
-        holdout_idxs = [0, 1]
-        pool_idxs = list(range(2, N))
-
-        if n_sims is not None:
-            rng = random.Random(seed + n_sims)  # reproductible par valeur de n_sims
-            rng.shuffle(pool_idxs)
-            pool_idxs = pool_idxs[:min(n_sims, len(pool_idxs))]
-
-        selected = pool_idxs + holdout_idxs   # holdout toujours en fin de liste
-
-        trajectories = []
-        for rank, idx in enumerate(selected):
-            trajectories.append({
-                "exp_id": rank + 1,
-                "x":      x_traj[idx].copy(),
-                "y":      y_traj[idx].copy(),
-                "x_full": x_traj[idx].copy() if rank < _MAX_DISPLAY_TRAJS else None,
-                "y_full": y_traj[idx].copy() if rank < _MAX_DISPLAY_TRAJS else None,
-                "vx":     float(vx0[idx]),
-                "vy":     float(vy0[idx]),
-            })
-
-    # Trajectoires de référence (presets, calculées à la volée — 3 simulations)
-    ref_trajs: dict[str, np.ndarray] = {}
-    for key, preset in SimToRealParams.PRESENTATION_PRESETS.items():
-        traj_ref = _run_cone(preset["r0"], preset["v0"], preset["phi0"])
-        if len(traj_ref) >= 2:
-            ref_trajs[key] = np.array([[pt[0], pt[1]] for pt in traj_ref])
-
-    return {"trajectories": trajectories, "ref_trajs": ref_trajs}
-
-
-def pool_is_ready(path: str = _SYNTHETIC_NPZ, min_n: int = _POOL_SIZE) -> bool:
-    """Retourne True si le pool .npz existe et contient au moins min_n trajectoires.
-    
-    Accepte 90% de min_n comme seuil (filtrage des trajectoires trop courtes
-    peut réduire légèrement le nombre final).
-    """
-    if not os.path.exists(path):
-        return False
-    try:
-        with np.load(path) as data:
-            n_trajs = len(data["x_traj"])
-            threshold = int(min_n * 0.9)
-            return n_trajs >= threshold
-    except Exception:
-        return False
-
-
-# ── Presets de comparaison pré-calculés ───────────────────────────────────────
-
-def _predict_trajectory(model_x, model_y, r0: float, v0: float, phi0: float) -> np.ndarray:
-    """Prédit la trajectoire depuis des CI données — O(_N_IN) simulation + O(1) ML.
-
-    Retourne un tableau (N_IN + N_OUT, 2) contenant le contexte simulé puis
-    la prédiction ML.
-    """
-    phi_rad = math.radians(phi0)
-    vx0 = v0 * math.cos(phi_rad)
-    vy0 = v0 * math.sin(phi_rad)
-
-    ctx_raw = _run_cone(r0, v0, phi0, n_frames=_N_IN + 1)
-    while len(ctx_raw) < _N_IN:
-        ctx_raw.append(ctx_raw[-1])
-
-    ctx_x = np.array([pt[0] for pt in ctx_raw[:_N_IN]])
-    ctx_y = np.array([pt[1] for pt in ctx_raw[:_N_IN]])
-
-    feat  = _make_feat(ctx_x, ctx_y, vx0, vy0).reshape(1, -1)
-    pred  = np.column_stack([model_x.predict(feat)[0], model_y.predict(feat)[0]])
-    ctx   = np.column_stack([ctx_x, ctx_y])
-    return np.vstack([ctx, pred]).astype(np.float32)
-
-
-def compute_and_save_presets(
-    path: str = _PRESETS_NPZ,
-    models_path: str = _MODELS_PKL,
-    ci_key: str = "nominale",
-    progress_cb=None,
-) -> None:
-    """Pré-calcule 6 trajectoires prédites : 3 n_sims × 2 modèles (RL + MLP).
-    
-    IMPORTANT : Sauvegarde aussi les 12 modèles entraînés (4 modèles × 3 configs)
-    dans models_path pour chargement instantané au démarrage de l'app.
-
-    Les conditions initiales utilisées sont le preset `ci_key` (par défaut
-    "nominale" = CI de présentation).  Les résultats sont stockés dans deux fichiers :
-    
-    1. path (presets.npz) : trajectoires prédites + métriques (~30 KB)
-       pred_rl_50, pred_rl_45000, pred_rl_90000     : (N_IN+N_OUT, 2)
-       pred_mlp_50, pred_mlp_45000, pred_mlp_90000  : (N_IN+N_OUT, 2)
-       meta_rl_50, …                                : [r2_x, r2_y, rmse_x, rmse_y, n_train]
-    
-    2. models_path (trained_models.pkl) : modèles sklearn entraînés (~50-100 MB)
-       {"50": {"rl_x": model, "rl_y": model, "mlp_x": model, "mlp_y": model},
-        "45000": {...}, "90000": {...}}
-    """
-    from src.core.params.sim_to_real import SimToRealParams as _P
-    ci = _P.PRESENTATION_PRESETS.get(ci_key, _P.PRESENTATION_PRESETS["nominale"])
-    r0, v0, phi0 = ci["r0"], ci["v0"], ci["phi0"]
-
-    arrays: dict[str, np.ndarray] = {}
-    models_dict: dict[str, dict] = {}  # Structure : {config_key: {model_name: model}}
-    total_steps = len(_PRESET_N_SIMS)
-
-    for step_i, n in enumerate(_PRESET_N_SIMS):
-        label = _PRESET_LABELS[step_i]
-        config_key = str(n)
-        
-        if progress_cb:
-            progress_cb(step_i, total_steps, f"Entraînement {n:,} trajectoires…")
-
-        data = load_pool(n_sims=n)
-        if data is None:
-            log.error("compute_and_save_presets : pool manquant pour n=%d", n)
-            continue
-        result = train_and_evaluate(data["trajectories"])
-
-        # Sauvegarder les modèles pour cette config
-        models_dict[config_key] = {
-            "rl_x": result["lr_x"],
-            "rl_y": result["lr_y"],
-            "mlp_x": result["mlp_x"],
-            "mlp_y": result["mlp_y"],
-        }
-
-        # RL
-        pred_rl = _predict_trajectory(result["lr_x"], result["lr_y"], r0, v0, phi0)
-        m_rl    = result["metrics_lr"]
-        arrays[f"pred_rl_{n}"] = pred_rl
-        arrays[f"meta_rl_{n}"] = np.array(
-            [m_rl["r2_x"], m_rl["r2_y"], m_rl["rmse_x"], m_rl["rmse_y"], n],
-            dtype=np.float32,
-        )
-
-        # MLP
-        pred_mlp = _predict_trajectory(result["mlp_x"], result["mlp_y"], r0, v0, phi0)
-        m_mlp    = result["metrics_mlp"]
-        arrays[f"pred_mlp_{n}"] = pred_mlp
-        arrays[f"meta_mlp_{n}"] = np.array(
-            [m_mlp["r2_x"], m_mlp["r2_y"], m_mlp["rmse_x"], m_mlp["rmse_y"], n],
-            dtype=np.float32,
-        )
-
-    if progress_cb:
-        progress_cb(total_steps, total_steps, "Sauvegarde…")
-
-    # Sauvegarder les trajectoires prédites (npz)
-    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-    np.savez_compressed(path, **arrays)
-    log.info("Presets sauvegardés : %s", path)
-    
-    # Sauvegarder les modèles entraînés (pickle)
-    save_trained_models(models_dict, models_path)
-
-
-
-def load_presets(path: str = _PRESETS_NPZ) -> dict | None:
-    """Charge les presets pré-calculés.
-
-    Retourne un dict :
-      {
-        "rl_50":  {"pred_np": (605,2), "metrics": {...}, "model_type": MLModel.LINEAR, "n_sims": 50,  "label": "RL — 50"},
-        "rl_33000": …,
-        …
-        "mlp_100000": …,
-      }
-    ou None si le fichier est absent.
-    """
-    if not os.path.exists(path):
-        return None
-    try:
-        data = np.load(path)
-    except Exception:
-        return None
-
-    presets: dict = {}
-    for i, n in enumerate(_PRESET_N_SIMS):
-        lbl = _PRESET_LABELS[i]
-        for model_tag, model_type in [("rl", MLModel.LINEAR), ("mlp", MLModel.MLP)]:
-            pred_key = f"pred_{model_tag}_{n}"
-            meta_key = f"meta_{model_tag}_{n}"
-            if pred_key not in data or meta_key not in data:
-                continue
-            meta = data[meta_key]
-            key  = f"{model_tag}_{n}"
-            presets[key] = {
-                "pred_np":    data[pred_key],                   # (605, 2)
-                "metrics":    {
-                    "r2_x":   float(meta[0]),
-                    "r2_y":   float(meta[1]),
-                    "rmse_x": float(meta[2]),
-                    "rmse_y": float(meta[3]),
-                    "n_train": int(meta[4]),
-                },
-                "model_type": model_type,
-                "n_sims":     n,
-                "label":      f"{'RL' if model_tag == 'rl' else 'MLP'} — {lbl}",
-            }
-    return presets if presets else None
-
-
-def presets_are_ready(path: str = _PRESETS_NPZ) -> bool:
-    """Retourne True si le fichier de presets existe et contient les 6 entrées."""
-    if not os.path.exists(path):
-        return False
-    try:
-        data = np.load(path)
-        expected = [f"pred_{m}_{n}" for m in ("rl", "mlp") for n in _PRESET_N_SIMS]
-        return all(k in data for k in expected)
-    except Exception:
-        return False
-
-
-# ── Sauvegarde et chargement des modèles sklearn ──────────────────────────────
-
-def save_trained_models(models_dict: dict, path: str = _MODELS_PKL) -> None:
-    """Sauvegarde les modèles sklearn entraînés dans un fichier pickle.
-    
-    Args:
-        models_dict: Structure {config_key: {"rl_x": model, "rl_y": model, 
-                                             "mlp_x": model, "mlp_y": model}}
-                     Exemple: {"50": {...}, "45000": {...}, "90000": {...}}
-        path: Chemin du fichier pickle
-        
-    Les modèles sont des objets sklearn (LinearRegression ou Pipeline).
-    Taille typique : ~50-100 MB pour tous les modèles.
-    """
-    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-    with open(path, "wb") as f:
-        pickle.dump(models_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
-    log.info("Modèles sauvegardés : %d configs → %s", len(models_dict), path)
-
-
-def load_trained_models(path: str = _MODELS_PKL) -> dict | None:
-    """Charge les modèles sklearn depuis un fichier pickle.
-    
-    Returns:
-        dict: Structure {config_key: {"rl_x": model, "rl_y": model, ...}}
-              ou None si le fichier est absent ou corrompu.
-              
-    Les modèles retournés sont prêts à utiliser avec .predict().
-    """
-    if not os.path.exists(path):
-        log.warning("Modèles introuvables : %s", path)
-        return None
-    try:
-        with open(path, "rb") as f:
-            models = pickle.load(f)
-        log.info("Modèles chargés : %d configs depuis %s", len(models), path)
-        return models
-    except Exception as e:
-        log.error("Erreur chargement modèles : %s", e)
-        return None
-
-
-def models_are_ready(path: str = _MODELS_PKL) -> bool:
-    """Retourne True si le fichier de modèles existe et contient les 12 modèles.
-    
-    Vérifie la présence des 4 modèles (rl_x, rl_y, mlp_x, mlp_y) pour chaque
-    configuration de _PRESET_N_SIMS.
-    """
-    if not os.path.exists(path):
-        return False
-    try:
-        models = load_trained_models(path)
-        if not models:
-            return False
-        # Vérifier que chaque config contient les 4 modèles
-        for n in _PRESET_N_SIMS:
-            config_key = str(n)
-            if config_key not in models:
-                return False
-            config_models = models[config_key]
-            expected = ["rl_x", "rl_y", "mlp_x", "mlp_y"]
-            if not all(k in config_models for k in expected):
-                return False
-        return True
-    except Exception:
-        return False
-
-
-def get_cached_models() -> dict | None:
-    """Retourne les modèles chargés en mémoire (cache global).
-    
-    Si les modèles ne sont pas encore chargés, tente de les charger depuis le fichier.
-    Cette fonction est appelée par l'UI pour accéder aux modèles instantanément.
-    
-    Returns:
-        dict: Structure {config_key: {"rl_x": model, "rl_y": model, "mlp_x": model, "mlp_y": model}}
-              Exemple: {"50": {...}, "45000": {...}, "90000": {...}}
-              ou None si les modèles ne sont pas disponibles.
-    """
-    global _CACHED_MODELS
-    if _CACHED_MODELS is None:
-        _CACHED_MODELS = load_trained_models()
-        if _CACHED_MODELS:
-            log.info("Modèles chargés en cache : %d configs", len(_CACHED_MODELS))
-    return _CACHED_MODELS
-
-
-def set_cached_models(models: dict) -> None:
-    """Définit explicitement les modèles en cache (utilisé au démarrage de l'app)."""
-    global _CACHED_MODELS
-    _CACHED_MODELS = models
-    log.info("Modèles mis en cache : %d configs", len(models) if models else 0)
-
-
-def predict_with_model(
-    config_key: str,
-    model_type: str,
-    r0: float,
-    v0: float,
-    phi0: float,
-    models_dict: dict | None = None,
-) -> np.ndarray | None:
-    """Prédit une trajectoire avec un modèle pré-entraîné.
-    
-    Args:
-        config_key: "50", "45000" ou "90000" (nombre de trajectoires d'entraînement)
-        model_type: "rl" (Linear Regression) ou "mlp" (MLP)
-        r0, v0, phi0: Conditions initiales
-        models_dict: Dict des modèles (si None, utilise le cache global)
-    
-    Returns:
-        array (N_IN+N_OUT, 2) : contexte simulé + prédiction ML
-        ou None si le modèle n'est pas disponible
-    """
-    if models_dict is None:
-        models_dict = get_cached_models()
-    
-    if not models_dict or config_key not in models_dict:
-        log.error("Modèle introuvable : config=%s", config_key)
-        return None
-    
-    config_models = models_dict[config_key]
-    model_x_key = f"{model_type}_x"
-    model_y_key = f"{model_type}_y"
-    
-    if model_x_key not in config_models or model_y_key not in config_models:
-        log.error("Modèle introuvable : config=%s, type=%s", config_key, model_type)
-        return None
-    
-    return _predict_trajectory(
-        config_models[model_x_key],
-        config_models[model_y_key],
-        r0, v0, phi0
-    )
-
-
-def train_and_evaluate(trajectories: list[dict]) -> dict:
-    """Entraîne la régression linéaire et évalue sur les 2 dernières trajectoires.
-
-    Features d'entrée : _make_feat → 2·_N_IN + 2 valeurs
-      [x₀,y₀, x₁,y₁, …, x_{N_IN-1},y_{N_IN-1}, vx₀, vy₀]
-    Sorties : _N_OUT positions après le contexte (x et y indépendants).
-
-    Les 2 dernières trajectoires servent de holdout (jamais vues à l'entraînement).
-    """
-    if len(trajectories) < 3:
-        raise ValueError("Il faut au moins 3 trajectoires (1 train + 2 holdout).")
-
-    n_train = len(trajectories) - 2
-    train_trajs = trajectories[:n_train]
-    holdout     = trajectories[-2]
-
-    # ── Matrices d'entraînement ───────────────────────────────────────────────
-    X  = np.array([
-        _make_feat(t["x"][:_N_IN], t["y"][:_N_IN], t["vx"], t["vy"])
-        for t in train_trajs
-    ])
-    Yx = np.array([t["x"][_N_IN:_N_IN + _N_OUT] for t in train_trajs])
-    Yy = np.array([t["y"][_N_IN:_N_IN + _N_OUT] for t in train_trajs])
-
-    # ── Régression linéaire ───────────────────────────────────────────────────
-    lr_x = LinearRegression().fit(X, Yx)
-    lr_y = LinearRegression().fit(X, Yy)
-
-    # ── MLP (adam + early_stopping : scalable de quelques dizaines à 100 000 samples) ──
-    mlp_x = make_pipeline(
-        StandardScaler(),
-        MLPRegressor(
-            hidden_layer_sizes=(64, 32), solver="adam",
-            max_iter=300, early_stopping=True, n_iter_no_change=15, random_state=42,
-        ),
-    ).fit(X, Yx)
-    mlp_y = make_pipeline(
-        StandardScaler(),
-        MLPRegressor(
-            hidden_layer_sizes=(64, 32), solver="adam",
-            max_iter=300, early_stopping=True, n_iter_no_change=15, random_state=42,
-        ),
-    ).fit(X, Yy)
-
-    # ── Métriques sur le holdout ──────────────────────────────────────────────
-    feat_h  = _make_feat(
-        holdout["x"][:_N_IN], holdout["y"][:_N_IN],
-        holdout["vx"], holdout["vy"],
-    ).reshape(1, -1)
-    truth_x = holdout["x"][_N_IN:_N_IN + _N_OUT]
-    truth_y = holdout["y"][_N_IN:_N_IN + _N_OUT]
-
-    def _metrics(mx, my, n):
-        px = mx.predict(feat_h)[0]
-        py = my.predict(feat_h)[0]
-        return {
-            "r2_x":   float(r2_score(truth_x, px)),
-            "r2_y":   float(r2_score(truth_y, py)),
-            "rmse_x": float(np.sqrt(mean_squared_error(truth_x, px))),
-            "rmse_y": float(np.sqrt(mean_squared_error(truth_y, py))),
-            "n_train": n,
-        }
-
-    metrics_lr  = _metrics(lr_x,  lr_y,  n_train)
-    metrics_mlp = _metrics(mlp_x, mlp_y, n_train)
-
-    ctx   = np.column_stack([holdout["x"][:_N_IN], holdout["y"][:_N_IN]])
-    pred  = np.column_stack([lr_x.predict(feat_h)[0], lr_y.predict(feat_h)[0]])
-    truth = np.column_stack([truth_x, truth_y])
-
-    return {
-        "metrics_lr":      metrics_lr,
-        "metrics_mlp":     metrics_mlp,
-        "pred_positions":  np.vstack([ctx, pred]),    # (_N_IN + _N_OUT, 2)
-        "truth_positions": np.vstack([ctx, truth]),   # (_N_IN + _N_OUT, 2)
-        "train_trajs":     train_trajs,
-        "lr_x":            lr_x,
-        "lr_y":            lr_y,
-        "mlp_x":           mlp_x,
-        "mlp_y":           mlp_y,
-    }
-
-
-# ── Pens ──────────────────────────────────────────────────────────────────────
-
-_PEN_TRAIN = pg.mkPen((150, 150, 150, 50), width=1)
-_PEN_TRUTH = pg.mkPen(CLR_SUCCESS, width=2)
-_PEN_PRED  = pg.mkPen(CLR_PRIMARY, width=2)
-
-
-# ── PlotSimToReal ─────────────────────────────────────────────────────────────
+    SIM_KEY = "sim_to_real"
+
+    # Émis depuis le thread de calcul — connexion automatiquement queued (thread-safe)
+    progress: Signal = Signal(int, int)
+
+    def __init__(self, params: SimToRealParams | None = None):
+        _p = params or SimToRealParams()
+        super().__init__(_p)
+        self.params: SimToRealParams = _p
+
+        self._result:       dict       = {}
+        self._n_frames:     int        = 0
+        self.metrics:      dict       = {}
+        self._lr_x:         object     = None
+        self._lr_y:         object     = None
+        self._mlp_x:        object     = None
+        self._mlp_y:        object     = None
+        self._ref_trajs:    dict       = {}     # preset_key → (N, 2)
+        self._precomputed:  dict       = {}     # key → {pred_np, metrics, model_type, …}
+        self._preset_btns:  dict[str, QPushButton] = {}
+
+        # Registres des sliders CI — peuplés par _build_ci_bar()
+        self._ci_sliders:    dict[str, QSlider] = {}
+        self._ci_val_labels: dict[str, QLabel]  = {}
 
 class PlotSimToReal(Plot):
     """Simulation Sim-to-Real : génère un dataset cône synthétique et entraîne le ML.
