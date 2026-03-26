@@ -25,11 +25,22 @@ from sklearn.preprocessing import StandardScaler
 
 from src.core.params.integrators import MLModel
 from src.core.params.ml import MLParams, TEST_ICS
-from src.simulations.base import Plot
+from src.simulation.engines.base import Plot
 from src.utils.theme import (
+    CLR_DANGER,
     CLR_ML_BG,
     CLR_ML_PRED,
     CLR_ML_TRUE,
+    CLR_PRIMARY,
+    CLR_SUCCESS,
+    CLR_SURFACE,
+    CLR_TEXT,
+    CLR_TEXT_SECONDARY,
+    CLR_WARNING,
+    FS_LG,
+    FS_MD,
+    FS_SM,
+    FS_XS,
 )
 
 log = logging.getLogger(__name__)
@@ -354,8 +365,6 @@ class PlotML(Plot):
         )
 
     def get_metrics_schema(self) -> list[dict]:
-        from src.utils.theme import CLR_DANGER, CLR_PRIMARY, CLR_SUCCESS, CLR_WARNING
-
         schema = [
             {"key": "prog", "label": "Progression", "unit": "%",  "fmt": ".0f", "color": CLR_PRIMARY},
             {"key": "x",    "label": "x prédit",    "unit": "px", "fmt": ".1f", "color": CLR_WARNING},

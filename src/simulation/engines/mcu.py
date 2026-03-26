@@ -15,8 +15,16 @@ from PySide6.QtGui import QKeySequence, QShortcut
 
 from src.core.geometry import disk_xy
 from src.core.params.mcu import MCUParams
-from src.simulations.base import Plot
-from src.utils.theme import CLR_PLOT_BG, CLR_PLOT_CENTER, CLR_PLOT_PARTICLE
+from src.simulation.engines.base import Plot
+from src.utils.theme import (
+    CLR_PLOT_BG,
+    CLR_PLOT_CENTER,
+    CLR_PLOT_PARTICLE,
+    CLR_PRIMARY,
+    CLR_SUCCESS,
+    CLR_TEXT_SECONDARY,
+    CLR_WARNING,
+)
 
 log = logging.getLogger(__name__)
 
@@ -132,13 +140,6 @@ class PlotMCU(Plot):
             self.ball.setData([self.xs[i]], [self.ys[i]])
 
     def get_metrics_schema(self) -> list[dict]:
-        from src.utils.theme import (
-            CLR_PRIMARY,
-            CLR_SUCCESS,
-            CLR_TEXT_SECONDARY,
-            CLR_WARNING,
-        )
-
         return [
             {
                 "key": "r",

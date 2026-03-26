@@ -2,7 +2,7 @@
 
 # Provide easy access to main components
 from src.application.app import MainApplication
-from src.simulations import SIMULATIONS
+from src.simulation import SIMULATIONS
 from src.ui import MainWindow
 
 __all__ = [

@@ -17,8 +17,8 @@ from PySide6.QtWidgets import (
 
 from src.core.content import APP_TITLE, SIM
 from src.core.content.chapters import CHAPTERS
-from src.simulations import SIMULATIONS
-from src.simulations.base import Plot3dBase
+from src.simulation import SIMULATIONS
+from src.simulation.engines.base import Plot3dBase
 from src.utils.theme import (
     CLR_HEADER_BG,
     CLR_HEADER_SUBTITLE,
@@ -28,10 +28,10 @@ from src.utils.theme import (
     FS_XS,
 )
 
-from .dashboard import ComparisonView, SimDashboard, SimToRealView
-from .menu import build_menu, make_card
+from .views.dashboard import ComparisonView, SimDashboard, SimToRealView
+from .components.menu import build_menu, make_card
 from .param_panel import ParamPanel
-from .presentation import GuardPage, TimelineBar
+from .views.presentation import GuardPage, TimelineBar
 from .theory import TheoryPage
 
 
@@ -182,7 +182,7 @@ class MainWindow(QMainWindow):
         self._pres_status.setStyleSheet(f"background:transparent; color:{CLR_STATUS_TEXT};")
         h.addWidget(self._pres_status)
 
-        hint = QLabel("←→ · 1-9 · Espace · R · F1-3 · Échap")
+        hint = QLabel("←→ · 1-4 · Espace · R · F1-3 · T · Ctrl+1-3 · Échap")
         hint.setStyleSheet(f"background:transparent; color:{CLR_STATUS_TEXT}; font-size:{FS_XS};")
         h.addWidget(hint)
 

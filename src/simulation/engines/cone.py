@@ -17,8 +17,8 @@ import pyqtgraph.opengl as gl
 from src.core.params.cone import ConeParams
 from src.core.params.integrators import Integrator
 from src.core.params.physics_constants import LARGE_BALL_RADIUS, SMALL_BALL_RADIUS
-from src.simulations.base import Plot3dBase
-from src.simulations.integrators import step_euler_semi_implicit, step_rk4, step_verlet
+from src.simulation.engines.base import Plot3dBase
+from src.simulation.engines.integrators import step_euler_semi_implicit, step_rk4, step_verlet
 
 log = logging.getLogger(__name__)
 

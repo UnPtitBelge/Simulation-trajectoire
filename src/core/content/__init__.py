@@ -1,24 +1,7 @@
-"""Core content package - educational content for the application."""
+"""Content module — chapters, theory, and simulation metadata."""
 
-from src.core.content.chapters import CHAPTERS, Chapter, ChapterStep
-from src.core.content.simulations import (
-    APP_TITLE,
-    SIM,
-    WELCOME_INTRO,
-    WELCOME_SUBTITLE,
-    WELCOME_TITLE,
-)
-from src.core.content.theory import GLOSSARY, THEORY
+from .chapters import CHAPTERS, Chapter, ChapterStep
+from .simulations import SIM, WELCOME_INTRO, WELCOME_SUBTITLE, WELCOME_TITLE
+from .theory import GLOSSARY, THEORY
 
-__all__ = [
-    "APP_TITLE",
-    "WELCOME_TITLE",
-    "WELCOME_SUBTITLE",
-    "WELCOME_INTRO",
-    "SIM",
-    "THEORY",
-    "GLOSSARY",
-    "CHAPTERS",
-    "Chapter",
-    "ChapterStep",
-]
+APP_TITLE = "Simulation Trajectoire"

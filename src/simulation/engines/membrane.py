@@ -17,8 +17,9 @@ import pyqtgraph.opengl as gl
 from src.core.params.integrators import Integrator
 from src.core.params.membrane import MembraneParams
 from src.core.params.physics_constants import LARGE_BALL_RADIUS, MEMBRANE_R_MIN, SMALL_BALL_RADIUS
-from src.simulations.base import Plot3dBase
-from src.simulations.integrators import step_euler_semi_implicit, step_rk4, step_verlet
+from src.simulation.engines.base import Plot3dBase
+from src.simulation.engines.integrators import step_euler_semi_implicit, step_rk4, step_verlet
+from src.utils.theme import CLR_PRIMARY, CLR_TEXT_SECONDARY, CLR_WARNING
 
 log = logging.getLogger(__name__)
 
@@ -262,7 +263,6 @@ class PlotMembrane(Plot3dBase):
                     self._compare_trails[idx].setData(pos=np.array(ctraj[:end]))
 
     def get_metrics_schema(self) -> list[dict]:
-        from src.utils.theme import CLR_PRIMARY, CLR_TEXT_SECONDARY, CLR_WARNING
         return [
             {"key": "r",     "label": "Rayon",   "unit": "m",   "fmt": ".3f", "color": CLR_PRIMARY},
             {"key": "z",     "label": "Hauteur", "unit": "m",   "fmt": ".3f", "color": "#6B48FF"},

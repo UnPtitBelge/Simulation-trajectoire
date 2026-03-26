@@ -36,7 +36,7 @@ from PySide6.QtWidgets import (
 )
 
 from src.core.params.integrators import MLModel
-from src.simulations.sim_to_real import _SYNTHETIC_NPZ, load_pool, train_and_evaluate
+from src.core.ml.sim_to_real import _SYNTHETIC_NPZ, load_pool, train_and_evaluate
 from src.utils.theme import (
     CLR_BORDER,
     CLR_DANGER,
@@ -79,22 +79,20 @@ class _GenerateWorker(QObject):
     finished = Signal(object)
     failed   = Signal(str)
 
-    def __init__(self, n_sims: int, model_type: MLModel = MLModel.LINEAR):
+    def __init__(self, model_type: MLModel = MLModel.LINEAR):
         super().__init__()
-        self._n_sims = n_sims
         self._model_type = model_type
 
     @Slot()
     def run(self) -> None:
         try:
-            data = load_pool(n_sims=self._n_sims)
+            data = load_pool()
             if data is None:
                 self.failed.emit(
                     "Pool synthétique introuvable. "
                     "Relancez l'application pour le générer."
                 )
                 return
-            self.progress.emit(self._n_sims, self._n_sims)
             result = train_and_evaluate(data["trajectories"])
             self.finished.emit(result)
         except Exception as e:
@@ -181,42 +179,6 @@ class SimToRealView(QWidget):
 
         # ── Paramètre : nb simulations ────────────────────────────────────────
         lay.addWidget(self._section("Configuration"))
-
-        lay.addWidget(QLabel("Nombre de simulations"))
-        self._n_sims_lbl = QLabel("150")
-        self._n_sims_lbl.setStyleSheet(
-            f"font-size:{FS_MD}; font-weight:500; color:{CLR_PRIMARY};"
-        )
-        # Slider logarithmique : 200 steps mappés sur [50, 90000]
-        # Note : 90k correspond au nombre réel de trajectoires disponibles après filtrage.
-        import math as _m
-        self._log_min, self._log_max = _m.log(50), _m.log(90_000)
-        self._n_sims_slider = QSlider(Qt.Orientation.Horizontal)
-        self._n_sims_slider.setMinimum(0)
-        self._n_sims_slider.setMaximum(200)
-        self._n_sims_slider.setValue(self._log_to_pos(150))
-        self._n_sims_slider.valueChanged.connect(self._on_nsims_slider)
-        lay.addWidget(self._n_sims_slider)
-        lbl_min = QLabel("50")
-        lbl_min.setStyleSheet(f"color:{CLR_TEXT_SECONDARY}; font-size:{FS_XS};")
-        lbl_max = QLabel("100 000")
-        lbl_max.setStyleSheet(f"color:{CLR_TEXT_SECONDARY}; font-size:{FS_XS};")
-        row = QHBoxLayout()
-        row.addWidget(lbl_min)
-        row.addStretch()
-        row.addWidget(self._n_sims_lbl)
-        row.addStretch()
-        row.addWidget(lbl_max)
-        lay.addLayout(row)
-
-        hint = QLabel(
-            "CI tirées aléatoirement :\n"
-            "r₀ ∈ [0.08, 0.35] m\n"
-            "v₀ ∈ [0.3, 2.5] m/s\n"
-            "φ₀ ∈ [0°, 360°]"
-        )
-        hint.setStyleSheet(f"color:{CLR_TEXT_SECONDARY}; font-size:{FS_XS};")
-        lay.addWidget(hint)
 
         # ── Toggle modèle ML ────────────────────────────────────────────────
         lay.addWidget(QLabel("Modèle"))
@@ -373,52 +335,26 @@ class SimToRealView(QWidget):
         lbl.setStyleSheet(f"color:{CLR_PRIMARY_DARK}; font-size:{FS_SM};")
         return lbl
 
-    # ── Slider logarithmique n_sims ────────────────────────────────────────────
-
-    def _log_to_pos(self, val: int) -> int:
-        import math as _m
-        return round(((_m.log(max(val, 50)) - self._log_min)
-                      / (self._log_max - self._log_min)) * 200)
-
-    def _pos_to_nsims(self, pos: int) -> int:
-        import math as _m
-        raw = _m.exp(self._log_min + pos / 200 * (self._log_max - self._log_min))
-        # Arrondir à un "beau" nombre : 50 si <75, sinon arrondir à 10/100/1000
-        if raw < 75:
-            return 50
-        if raw < 500:
-            return round(raw / 10) * 10
-        if raw < 5000:
-            return round(raw / 100) * 100
-        return round(raw / 1000) * 1000
-
-    def _on_nsims_slider(self, pos: int) -> None:
-        n = self._pos_to_nsims(pos)
-        self._n_sims_lbl.setText(f"{n:,}".replace(",", " "))
-
     # ── Génération ────────────────────────────────────────────────────────────
 
     def _on_generate(self) -> None:
         if self._thread and self._thread.isRunning():
             return
-
-        n_sims = self._pos_to_nsims(self._n_sims_slider.value())
         self._generate_btn.setEnabled(False)
         self._progress.setValue(0)
         self._progress.show()
-        self._status_lbl.setText(f"Chargement de {n_sims} trajectoires depuis le pool…")
+        self._status_lbl.setText("Chargement des trajectoires depuis le pool…")
         self._results_frame.hide()
         self._metric_bar.hide()
         self._clear_plot()
 
         model_idx = self._model_group.checkedId()
         model_type = list(MLModel)[model_idx] if model_idx >= 0 else MLModel.LINEAR
-        self._worker = _GenerateWorker(n_sims, model_type)
+        self._worker = _GenerateWorker(model_type)
         self._thread = QThread()
         self._worker.moveToThread(self._thread)
 
         self._thread.started.connect(self._worker.run)
-        self._worker.progress.connect(self._on_progress)
         self._worker.finished.connect(self._on_done)
         self._worker.failed.connect(self._on_failed)
         self._worker.finished.connect(self._thread.quit)
@@ -431,7 +367,7 @@ class SimToRealView(QWidget):
     def _on_progress(self, current: int, total: int) -> None:
         pct = int(current / max(total, 1) * 100)
         self._progress.setValue(pct)
-        self._status_lbl.setText(f"Simulation {current} / {total}…")
+        self._status_lbl.setText(f"Traitement {current} / {total}…")
 
     @Slot(object)
     def _on_done(self, result: dict) -> None:

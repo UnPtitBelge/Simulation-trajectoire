@@ -11,6 +11,8 @@ Changes are debounced (300 ms) before triggering plot.setup().
 
 from __future__ import annotations
 
+import math
+
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QButtonGroup,
@@ -53,18 +55,16 @@ _SLIDER_STEPS = 200
 
 
 def _float_to_slider(val: float, spec: dict) -> int:
-    import math as _m
     lo, hi = spec["min"], spec["max"]
     if spec.get("scale") == "log" and lo > 0:
-        return round((_m.log(val) - _m.log(lo)) / (_m.log(hi) - _m.log(lo)) * _SLIDER_STEPS)
+        return round((math.log(val) - math.log(lo)) / (math.log(hi) - math.log(lo)) * _SLIDER_STEPS)
     return round((val - lo) / (hi - lo) * _SLIDER_STEPS)
 
 
 def _slider_to_float(pos: int, spec: dict) -> float:
-    import math as _m
     lo, hi = spec["min"], spec["max"]
     if spec.get("scale") == "log" and lo > 0:
-        raw = _m.exp(_m.log(lo) + pos / _SLIDER_STEPS * (_m.log(hi) - _m.log(lo)))
+        raw = math.exp(math.log(lo) + pos / _SLIDER_STEPS * (math.log(hi) - math.log(lo)))
     else:
         raw = lo + pos / _SLIDER_STEPS * (hi - lo)
     step = spec["step"]
