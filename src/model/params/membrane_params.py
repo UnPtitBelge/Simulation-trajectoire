@@ -6,7 +6,7 @@ from typing import ClassVar
 
 from src.model.params.base import BaseParams
 from src.model.params.integrators import Integrator
-from src.model.params.membrane import MEMBRANE_PRESENTATION_PRESETS
+from src.model.params.membrane import MEMBRANE_PRESETS
 from src.model.params.physics_constants import (
     GRAVITY,
     LAUNCH_ANGLE,
@@ -63,7 +63,7 @@ class MembraneParams(BaseParams):
     }
 
     PRESETS: ClassVar[dict[str, dict]] = {
-        "presentation": {
+        "default": {
             "F": MEMBRANE_DEFAULT_F,
             "T": MEMBRANE_DEFAULT_T,
             "R_membrane": SURFACE_RADIUS,
@@ -71,7 +71,7 @@ class MembraneParams(BaseParams):
             "r0": LAUNCH_R0,
             "v0": LAUNCH_SPEED,
             "phi0": LAUNCH_ANGLE,
-            "label": "Conditions de présentation",
+            "label": "Conditions par défaut",
         },
         "puits_profond": {
             "F": MEMBRANE_DEFAULT_F * 5,   # A ≈ 0.10
@@ -95,4 +95,4 @@ class MembraneParams(BaseParams):
         },
     }
 
-    PRESENTATION_PRESETS: ClassVar[dict[str, dict]] = MEMBRANE_PRESENTATION_PRESETS
+    PRESETS: ClassVar[dict[str, dict]] = MEMBRANE_PRESETS

@@ -45,7 +45,7 @@ _POOL_SIZE = 100_000
 # Labels des modèles ML disponibles
 _PRESET_LABELS: list[str] = ["RL", "MLP"]
 
-# Tailles de contexte pour Ctrl+1/2/3 en présentation
+# Tailles de contexte pour Ctrl+1/2/3
 _PRESET_N_SIMS: list[int] = [50, 45_000, 90_000]
 _CONTEXT_LABELS: list[str] = ["50 trajectoires", "45 000 trajectoires", "90 000 trajectoires"]
 

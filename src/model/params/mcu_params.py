@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from src.model.params.base import BaseParams
-from src.model.params.mcu import MCU_PRESENTATION_PRESETS
+from src.model.params.mcu import MCU_PRESETS
 
 
 @dataclass
@@ -45,4 +45,4 @@ class MCUParams(BaseParams):
         },
     }
 
-    PRESENTATION_PRESETS: ClassVar[dict[str, dict]] = MCU_PRESENTATION_PRESETS
+    PRESETS: ClassVar[dict[str, dict]] = MCU_PRESETS

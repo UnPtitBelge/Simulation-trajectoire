@@ -1,4 +1,4 @@
-"""Cone presentation presets — 3 configurations pour la présentation.
+"""Cone presets — 3 configurations par défaut.
 
 F1 — vitesse standard : CI nominales (LAUNCH_SPEED, LAUNCH_R0)
 F2 — vitesse rapide   : même r0, v0 plus élevée
@@ -14,7 +14,7 @@ from src.model.params.physics_constants import (
     SURFACE_RADIUS,
 )
 
-CONE_PRESENTATION_PRESETS: dict[str, dict] = {
+CONE_PRESETS: dict[str, dict] = {
     "pres_standard": {
         "slope": CONE_DEFAULT_SLOPE,
         "R_cone": SURFACE_RADIUS,

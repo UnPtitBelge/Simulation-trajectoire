@@ -1,4 +1,4 @@
-"""Timeline bar — chapter progress indicator for presentation mode."""
+"""Timeline bar — chapter progress indicator."""
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (

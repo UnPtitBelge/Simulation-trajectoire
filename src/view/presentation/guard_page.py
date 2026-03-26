@@ -1,4 +1,4 @@
-"""Guard page — splash screen to start the presentation."""
+"""Guard page — splash screen to start the application."""
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (

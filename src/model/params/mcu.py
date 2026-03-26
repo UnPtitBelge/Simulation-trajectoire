@@ -1,6 +1,6 @@
-"""MCU presentation presets — 3 visually striking configurations for classroom demos."""
+"""MCU presets — 3 configurations par défaut."""
 
-MCU_PRESENTATION_PRESETS: dict[str, dict] = {
+MCU_PRESETS: dict[str, dict] = {
     "demo_orbite": {
         "R": 8.0,
         "omega": 1.5,

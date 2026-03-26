@@ -1,4 +1,4 @@
-"""Membrane presentation presets — 3 configurations for classroom demos."""
+"""Membrane presets — 3 configurations par défaut."""
 
 from src.model.params.physics_constants import (
     GRAVITY,

@@ -1,7 +1,6 @@
-"""Chapters — timeline data for the presentation mode.
+"""Chapters — timeline data for the normal mode.
 
-4 chapters, one simulation each.  No theory text overlays — the presentation
-is purely simulation-based.  Presets are applied live via F1-F3.
+4 chapters, one simulation each.  Presets are applied live via F1-F3.
 """
 
 from dataclasses import dataclass, field
@@ -25,12 +24,12 @@ class ChapterStep:
 
 @dataclass(frozen=True)
 class Chapter:
-    """A chapter in the presentation timeline."""
+    """A chapter in the timeline."""
 
     number: int
     title: str
     short: str  # one-line summary for the timeline bar
-    theory_key: str  # kept for reference, unused in presentation
+    theory_key: str  # kept for reference
     steps: tuple[ChapterStep, ...] = field(default_factory=tuple)
 
 

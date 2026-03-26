@@ -1,6 +1,6 @@
-"""ML presentation presets — 3 configurations for classroom demos."""
+"""ML presets — 3 configurations par défaut."""
 
-ML_PRESENTATION_PRESETS: dict[str, dict] = {
+ML_PRESETS: dict[str, dict] = {
     "peu_donnees": {
         "n_train": 3,
         "test_ic": 0,

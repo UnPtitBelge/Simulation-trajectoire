@@ -5,7 +5,7 @@ from typing import ClassVar
 
 from src.model.params.base import BaseParams
 from src.model.params.integrators import MLModel
-from src.model.params.ml import ML_PRESENTATION_PRESETS
+from src.model.params.ml import ML_PRESETS
 
 
 # Conditions initiales de test :
@@ -68,4 +68,4 @@ class MLParams(BaseParams):
         },
     }
 
-    PRESENTATION_PRESETS: ClassVar[dict[str, dict]] = ML_PRESENTATION_PRESETS
+    PRESETS: ClassVar[dict[str, dict]] = ML_PRESETS

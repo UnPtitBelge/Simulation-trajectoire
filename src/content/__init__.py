@@ -2,6 +2,20 @@
 
 from .chapters import CHAPTERS, Chapter, ChapterStep
 from .simulations import SIM, WELCOME_INTRO, WELCOME_SUBTITLE, WELCOME_TITLE
-from .theory import GLOSSARY, THEORY
+from .theory.theory import GLOSSARY, THEORY
 
 APP_TITLE = "Simulation Trajectoire"
+
+
+__all__ = [
+    "APP_TITLE",
+    "CHAPTERS",
+    "Chapter",
+    "ChapterStep",
+    "SIM",
+    "WELCOME_INTRO",
+    "WELCOME_SUBTITLE",
+    "WELCOME_TITLE",
+    "GLOSSARY",
+    "THEORY",
+]

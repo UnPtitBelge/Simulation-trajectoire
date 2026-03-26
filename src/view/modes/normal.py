@@ -1,4 +1,4 @@
-"""Presentation mode — navigation entre 4 chapitres de simulation.
+"""Normal mode — navigation entre 4 chapitres de simulation.
 
 Navigation :
   ←→      : chapitre suivant / précédent
@@ -25,8 +25,8 @@ from src.model.ml.sim_to_real.data_utils import _CONTEXT_LABELS
 from src.view.modes.base import BaseMode
 
 
-class _PresentationFilter(QObject):
-    """Keyboard handler for chapter-based presentation mode."""
+class _NormalFilter(QObject):
+    """Keyboard handler for chapter-based normal mode."""
 
     def eventFilter(self, win, event):
         if event.type() != QEvent.Type.KeyPress:
@@ -114,13 +114,12 @@ class _PresentationFilter(QObject):
         return False
 
 
-class PresentationMode(BaseMode):
+class NormalMode(BaseMode):
     """Présentation en 4 chapitres — une simulation par chapitre."""
 
     def apply(self, win: Any) -> None:
-        filt = _PresentationFilter()
+        filt = _NormalFilter()
         win._key_filter = filt
         win.installEventFilter(filt)
-        win._presentation_mode = True
         win.showFullScreen()
-        win.pres_show_guard()
+        win.show_guard()

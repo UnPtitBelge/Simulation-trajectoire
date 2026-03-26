@@ -9,7 +9,6 @@ class BaseParams:
     """Base class for all simulation parameters with common functionality."""
 
     PRESETS: ClassVar[dict[str, Any]] = {}
-    PRESENTATION_PRESETS: ClassVar[dict[str, Any]] = {}
     # Controls shown in the param panel: {field: {label, min, max, step}}
     # Empty by default — each concrete class overrides with its physics fields.
     PARAM_RANGES: ClassVar[dict[str, dict]] = {}
@@ -26,11 +25,11 @@ class BaseParams:
         return cls(**init_params)
 
     @classmethod
-    def from_presentation_preset(cls, name: str) -> Any:
-        """Create parameter instance from a presentation preset."""
-        presets = cls.PRESENTATION_PRESETS or cls.PRESETS
+    def from_preset(cls, name: str) -> Any:
+        """Create parameter instance from a preset."""
+        presets = cls.PRESETS
         if name not in presets:
-            raise ValueError(f"Presentation preset '{name}' not found for {cls.__name__}")
+            raise ValueError(f"Preset '{name}' not found for {cls.__name__}")
 
         p = presets[name]
         init_params = {k: v for k, v in p.items() if k in cls.__dataclass_fields__}

@@ -1,4 +1,4 @@
-"""Membrane presentation presets — 3 configurations for classroom demos."""
+"""Membrane presets — 3 configurations par défaut."""
 
 from src.model.params.physics_constants import (
     GRAVITY,
@@ -10,7 +10,7 @@ from src.model.params.physics_constants import (
     SURFACE_RADIUS,
 )
 
-MEMBRANE_PRESENTATION_PRESETS: dict[str, dict] = {
+MEMBRANE_PRESETS: dict[str, dict] = {
     "demo_orbite": {
         "F": MEMBRANE_DEFAULT_F,
         "T": MEMBRANE_DEFAULT_T,

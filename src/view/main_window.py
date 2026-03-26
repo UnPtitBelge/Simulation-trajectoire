@@ -37,7 +37,7 @@ from .pages.theory import TheoryPage
 
 class Page(IntEnum):
     """Indices of pages in the central QStackedWidget."""
-    PRESENTATION = 0
+    GUARD = 0
     MENU = 1
     DASHBOARD = 2
     THEORY = 3
@@ -62,7 +62,7 @@ class MainWindow(QMainWindow):
         # Install focus change handler
         self.installEventFilter(self)
 
-        self._pres_widget = self._build_presentation()
+        self._pres_widget = self._build_guard_page()
 
         # Initialize UI components and simulations
         self._menu_widget, self._sim_grid = build_menu(
@@ -73,7 +73,7 @@ class MainWindow(QMainWindow):
         self._theory_page = TheoryPage(on_back=self.show_menu)
         self._sim_to_real_view: "SimToRealView | None" = None
 
-        self.stack.addWidget(self._pres_widget)      # Page.PRESENTATION
+        self.stack.addWidget(self._pres_widget)      # Page.GUARD
         self.stack.addWidget(self._menu_widget)      # Page.MENU
         self.stack.addWidget(self._dash_stack)       # Page.DASHBOARD
         self.stack.addWidget(self._theory_page)      # Page.THEORY
@@ -94,7 +94,7 @@ class MainWindow(QMainWindow):
             self.dashboards.append(dash)
             self._dash_stack.addWidget(dash)
 
-        # Indices des simulations visibles en mode présentation (navigation 1-4 / ←→)
+        # Indices des simulations visibles en mode normal (navigation 1-4 / ←→)
         self._pres_indices: list[int] = [
             i for i, (*_, in_pres) in enumerate(SIMULATIONS) if in_pres
         ]
@@ -146,10 +146,10 @@ class MainWindow(QMainWindow):
         # Default handling
         super().keyPressEvent(event)
 
-    # ── presentation view ──────────────────────────────────────
+    # ── guard page view ────────────────────────────────────────
 
-    def _build_presentation(self) -> QWidget:
-        """Build the presentation page: guard → timeline + content area."""
+    def _build_guard_page(self) -> QWidget:
+        """Build the guard page: welcome screen."""
         w = QWidget()
         lay = QVBoxLayout(w)
         lay.setContentsMargins(0, 0, 0, 0)
@@ -157,7 +157,7 @@ class MainWindow(QMainWindow):
 
         # Guard page (full screen welcome)
         self._guard = GuardPage()
-        self._guard.started.connect(self._pres_start)
+        self._guard.started.connect(self._guard_start)
 
         # Timeline bar
         self._timeline = TimelineBar()
@@ -247,8 +247,8 @@ class MainWindow(QMainWindow):
     def show_menu(self):
         self.stack.setCurrentIndex(Page.MENU)
 
-    def show_presentation(self):
-        self.stack.setCurrentIndex(Page.PRESENTATION)
+    def show_guard(self):
+        self.stack.setCurrentIndex(Page.GUARD)
 
     def open_dashboard(self, idx: int):
         if 0 <= idx < len(self.dashboards):
@@ -307,7 +307,7 @@ class MainWindow(QMainWindow):
         if is_3d:
             self._update_marker_count()
 
-        self.show_presentation()
+        self.show_guard()
 
         plot = self.plots[idx]
         if auto_start:
@@ -339,22 +339,20 @@ class MainWindow(QMainWindow):
             return self.plots[self._sim_idx]
         return None
 
-    # ── chapter-based presentation navigation ─────────────────
+    # ── chapter-based navigation ──────────────────────────────
 
-    def _pres_start(self) -> None:
+    def _guard_start(self) -> None:
         """Called when user clicks 'Commencer' on the guard page."""
-        self.pres_goto_chapter(0)
+        self.show_menu()
 
-    def pres_show_guard(self) -> None:
-        """Show the guard page, hiding all presentation content."""
+    def show_guard(self) -> None:
+        """Show the guard page."""
         # Stop current simulation
         p = self.current_plot()
         if p and p.timer.isActive():
             p.stop()
 
         self._guard.show()
-        self._pres_header.hide()
-        self._timeline.hide()
         self._marker_bar.hide()
 
         # Hide sim widget from host
@@ -363,7 +361,7 @@ class MainWindow(QMainWindow):
             if item and item.widget():
                 item.widget().setParent(None)
 
-        self.show_presentation()
+        self.show_guard()
         self._guard.setFocus()
 
     def pres_goto_chapter(self, ch_idx: int, step_idx: int = 0) -> None:
@@ -429,7 +427,7 @@ class MainWindow(QMainWindow):
         else:
             self.set_status(f"Simulation '{sim_key}' non trouvée")
 
-        self.show_presentation()
+        self.show_guard()
 
     def _find_sim_idx(self, sim_key: str | None) -> int | None:
         """Find the index of a simulation by its key."""
@@ -445,12 +443,8 @@ class MainWindow(QMainWindow):
         if not p:
             return
         cls = type(p.params)
-        if getattr(self, "_presentation_mode", False) and cls.PRESENTATION_PRESETS:
-            p.apply_presentation_preset(preset_idx)
-            presets = cls.PRESENTATION_PRESETS
-        else:
-            p.apply_preset(preset_idx)
-            presets = cls.PRESETS
+        p.apply_preset(preset_idx)
+        presets = cls.PRESETS
         keys = list(presets.keys())
         if 0 <= preset_idx < len(keys):
             self.set_status(f"Préréglage : {presets[keys[preset_idx]]['label']}")
@@ -458,7 +452,7 @@ class MainWindow(QMainWindow):
     def set_status(self, text: str):
         self._pres_status.setText(text)
 
-    # ── marker controls (presentation mode) ────────────────────
+    # ── marker controls ───────────────────────────────────────
 
     def _on_add_marker(self) -> None:
         p = self.current_plot()

@@ -268,18 +268,18 @@ class Plot(QObject):
         self._start_after_setup = False
         self.setup()
 
-    def apply_presentation_preset(self, index: int) -> None:
-        """Switch to a presentation preset (uses PRESENTATION_PRESETS if defined)."""
+    def apply_preset(self, index: int) -> None:
+        """Switch to a preset."""
         if self.params is None:
             return
         cls = type(self.params)
-        presets = cls.PRESENTATION_PRESETS or cls.PRESETS
+        presets = cls.PRESETS
         keys = list(presets.keys())
         if not (0 <= index < len(keys)):
             return
 
         self.timer.stop()
-        new_params = cls.from_presentation_preset(keys[index])
+        new_params = cls.from_preset(keys[index])
 
         if self._computing:
             self._pending_params = new_params

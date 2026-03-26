@@ -61,13 +61,13 @@ _PEN_TRAIN = pg.mkPen("#374151",     width=1, style=pg.QtCore.Qt.PenStyle.SolidL
 class PlotSimToReal(Plot):
     """Simulation Sim-to-Real : génère un dataset cône synthétique et entraîne le ML.
 
-    Utilisation en mode présentation :
+    Utilisation en mode normal :
       - _compute()       : génère les trajectoires + entraîne le modèle (QThread)
       - _draw_initial()  : bascule sur la vue résultats, affiche les trajectoires
       - _draw(i)         : anime la trajectoire prédite frame par frame
 
     La vérité terrain (courbe verte) n'est affichée que si les CI courantes
-    correspondent exactement à l'un des 3 presets de présentation.
+    correspondent exactement à l'un des 3 presets par défaut.
     Les 3 trajectoires de référence sont pré-calculées hors dataset d'entraînement.
 
     Seules les CI (r0, v0, phi0) sont passées à ConeParams ; tous les autres
@@ -661,7 +661,7 @@ class PlotSimToReal(Plot):
         self._pred_curve.setData(trail[:, 0], trail[:, 1])
         self._cursor.setData([self._pred_np[i, 0]], [self._pred_np[i, 1]])
 
-    # ── Métriques (mode libre) ────────────────────────────────────────────────
+    # ── Métriques ────────────────────────────────────────────────────────
 
     def format_metrics(self) -> str:
         if not self.metrics:
@@ -707,7 +707,7 @@ class PlotSimToReal(Plot):
             return None
         return hash((self.params.n_sims, self.params.model_type))
 
-    # ── Méthodes de présentation ──────────────────────────────────────────────────
+    # ── Méthodes ────────────────────────────────────────────────────────────
 
     def _refresh_prediction(self) -> None:
         """Prédit depuis les CI courantes et met à jour métriques + animation."""
@@ -718,7 +718,7 @@ class PlotSimToReal(Plot):
         self._update_metrics_bar()
         self._reset_animation()
 
-    def apply_presentation_preset(self, index: int) -> None:
+    def apply_preset(self, index: int) -> None:
         """Applique un preset CI sans réentraîner — O(_N_IN) simulation + O(1) ML."""
         presets = type(self.params).PRESENTATION_PRESETS
         if not (0 <= index < len(presets)):

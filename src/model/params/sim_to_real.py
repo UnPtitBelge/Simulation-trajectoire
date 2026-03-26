@@ -1,4 +1,4 @@
-"""Paramètres pour la simulation Sim-to-Real (présentation + mode libre)."""
+"""Paramètres pour la simulation Sim-to-Real (mode normal)."""
 
 from dataclasses import dataclass, field
 from typing import ClassVar
@@ -24,12 +24,12 @@ class SimToRealParams(BaseParams):
 
     model_type: MLModel = field(default=MLModel.LINEAR)
     n_sims:     int     = 90_000       # trajectoires d'entraînement chargées du pool
-    r0:         float   = LAUNCH_R0    # m   — CI de présentation (cône)
-    v0:         float   = LAUNCH_SPEED # m/s — CI de présentation (cône)
+    r0:         float   = LAUNCH_R0    # m   — CI par défaut (cône)
+    v0:         float   = LAUNCH_SPEED # m/s — CI par défaut (cône)
     phi0:       float   = LAUNCH_ANGLE # °   — angle de la vitesse initiale
     frame_ms:   int     = 16
 
-    # model_type apparaît dans le _ParamsPanel du mode libre.
+    # model_type apparaît dans le panneau de paramètres.
     # r0/v0/phi0 sont gérés exclusivement par la CI bar intégrée au widget.
     PARAM_RANGES: ClassVar[dict] = {
         "model_type": {
@@ -45,7 +45,7 @@ class SimToRealParams(BaseParams):
     # CI alignées avec les presets du cône (même F1/F2/F3 conceptuels).
     # Changer uniquement r0/v0/phi0 — model_type est contrôlé
     # séparément par T (toggle RL/MLP).
-    PRESENTATION_PRESETS: ClassVar[dict] = {
+    PRESETS: ClassVar[dict] = {
         "pres_standard": {
             "r0": LAUNCH_R0, "v0": LAUNCH_SPEED, "phi0": LAUNCH_ANGLE,
             "label": "CI standard",

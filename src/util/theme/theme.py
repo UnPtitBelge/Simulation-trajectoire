@@ -31,7 +31,7 @@ def difficulty_color(diff: str) -> str:
     """Return the badge color for a given difficulty string."""
     return DIFFICULTY_COLORS.get(diff, CLR_TEXT_SECONDARY)
 
-# ── Presentation mode header ──────────────────────────────────────────────────
+# ── Normal mode header ──────────────────────────────────────────────────────
 
 CLR_HEADER_BG = "#202124"
 CLR_HEADER_SUBTITLE = "#BDC1C6"

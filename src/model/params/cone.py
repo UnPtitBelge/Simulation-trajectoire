@@ -1,4 +1,4 @@
-"""Cone presentation presets — 3 configurations for classroom demos."""
+"""Cone presets — 3 configurations par défaut."""
 
 from src.model.params.physics_constants import (
     CONE_DEFAULT_SLOPE,
@@ -9,7 +9,7 @@ from src.model.params.physics_constants import (
     SURFACE_RADIUS,
 )
 
-CONE_PRESENTATION_PRESETS: dict[str, dict] = {
+CONE_PRESETS: dict[str, dict] = {
     "demo_standard": {
         "slope": CONE_DEFAULT_SLOPE,
         "R_cone": SURFACE_RADIUS,

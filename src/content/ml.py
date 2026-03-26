@@ -1,4 +1,4 @@
-"""ML presentation presets — 3 configurations pour la présentation.
+"""ML presets — 3 configurations par défaut.
 
 Les presets correspondent aux mêmes scénarios que les modèles à équations :
 F1 — CI standard      : trajectoire de référence (test_ic 0)
@@ -8,7 +8,7 @@ F3 — hors distribution: conditions initiales inconnues du modèle (test_ic 2)
 n_train = 15 pour tous (dataset complet — la variation vient des CI de test).
 """
 
-ML_PRESENTATION_PRESETS: dict[str, dict] = {
+ML_PRESETS: dict[str, dict] = {
     "pres_standard": {
         "n_train": 15,
         "test_ic": 0,

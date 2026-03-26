@@ -13,7 +13,7 @@ from src.model.params.physics_constants import (
     LAUNCH_SPEED,
     SURFACE_RADIUS,
 )
-from src.model.params.cone import CONE_PRESENTATION_PRESETS
+from src.model.params.cone import CONE_PRESETS
 
 
 @dataclass
@@ -54,14 +54,14 @@ class ConeParams(BaseParams):
     }
 
     PRESETS: ClassVar[dict[str, dict]] = {
-        "presentation": {
+        "default": {
             "slope": CONE_DEFAULT_SLOPE,
             "R_cone": SURFACE_RADIUS,
             "friction": 0.012,
             "r0": LAUNCH_R0,
             "v0": LAUNCH_SPEED,
             "phi0": LAUNCH_ANGLE,
-            "label": "Conditions de présentation",
+            "label": "Conditions par défaut",
         },
         "sans_frottement": {
             "slope": 0.15,
@@ -104,4 +104,4 @@ class ConeParams(BaseParams):
         },
     }
 
-    PRESENTATION_PRESETS: ClassVar[dict[str, dict]] = CONE_PRESENTATION_PRESETS
+    PRESETS: ClassVar[dict[str, dict]] = CONE_PRESETS
