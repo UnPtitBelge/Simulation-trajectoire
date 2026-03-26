@@ -268,27 +268,6 @@ class Plot(QObject):
         self._start_after_setup = False
         self.setup()
 
-    def apply_preset(self, index: int) -> None:
-        """Switch to a preset."""
-        if self.params is None:
-            return
-        cls = type(self.params)
-        presets = cls.PRESETS
-        keys = list(presets.keys())
-        if not (0 <= index < len(keys)):
-            return
-
-        self.timer.stop()
-        new_params = cls.from_preset(keys[index])
-
-        if self._computing:
-            self._pending_params = new_params
-            return
-
-        self.params = new_params
-        self._start_after_setup = False
-        self.setup()
-
     # --- internal slots (always called in main thread via queued signals) ---
 
     @Slot()

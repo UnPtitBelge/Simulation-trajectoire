@@ -16,21 +16,9 @@ class BaseParams:
     @classmethod
     def from_preset(cls, name: str) -> Any:
         """Create parameter instance from a preset configuration."""
-        if name not in cls.PRESETS:
-            raise ValueError(f"Preset '{name}' not found for {cls.__name__}")
-
-        p = cls.PRESETS[name]
-        # Filter out non-parameter fields like 'label'
-        init_params = {k: v for k, v in p.items() if k in cls.__dataclass_fields__}
-        return cls(**init_params)
-
-    @classmethod
-    def from_preset(cls, name: str) -> Any:
-        """Create parameter instance from a preset."""
         presets = cls.PRESETS
         if name not in presets:
             raise ValueError(f"Preset '{name}' not found for {cls.__name__}")
-
         p = presets[name]
         init_params = {k: v for k, v in p.items() if k in cls.__dataclass_fields__}
         return cls(**init_params)

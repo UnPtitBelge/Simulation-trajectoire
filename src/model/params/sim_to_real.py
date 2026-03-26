@@ -40,8 +40,6 @@ class SimToRealParams(BaseParams):
         },
     }
 
-    PRESETS: ClassVar[dict] = {}
-
     # CI alignées avec les presets du cône (même F1/F2/F3 conceptuels).
     # Changer uniquement r0/v0/phi0 — model_type est contrôlé
     # séparément par T (toggle RL/MLP).

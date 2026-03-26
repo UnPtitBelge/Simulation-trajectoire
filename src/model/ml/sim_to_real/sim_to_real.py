@@ -454,7 +454,7 @@ class PlotSimToReal(Plot):
 
     def _find_matching_preset(self) -> str | None:
         """Retourne la clé du preset dont les CI correspondent aux paramètres courants."""
-        for key, preset in SimToRealParams.PRESENTATION_PRESETS.items():
+        for key, preset in SimToRealParams.PRESETS.items():
             if (abs(self.params.r0   - preset["r0"])   < 0.006 and
                     abs(self.params.v0   - preset["v0"])   < 0.03  and
                     abs(self.params.phi0 - preset["phi0"]) < 3.0):
@@ -584,24 +584,23 @@ class PlotSimToReal(Plot):
     # ── Calcul (QThread) ──────────────────────────────────────────────────────
 
     def _compute(self) -> None:
+        from .model_utils import train_and_evaluate
         data = load_pool(n_sims=self.params.n_sims)
         if data is None:
             raise RuntimeError(
                 "Pool synthétique introuvable. "
-                "Relancez l'application pour le régénérer."
+                "Veuillez générer les données avant de lancer l'application."
             )
-
-        # La fonction train_and_evaluate a été déplacée vers le script train_ml_models.py
-        # result = train_and_evaluate(data["trajectories"])
-        # self._result      = result
-        # self.metrics      = result["metrics_lr"]
-        # self._lr_x        = result["lr_x"]
-        # self._lr_y        = result["lr_y"]
-        # self._mlp_x       = result["mlp_x"]
-        # self._mlp_y       = result["mlp_y"]
-        # self._ref_trajs   = data["ref_trajs"]
-        # self._last_n_sims = self.params.n_sims
-        # self._do_predict()
+        result            = train_and_evaluate(data)
+        self._result      = result
+        self.metrics      = result["metrics_lr"]
+        self._lr_x        = result["lr_x"]
+        self._lr_y        = result["lr_y"]
+        self._mlp_x       = result["mlp_x"]
+        self._mlp_y       = result["mlp_y"]
+        self._ref_trajs   = data["ref_trajs"]
+        self._last_n_sims = self.params.n_sims
+        self._do_predict()
 
     # ── Rendu (main thread) ───────────────────────────────────────────────────
 
@@ -721,7 +720,7 @@ class PlotSimToReal(Plot):
 
     def apply_preset(self, index: int) -> None:
         """Applique un preset CI sans réentraîner — O(_N_IN) simulation + O(1) ML."""
-        presets = type(self.params).PRESENTATION_PRESETS
+        presets = type(self.params).PRESETS
         if not (0 <= index < len(presets)):
             return
         preset = list(presets.values())[index]

@@ -345,23 +345,23 @@ class MainWindow(QMainWindow):
         """Called when user clicks 'Commencer' on the guard page."""
         self.show_menu()
 
-    def show_guard(self) -> None:
-        """Show the guard page."""
-        # Stop current simulation
+    def pres_show_guard(self) -> None:
+        """Return to the guard page — stops simulation and hides sim area."""
         p = self.current_plot()
         if p and p.timer.isActive():
             p.stop()
 
-        self._guard.show()
+        self._pres_header.hide()
+        self._timeline.hide()
         self._marker_bar.hide()
+        self._guard.show()
 
-        # Hide sim widget from host
         while self._pres_host.count():
             item = self._pres_host.takeAt(0)
             if item and item.widget():
                 item.widget().setParent(None)
 
-        self.show_guard()
+        self.stack.setCurrentIndex(Page.GUARD)
         self._guard.setFocus()
 
     def pres_goto_chapter(self, ch_idx: int, step_idx: int = 0) -> None:
