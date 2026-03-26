@@ -41,11 +41,11 @@ from .data_utils import (
     _N_IN, _N_OUT, _MIN_TRAJ_LEN, _POOL_SIZE,
     _SYNTHETIC_CSV, _SYNTHETIC_NPZ, _PRESETS_NPZ, _MODELS_PKL,
     _PRESET_LABELS, _PRESET_N_SIMS, _CONTEXT_LABELS,
-    generate_and_save_pool, pool_is_ready, load_pool,
+    pool_is_ready, load_pool,
     _run_cone, _make_feat,
 )
 from .model_utils import (
-    train_and_evaluate, save_trained_models, load_trained_models, models_are_ready,
+    save_trained_models, load_trained_models, models_are_ready,
     get_cached_models, set_cached_models,
 )
 from .preset_utils import load_presets, presets_are_ready
@@ -591,16 +591,17 @@ class PlotSimToReal(Plot):
                 "Relancez l'application pour le régénérer."
             )
 
-        result = train_and_evaluate(data["trajectories"])
-        self._result      = result
-        self.metrics      = result["metrics_lr"]
-        self._lr_x        = result["lr_x"]
-        self._lr_y        = result["lr_y"]
-        self._mlp_x       = result["mlp_x"]
-        self._mlp_y       = result["mlp_y"]
-        self._ref_trajs   = data["ref_trajs"]
-        self._last_n_sims = self.params.n_sims
-        self._do_predict()
+        # La fonction train_and_evaluate a été déplacée vers le script train_ml_models.py
+        # result = train_and_evaluate(data["trajectories"])
+        # self._result      = result
+        # self.metrics      = result["metrics_lr"]
+        # self._lr_x        = result["lr_x"]
+        # self._lr_y        = result["lr_y"]
+        # self._mlp_x       = result["mlp_x"]
+        # self._mlp_y       = result["mlp_y"]
+        # self._ref_trajs   = data["ref_trajs"]
+        # self._last_n_sims = self.params.n_sims
+        # self._do_predict()
 
     # ── Rendu (main thread) ───────────────────────────────────────────────────
 

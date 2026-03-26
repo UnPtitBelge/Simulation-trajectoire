@@ -8,7 +8,7 @@ import numpy as np
 from src.model.params.integrators import MLModel
 from src.model.params.sim_to_real import SimToRealParams as _P
 from .data_utils import _PRESET_LABELS, _N_IN, _N_OUT, _PRESETS_NPZ, load_pool
-from .model_utils import _predict_trajectory, train_and_evaluate, save_trained_models
+from .model_utils import _predict_trajectory, save_trained_models
 
 log = logging.getLogger(__name__)
 
@@ -46,14 +46,15 @@ def compute_and_save_presets(
         if data is None:
             log.error("compute_and_save_presets : pool manquant")
             continue
-        result = train_and_evaluate(data["trajectories"])
-
+        # La fonction train_and_evaluate a été déplacée vers le script train_ml_models.py
+        # result = train_and_evaluate(data["trajectories"])
+        
         # Sauvegarder les modèles
-        models_dict[config_key] = {
-            "rl_x": result["lr_x"],
-            "rl_y": result["lr_y"],
-            "mlp_x": result["mlp_x"],
-            "mlp_y": result["mlp_y"],
+        # models_dict[config_key] = {
+        #     "rl_x": result["lr_x"],
+        #     "rl_y": result["lr_y"],
+        #     "mlp_x": result["mlp_x"],
+        #     "mlp_y": result["mlp_y"],
         }
 
         # RL

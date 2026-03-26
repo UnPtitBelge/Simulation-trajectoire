@@ -37,7 +37,8 @@ from PySide6.QtWidgets import (
 
 from src.model.params.integrators import MLModel
 from src.model.ml.sim_to_real.data_utils import _SYNTHETIC_NPZ, load_pool
-from src.model.ml.sim_to_real.model_utils import train_and_evaluate
+# train_and_evaluate a été déplacée vers le script train_ml_models.py
+# from src.model.ml.sim_to_real.model_utils import train_and_evaluate
 from src.util.theme import (
     CLR_BORDER,
     CLR_DANGER,
@@ -64,15 +65,15 @@ _PEN_PRED  = pg.mkPen(CLR_PRIMARY, width=2)
 # ── Worker ────────────────────────────────────────────────────────────────────
 
 class _GenerateWorker(QObject):
-    """Charge load_pool() + train_and_evaluate() dans un QThread.
+    """Charge load_pool() dans un QThread.
 
-    La génération des trajectoires se fait une seule fois au démarrage de
-    l'application (voir app.py). Ce worker se contente de charger le pool
-    pré-généré et d'entraîner les modèles sur n_sims trajectoires.
+    La génération des trajectoires et l'entraînement des modèles se font
+    via des scripts séparés (generate_synthetic_data.py et train_ml_models.py).
+    Ce worker se contente de charger le pool pré-généré et les modèles pré-entraînés.
 
     Signaux :
-      progress(current, total) — avancement (émis une seule fois à la fin)
-      finished(result)         — dict retourné par train_and_evaluate
+      progress(current, total) — avancement
+      finished(result)         — dict avec les modèles chargés
       failed(message)          — message d'erreur
     """
 
@@ -91,11 +92,23 @@ class _GenerateWorker(QObject):
             if data is None:
                 self.failed.emit(
                     "Pool synthétique introuvable. "
-                    "Relancez l'application pour le générer."
+                    "Utilisez generate_synthetic_data.py pour le générer."
                 )
                 return
-            result = train_and_evaluate(data["trajectories"])
-            self.finished.emit(result)
+            # La fonction train_and_evaluate a été déplacée vers le script train_ml_models.py
+            # result = train_and_evaluate(data["trajectories"])
+            # self.finished.emit(result)
+            
+            # Charger les modèles pré-entraînés
+            from src.model.ml.sim_to_real.model_utils import load_trained_models
+            models = load_trained_models()
+            if models:
+                self.finished.emit(models)
+            else:
+                self.failed.emit(
+                    "Modèles non trouvés. "
+                    "Utilisez train_ml_models.py pour les entraîner."
+                )
         except Exception as e:
             log.exception("_GenerateWorker.run a échoué")
             self.failed.emit(str(e))
