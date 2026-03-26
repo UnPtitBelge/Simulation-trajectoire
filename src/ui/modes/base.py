@@ -1,0 +1,33 @@
+"""Base class and window interface for all application modes."""
+
+from abc import ABC, abstractmethod
+from typing import Any, Protocol, runtime_checkable
+
+
+@runtime_checkable
+class IAppWindow(Protocol):
+    """Abstraction over MainWindow — only the methods that modes are allowed to call.
+
+    Dependency Inversion: modes depend on this interface, not on the concrete
+    MainWindow class. Adding a new mode or replacing MainWindow only requires
+    implementing this protocol.
+    """
+
+    def show_menu(self) -> None: ...
+    def show_presentation(self) -> None: ...
+    def activate_sim(self, idx: int, auto_start: bool = False) -> None: ...
+    def next_sim(self) -> None: ...
+    def prev_sim(self) -> None: ...
+    def current_plot(self) -> Any: ...
+    def apply_current_preset(self, idx: int) -> None: ...
+    def set_status(self, text: str) -> None: ...
+    def force_close(self) -> None: ...
+    def toggle_param_panel(self) -> None: ...
+
+
+class BaseMode(ABC):
+    """Interface that every application mode must implement."""
+
+    @abstractmethod
+    def apply(self, win: IAppWindow) -> None:
+        """Configure and activate this mode on the given window."""
