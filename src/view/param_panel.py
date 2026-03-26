@@ -28,7 +28,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.utils.theme import (
+from src.util.theme import (
     CLR_BG,
     CLR_BORDER,
     CLR_PRIMARY,

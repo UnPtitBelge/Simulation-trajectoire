@@ -674,7 +674,7 @@ class PlotSimToReal(Plot):
         )
 
     def get_metrics_schema(self) -> list[dict]:
-        from src.utils.theme import CLR_DANGER, CLR_PRIMARY, CLR_SUCCESS
+        from src.util.theme import CLR_DANGER, CLR_PRIMARY, CLR_SUCCESS
         schema = [
             {"key": "prog", "label": "Progression", "unit": "%",  "fmt": ".0f", "color": CLR_PRIMARY},
             {"key": "x",    "label": "x prédit",    "unit": "m",  "fmt": ".4f", "color": "#9CA3AF"},

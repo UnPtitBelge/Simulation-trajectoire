@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.core.content import SIM
+from src.content import SIM
 
 
 class ComparisonView(QWidget):

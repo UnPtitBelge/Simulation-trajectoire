@@ -1,6 +1,6 @@
 """Cone presentation presets — 3 configurations for classroom demos."""
 
-from src.core.params.physics_constants import (
+from src.model.params.physics_constants import (
     CONE_DEFAULT_SLOPE,
     GRAVITY,
     LAUNCH_ANGLE,

@@ -8,8 +8,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.core.content.chapters import CHAPTERS
-from src.utils.theme import (
+from src.content.chapters import CHAPTERS
+from src.util.theme import (
     CLR_BADGE_BG,
     CLR_HEADER_BG,
     CLR_PRIMARY,

@@ -11,9 +11,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.core.content import WELCOME_SUBTITLE, WELCOME_TITLE
-from src.utils.shortcuts import SHORTCUT_LABELS
-from src.utils.theme import (
+from src.content import WELCOME_SUBTITLE, WELCOME_TITLE
+from src.util.shortcuts import SHORTCUT_LABELS
+from src.util.theme import (
     CLR_BORDER,
     CLR_SURFACE,
     CLR_TEXT_SECONDARY,

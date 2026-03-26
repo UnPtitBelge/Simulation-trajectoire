@@ -1,7 +1,7 @@
 """UI components package."""
 
-from src.ui.main_window import MainWindow
-from src.ui.theory import TheoryPage
+from src.view.main_window import MainWindow
+from src.view.pages.theory import TheoryPage
 
 __all__ = [
     "MainWindow",

@@ -5,7 +5,7 @@ F2 — vitesse rapide   : même r0, v0 plus élevée
 F3 — proche du bord   : même vitesse que F1, r0 plus grand (proche de R_cone)
 """
 
-from src.core.params.physics_constants import (
+from src.model.params.physics_constants import (
     CONE_DEFAULT_SLOPE,
     GRAVITY,
     LAUNCH_ANGLE,

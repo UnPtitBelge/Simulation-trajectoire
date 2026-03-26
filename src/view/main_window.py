@@ -28,11 +28,11 @@ from src.util.theme import (
     FS_XS,
 )
 
-from .views.dashboard import ComparisonView, SimDashboard, SimToRealView
+from .dashboard import ComparisonView, SimDashboard, SimToRealView
 from .components.menu import build_menu, make_card
 from .param_panel import ParamPanel
-from .views.presentation import GuardPage, TimelineBar
-from .theory import TheoryPage
+from .presentation import GuardPage, TimelineBar
+from .pages.theory import TheoryPage
 
 
 class Page(IntEnum):

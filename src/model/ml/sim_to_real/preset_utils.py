@@ -5,8 +5,8 @@ import os
 
 import numpy as np
 
-from src.core.params.integrators import MLModel
-from src.core.params.sim_to_real import SimToRealParams as _P
+from src.model.params.integrators import MLModel
+from src.model.params.sim_to_real import SimToRealParams as _P
 from .data_utils import _PRESET_LABELS, _N_IN, _N_OUT, _PRESETS_NPZ, load_pool
 from .model_utils import _predict_trajectory, train_and_evaluate, save_trained_models
 

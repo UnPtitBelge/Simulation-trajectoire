@@ -10,8 +10,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.core.content.theory import THEORY
-from src.utils.theme import CLR_TEXT_SECONDARY, FS_MD, FS_SM, FS_2XL
+from src.content.theory.theory import THEORY
+from src.util.theme import CLR_TEXT_SECONDARY, FS_MD, FS_SM, FS_2XL
 
 
 def _make_section(subtitle: str, text: str) -> QFrame:

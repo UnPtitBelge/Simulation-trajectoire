@@ -3,9 +3,9 @@
 from dataclasses import dataclass, field
 from typing import ClassVar
 
-from src.core.params.base import BaseParams
-from src.core.params.integrators import MLModel
-from src.core.params.physics_constants import LAUNCH_ANGLE, LAUNCH_R0, LAUNCH_SPEED
+from src.model.params.base import BaseParams
+from src.model.params.integrators import MLModel
+from src.model.params.physics_constants import LAUNCH_ANGLE, LAUNCH_R0, LAUNCH_SPEED
 
 
 @dataclass

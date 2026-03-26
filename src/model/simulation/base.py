@@ -15,8 +15,8 @@ import pyqtgraph.opengl as gl
 from PySide6.QtCore import QObject, QThread, Qt, QTimer, Signal, Slot
 from PySide6.QtWidgets import QSizePolicy
 
-from src.core.params.physics_constants import LARGE_BALL_RADIUS, SMALL_BALL_RADIUS
-from src.utils.theme import RGB_CENTER_BALL
+from src.model.params.physics_constants import LARGE_BALL_RADIUS, SMALL_BALL_RADIUS
+from src.util.theme import RGB_CENTER_BALL
 
 log = logging.getLogger(__name__)
 

@@ -35,9 +35,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.core.params.integrators import MLModel
-from src.core.ml.sim_to_real import _SYNTHETIC_NPZ, load_pool, train_and_evaluate
-from src.utils.theme import (
+from src.model.params.integrators import MLModel
+from src.model.ml.sim_to_real.data_utils import _SYNTHETIC_NPZ, load_pool
+from src.model.ml.sim_to_real.model_utils import train_and_evaluate
+from src.util.theme import (
     CLR_BORDER,
     CLR_DANGER,
     CLR_ML_BG,

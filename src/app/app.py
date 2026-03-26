@@ -66,7 +66,7 @@ class MainApplication:
     
     def _load_models_into_memory(self):
         """Charge les modèles ML en mémoire au démarrage pour prédictions instantanées."""
-        from src.core.ml.model_utils import load_trained_models, set_cached_models
+        from src.model.ml.sim_to_real.model_utils import load_trained_models, set_cached_models
         
         models = load_trained_models()
         if models:

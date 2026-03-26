@@ -8,7 +8,7 @@ les cartes (_MetricCard) à chaque tick sans aucun calcul supplémentaire.
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
-from src.utils.theme import (
+from src.util.theme import (
     CLR_BORDER,
     CLR_PRIMARY,
     CLR_SURFACE,

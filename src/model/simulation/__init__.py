@@ -1,8 +1,8 @@
-from src.simulation.engines.cone import PlotCone
-from src.simulation.engines.mcu import PlotMCU
-from src.simulation.engines.membrane import PlotMembrane
-from src.core.ml.ml import PlotML
-from src.core.ml.sim_to_real import PlotSimToReal
+from src.model.simulation.cone import PlotCone
+from src.model.simulation.mcu import PlotMCU
+from src.model.simulation.membrane import PlotMembrane
+from src.model.ml.tracking import PlotML
+from src.model.ml.sim_to_real import PlotSimToReal
 
 SIMULATIONS = [
     # (sim_key, label, PlotClass, in_presentation)

@@ -14,12 +14,12 @@ import math
 import numpy as np
 import pyqtgraph.opengl as gl
 
-from src.core.params.integrators import Integrator
-from src.core.params.membrane import MembraneParams
-from src.core.params.physics_constants import LARGE_BALL_RADIUS, MEMBRANE_R_MIN, SMALL_BALL_RADIUS
-from src.simulation.engines.base import Plot3dBase
-from src.simulation.engines.integrators import step_euler_semi_implicit, step_rk4, step_verlet
-from src.utils.theme import CLR_PRIMARY, CLR_TEXT_SECONDARY, CLR_WARNING
+from src.model.params.integrators import Integrator
+from src.model.params.membrane_params import MembraneParams
+from src.model.params.physics_constants import LARGE_BALL_RADIUS, MEMBRANE_R_MIN, SMALL_BALL_RADIUS
+from src.model.simulation.base import Plot3dBase
+from src.model.simulation.integrators import step_euler_semi_implicit, step_rk4, step_verlet
+from src.util.theme import CLR_PRIMARY, CLR_TEXT_SECONDARY, CLR_WARNING
 
 log = logging.getLogger(__name__)
 

@@ -30,9 +30,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.core.content import GLOSSARY, SIM
-from src.ui.ui_helpers import build_preset_buttons
-from src.utils.theme import (
+from src.content import GLOSSARY, SIM
+from src.view.ui_helpers import build_preset_buttons
+from src.util.theme import (
     BADGE_RADIUS,
     BLOCK_PADDING,
     CLR_BG,

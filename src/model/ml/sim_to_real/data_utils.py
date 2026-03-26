@@ -8,7 +8,7 @@ import random
 
 import numpy as np
 
-from src.model.params.cone import ConeParams
+from src.model.params.cone_params import ConeParams
 from src.model.simulation.cone import simulate_cone
 
 log = logging.getLogger(__name__)

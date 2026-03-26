@@ -1,6 +1,6 @@
 """Membrane presentation presets — 3 configurations for classroom demos."""
 
-from src.core.params.physics_constants import (
+from src.model.params.physics_constants import (
     GRAVITY,
     LAUNCH_ANGLE,
     LAUNCH_R0,

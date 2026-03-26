@@ -1,7 +1,7 @@
 """Application modes: Presentation."""
 
-from src.ui.modes.base import BaseMode
-from src.ui.modes.presentation import PresentationMode
+from src.view.modes.base import BaseMode
+from src.view.modes.presentation import PresentationMode
 
 __all__ = [
     "BaseMode",

@@ -24,7 +24,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 from src.model.params.integrators import MLModel
-from src.model.params.ml import MLParams, TEST_ICS
+from src.model.params.ml_params import MLParams, TEST_ICS
 from src.model.simulation.base import Plot
 from src.util.theme import (
     CLR_DANGER,
