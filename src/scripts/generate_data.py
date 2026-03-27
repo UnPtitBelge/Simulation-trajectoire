@@ -10,7 +10,9 @@ Usage :
 
 import argparse
 import gc
+import os
 import sys
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
 import numpy as np
@@ -23,33 +25,40 @@ sys.path.insert(0, str(ROOT))
 from physics.cone import compute_cone
 
 
+_CENTER_RADIUS = 0.05  # rayon minimal (centre du cône, identique à cone.py)
+
+
 def _sample_initial_conditions(n: int, cfg: dict, rng: np.random.Generator):
     """Tire n CI plausibles uniformément sur la surface du cône."""
     R = cfg["R"]
     v_max = cfg.get("v_max", 3.0)
 
-    r0 = R * np.sqrt(rng.uniform(0.0, 1.0, n))  # densité uniforme sur surface
-    theta0 = rng.uniform(0.0, 2 * np.pi, n)
-    vr0 = rng.uniform(-v_max, v_max, n)
+    # densité uniforme sur surface ; clippé à [_CENTER_RADIUS, R) pour éviter r0=0
+    r_frac = (_CENTER_RADIUS / R) ** 2
+    r0 = R * np.sqrt(rng.uniform(r_frac, 1.0, n))
+    theta0  = rng.uniform(0.0, 2 * np.pi, n)
+    vr0     = rng.uniform(-v_max, v_max, n)
     vtheta0 = rng.uniform(-v_max, v_max, n)
     return r0, theta0, vr0, vtheta0
 
 
 def _simulate_chunk(r0, theta0, vr0, vtheta0, phys_cfg: dict):
-    """Simule un batch de trajectoires, retourne les paires (état_t, état_{t+1})."""
-    n = len(r0)
-    n_steps = phys_cfg["n_steps"]
-    n_pairs = n_steps - 1
-    R = phys_cfg["R"]
-    depth = phys_cfg["depth"]
+    """Simule un batch de trajectoires, retourne les paires (état_t, état_{t+1}).
+
+    Les trajectoires peuvent être plus courtes que n_steps si la bille sort du
+    cône (early exit dans compute_cone). Les listes absorbent cette variabilité.
+    """
+    n_steps  = phys_cfg["n_steps"]
+    R        = phys_cfg["R"]
+    depth    = phys_cfg["depth"]
     friction = phys_cfg["friction"]
-    g = phys_cfg["g"]
-    dt = phys_cfg["dt"]
+    g        = phys_cfg["g"]
+    dt       = phys_cfg["dt"]
 
-    X_buf = np.empty((n * n_pairs, 4), dtype=np.float32)
-    y_buf = np.empty((n * n_pairs, 4), dtype=np.float32)
+    X_parts: list[np.ndarray] = []
+    y_parts: list[np.ndarray] = []
 
-    for i in range(n):
+    for i in range(len(r0)):
         traj = compute_cone(
             r0=float(r0[i]),
             theta0=float(theta0[i]),
@@ -62,56 +71,100 @@ def _simulate_chunk(r0, theta0, vr0, vtheta0, phys_cfg: dict):
             dt=dt,
             n_steps=n_steps,
         )
-        start = i * n_pairs
-        end = start + n_pairs
-        X_buf[start:end] = traj[:-1].astype(np.float32)
-        y_buf[start:end] = traj[1:].astype(np.float32)
+        if len(traj) >= 2:
+            X_parts.append(traj[:-1].astype(np.float32))
+            y_parts.append(traj[1:].astype(np.float32))
 
-    return X_buf, y_buf
+    if not X_parts:
+        return np.empty((0, 4), np.float32), np.empty((0, 4), np.float32)
+    return np.vstack(X_parts), np.vstack(y_parts)
+
+
+def _generate_one_chunk(
+    chunk_idx: int,
+    n_this: int,
+    phys_cfg: dict,
+    gen_cfg: dict,
+    seed: np.random.SeedSequence,
+    out_dir: str,
+) -> tuple[int, int]:
+    """Worker : génère et sauvegarde un chunk. Retourne (chunk_idx, n_pairs).
+
+    Doit être défini au niveau module pour être picklable par multiprocessing.
+    """
+    rng = np.random.default_rng(seed)
+    r0, theta0, vr0, vtheta0 = _sample_initial_conditions(n_this, gen_cfg | phys_cfg, rng)
+    X, y = _simulate_chunk(r0, theta0, vr0, vtheta0, phys_cfg)
+    out_path = Path(out_dir) / f"chunk_{chunk_idx:05d}.npz"
+    np.savez_compressed(out_path, X=X, y=y)
+    del r0, theta0, vr0, vtheta0
+    gc.collect()
+    return chunk_idx, len(X)
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default=str(ROOT / "config" / "ml.toml"))
+    parser.add_argument(
+        "--workers", type=int, default=max(1, (os.cpu_count() or 2) - 1),
+        help="Nombre de processus parallèles (défaut : nb_CPU - 1)",
+    )
     args = parser.parse_args()
 
     with open(args.config, "rb") as f:
         cfg = tomllib.load(f)
 
-    phys_cfg = cfg["synth"]["physics"]
-    gen_cfg = cfg["synth"]["generation"]
-    out_dir = ROOT / cfg["paths"]["synth_data_dir"]
+    phys_cfg  = cfg["synth"]["physics"]
+    gen_cfg   = cfg["synth"]["generation"]
+    out_dir   = ROOT / cfg["paths"]["synth_data_dir"]
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    n_total = int(gen_cfg["n_trajectories"])
+    n_total    = int(gen_cfg["n_trajectories"])
     chunk_size = int(gen_cfg["chunk_size"])
-    n_chunks = (n_total + chunk_size - 1) // chunk_size
+    n_chunks   = (n_total + chunk_size - 1) // chunk_size
 
-    rng = np.random.default_rng(seed=42)
+    # Seeds reproductibles : un SeedSequence enfant par chunk
+    child_seeds = np.random.SeedSequence(42).spawn(n_chunks)
+
     print(
-        f"Génération de {n_total:,} trajectoires en {n_chunks} chunks de {chunk_size:,}..."
+        f"Génération de {n_total:,} trajectoires en {n_chunks} chunks "
+        f"de {chunk_size:,} — {args.workers} worker(s)..."
     )
 
-    for chunk_idx in range(n_chunks):
-        n_this = min(chunk_size, n_total - chunk_idx * chunk_size)
-        r0, theta0, vr0, vtheta0 = _sample_initial_conditions(
-            n_this, gen_cfg | phys_cfg, rng
-        )
+    n_this_list = [
+        min(chunk_size, n_total - i * chunk_size) for i in range(n_chunks)
+    ]
 
-        X, y = _simulate_chunk(r0, theta0, vr0, vtheta0, phys_cfg)
-
-        out_path = out_dir / f"chunk_{chunk_idx:05d}.npz"
-        np.savez_compressed(out_path, X=X, y=y)
-
-        # Libération explicite de la RAM
-        del X, y, r0, theta0, vr0, vtheta0
-        gc.collect()
-
-        if (chunk_idx + 1) % 10 == 0 or chunk_idx == n_chunks - 1:
-            done = (chunk_idx + 1) * chunk_size
-            print(
-                f"  [{chunk_idx + 1:>4}/{n_chunks}] {min(done, n_total):>10,} trajectoires — {out_path.name}"
+    if args.workers == 1:
+        for chunk_idx in range(n_chunks):
+            idx, n_pairs = _generate_one_chunk(
+                chunk_idx, n_this_list[chunk_idx],
+                phys_cfg, gen_cfg, child_seeds[chunk_idx], str(out_dir),
             )
+            if (idx + 1) % 10 == 0 or idx == n_chunks - 1:
+                done = (idx + 1) * chunk_size
+                print(
+                    f"  [{idx + 1:>4}/{n_chunks}] {min(done, n_total):>10,} trajectoires"
+                    f" — chunk_{idx:05d}.npz  ({n_pairs:,} paires)"
+                )
+    else:
+        with ProcessPoolExecutor(max_workers=args.workers) as executor:
+            futures = {
+                executor.submit(
+                    _generate_one_chunk,
+                    i, n_this_list[i], phys_cfg, gen_cfg, child_seeds[i], str(out_dir),
+                ): i
+                for i in range(n_chunks)
+            }
+            completed = 0
+            for future in as_completed(futures):
+                chunk_idx, n_pairs = future.result()
+                completed += 1
+                if completed % 10 == 0 or completed == n_chunks:
+                    print(
+                        f"  [{completed:>4}/{n_chunks}] chunk_{chunk_idx:05d}.npz"
+                        f"  ({n_pairs:,} paires)"
+                    )
 
     print(f"\nTerminé. Données écrites dans : {out_dir}")
 

@@ -10,6 +10,7 @@ extrait les paires (état_t, état_{t+1}).
 
 import gc
 import logging
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
 import numpy as np
@@ -31,15 +32,19 @@ def _chunk_to_pairs(chunk_path: Path):
     return X, y
 
 
-def _train_one_context(
+def _train_lr_context(
     chunk_paths: list[Path],
     models_dir: Path,
     context_name: str,
-) -> None:
-    """Entraîne LinearStepModel et MLPStepModel sur les chunks donnés."""
-    log.info("Contexte %s : %d chunks", context_name, len(chunk_paths))
+) -> str:
+    """Entraîne LinearStepModel sur les chunks donnés. Retourne le nom du fichier sauvegardé.
 
-    # ── Régression linéaire ──
+    Défini au niveau module pour être picklable par ProcessPoolExecutor.
+    """
+    logging.basicConfig(level=logging.INFO)
+    _log = logging.getLogger(__name__)
+    _log.info("LR [%s] : %d chunks", context_name, len(chunk_paths))
+
     lr_model = LinearStepModel()
     for i, path in enumerate(chunk_paths):
         X, y = _chunk_to_pairs(path)
@@ -47,14 +52,27 @@ def _train_one_context(
         del X, y
         gc.collect()
         if (i + 1) % 10 == 0:
-            log.info("  LR — chunk %d/%d", i + 1, len(chunk_paths))
+            _log.info("  LR [%s] — chunk %d/%d", context_name, i + 1, len(chunk_paths))
 
-    lr_model.save(models_dir / f"synth_linear_{context_name}.pkl")
-    del lr_model
-    gc.collect()
-    log.info("  LinearStepModel [%s] sauvegardé", context_name)
+    name = f"synth_linear_{context_name}.pkl"
+    lr_model.save(models_dir / name)
+    _log.info("  LinearStepModel [%s] sauvegardé", context_name)
+    return name
 
-    # ── MLP ──
+
+def _train_mlp_context(
+    chunk_paths: list[Path],
+    models_dir: Path,
+    context_name: str,
+) -> str:
+    """Entraîne MLPStepModel sur les chunks donnés. Retourne le nom du fichier sauvegardé.
+
+    Défini au niveau module pour être picklable par ProcessPoolExecutor.
+    """
+    logging.basicConfig(level=logging.INFO)
+    _log = logging.getLogger(__name__)
+    _log.info("MLP [%s] : %d chunks", context_name, len(chunk_paths))
+
     mlp_model = MLPStepModel()
     for i, path in enumerate(chunk_paths):
         X, y = _chunk_to_pairs(path)
@@ -62,21 +80,30 @@ def _train_one_context(
         del X, y
         gc.collect()
         if (i + 1) % 10 == 0:
-            log.info("  MLP — chunk %d/%d", i + 1, len(chunk_paths))
+            _log.info("  MLP [%s] — chunk %d/%d", context_name, i + 1, len(chunk_paths))
 
-    mlp_model.save(models_dir / f"synth_mlp_{context_name}.pkl")
-    del mlp_model
-    gc.collect()
-    log.info("  MLPStepModel [%s] sauvegardé", context_name)
+    name = f"synth_mlp_{context_name}.pkl"
+    mlp_model.save(models_dir / name)
+    _log.info("  MLPStepModel [%s] sauvegardé", context_name)
+    return name
 
 
 # ── API publique ───────────────────────────────────────────────────────────────
 
 
-def train_synth(data_dir: Path, models_dir: Path, contexts: dict) -> None:
+def train_synth(
+    data_dir: Path,
+    models_dir: Path,
+    contexts: dict,
+    n_workers: int = 1,
+) -> None:
     """Entraîne 2 × len(contexts) modèles sur les données synthétiques.
 
-    contexts = {"10pct": 0.10, "50pct": 0.50, "100pct": 1.00}
+    contexts  = {"10pct": 0.10, "50pct": 0.50, "100pct": 1.00}
+    n_workers = 1 → séquentiel ; > 1 → ProcessPoolExecutor (LR et MLP en parallèle).
+
+    Avec n_workers = 6, les 6 modèles (3 contextes × 2 algos) tournent simultanément.
+    Chaque worker ne charge qu'un chunk à la fois → RAM proportionnelle à n_workers.
     """
     all_chunks = sorted(data_dir.glob("chunk_*.npz"))
     if not all_chunks:
@@ -85,9 +112,33 @@ def train_synth(data_dir: Path, models_dir: Path, contexts: dict) -> None:
     models_dir.mkdir(parents=True, exist_ok=True)
     n_total = len(all_chunks)
 
+    # Construction de la liste des tâches (fn, chunk_paths, models_dir, context_name)
+    tasks: list[tuple] = []
     for name, fraction in contexts.items():
         n_chunks = max(1, int(n_total * fraction))
-        _train_one_context(all_chunks[:n_chunks], models_dir, name)
+        paths = all_chunks[:n_chunks]
+        tasks.append((_train_lr_context,  paths, models_dir, name))
+        tasks.append((_train_mlp_context, paths, models_dir, name))
+
+    log.info("%d modèles à entraîner, %d worker(s)", len(tasks), n_workers)
+
+    if n_workers == 1:
+        for fn, *args in tasks:
+            fn(*args)
+    else:
+        with ProcessPoolExecutor(max_workers=n_workers) as executor:
+            futures = {
+                executor.submit(fn, *args): f"{fn.__name__}_{args[2]}"
+                for fn, *args in tasks
+            }
+            for future in as_completed(futures):
+                label = futures[future]
+                try:
+                    saved = future.result()
+                    log.info("✓ %s", saved)
+                except Exception as exc:
+                    log.error("✗ Erreur [%s] : %s", label, exc)
+                    raise
 
 
 def _iter_real_pairs(csv_path: Path, tracking_cfg: dict):

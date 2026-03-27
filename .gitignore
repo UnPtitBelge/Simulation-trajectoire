@@ -440,5 +440,4 @@ htmlcov/
 *.pyd
 .benchmarks
 .claude
-CLAUDE.md
 src/data/
