@@ -7,6 +7,8 @@ import pyqtgraph.opengl as gl
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QSizePolicy
 
+from utils.angle import v0_dir_to_vr_vtheta
+
 from config.theme import (
     LARGE_BALL_RADIUS, RGB_CENTER_BALL, RGB_MARKER,
     RGB_PLOT_GRAY, RGB_PLOT_ORANGE, RGB_PLOT_PARTICLE,
@@ -96,8 +98,9 @@ class ConeWidget(BaseSimWidget):
     def _compute(self) -> None:
         p    = self._params
         phys = self._cfg["physics"]
+        vr0, vtheta0 = v0_dir_to_vr_vtheta(p["v0"], p["direction_deg"])
         self._traj = compute_cone(
-            r0=p["r0"], theta0=p["theta0"], vr0=p["vr0"], vtheta0=p["vtheta0"],
+            r0=p["r0"], theta0=p["theta0"], vr0=vr0, vtheta0=vtheta0,
             R=phys["R"], depth=phys["depth"], friction=phys["friction"],
             g=phys["g"], dt=phys["dt"], n_steps=phys["n_steps"],
         )

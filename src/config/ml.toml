@@ -1,3 +1,6 @@
+[physics]
+frame_ms = 16   # intervalle d'animation en ms (utilisé par BaseSimWidget)
+
 [paths]
 tracking_data = "data/tracking_data.csv"
 synth_data_dir = "data/synthetic"
@@ -16,6 +19,7 @@ center_x     = 960      # centre de la frame 1920×1080
 center_y     = 540
 px_per_meter = 1350.0   # à affiner : rayon_pixels_du_bord / 0.4 m
 R            = 0.4      # rayon physique du cône (m) — même que cone.toml
+n_passes     = 3        # nombre de passes d'entraînement sur les données réelles
 
 # Paramètres physiques utilisés pour la génération synthétique
 # Doit correspondre à cone.toml pour cohérence avec les données réelles
@@ -30,7 +34,7 @@ n_steps  = 200     # pas par trajectoire (court pour rester léger)
 [synth.generation]
 n_trajectories = 1_000_000
 chunk_size     = 10_000
-v_max          = 3.0    # vitesse max pour les CI (m/s)
+v_max          = 2.0    # vitesse max pour les CI (m/s) — limité pour stabilité
 
 # Contextes d'entraînement (fraction des chunks utilisés)
 [synth.contexts]

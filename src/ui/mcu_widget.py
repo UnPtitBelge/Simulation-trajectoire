@@ -1,9 +1,9 @@
 """Vue MCU — mouvement circulaire uniforme en 2D (pyqtgraph)."""
 
-import math
-
 import numpy as np
 import pyqtgraph as pg
+
+from utils.angle import deg_to_rad
 
 from config.theme import CLR_PLOT_PARTICLE, CLR_PLOT_ORANGE, CLR_PRIMARY, RGB_MARKER
 from physics.mcu import compute_mcu

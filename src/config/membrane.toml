@@ -1,33 +1,38 @@
 [physics]
 R        = 0.4     # rayon extérieur (m)
-r_min    = 0.01    # rayon intérieur — évite la singularité ln(r/R) → -∞
-k        = 0.05    # k = F/(2πT), paramètre de courbure (m)
-friction = 0.05
-g        = 9.81
-dt       = 0.005   # pas plus petit pour la membrane (surface plus raide)
-n_steps  = 3000
+r_min    = 0.05    # rayon intérieur — évite la singularité ln(r/R) → -∞
+                   # Doit être ≥ center_radius pour éviter la collision
+k        = 0.035   # k = (center_mass·g)/(2πT), paramètre de courbure (m)
+friction = 0.02    # coefficient de Coulomb μ (sans unité, bille glissante)
+g        = 9.81    # accélération gravitationnelle (m/s²)
+dt       = 0.01    # pas de temps (s)
+n_steps  = 100000
 frame_ms = 16
+ball_radius   = 0.01  # rayon de la bille mobile (m)
+ball_mass     = 0.005 # masse de la bille mobile (kg)
+center_mass   = 1.0   # masse de la bille centrale fixe (kg) — détermine la déformation
+center_radius = 0.05  # rayon de la bille centrale fixe (m) → définit r_min
 
 [ranges]
-r0      = [0.02, 0.39]
-theta0  = [0.0,  6.28]
-vr0     = [-2.0, 2.0]
-vtheta0 = [-6.0, 6.0]
+r0            = [0.02, 0.39]
+theta0        = [0.0,  6.28]
+v0            = [0.0,  2.0]
+direction_deg = [-180.0, 180.0]  # 0°=tangentiel, 90°=radial sortant
 
 [preset.default]
-r0      = 0.25
-theta0  = 0.0
-vr0     = 0.0
-vtheta0 = 1.5
+r0            = 0.36
+theta0        = 0.0
+v0            = 0.99   # vitesse initiale (m/s)
+direction_deg = -5   # 0° = purement tangentiel
 
 [preset.1]
-r0      = 0.0
-theta0  = 0.0
-vr0     = 0.0
-vtheta0 = 0.0
+r0            = 0.36
+theta0        = 0.0
+v0            = 0.0
+direction_deg = 0.0
 
 [preset.2]
-r0      = 0.0
-theta0  = 0.0
-vr0     = 0.0
-vtheta0 = 0.0
+r0            = 0.36
+theta0        = 0.0
+v0            = 0.0
+direction_deg = 0.0

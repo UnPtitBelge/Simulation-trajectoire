@@ -4,12 +4,12 @@ Déclenché par la touche P dans n'importe quelle vue de simulation.
 Émet marker_added(r, theta) quand l'utilisateur valide.
 """
 
-import math
-
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout, QLabel,
 )
+
+from utils.angle import deg_to_rad, rad_to_deg
 
 
 class MarkerPopup(QDialog):
@@ -30,10 +30,10 @@ class MarkerPopup(QDialog):
         self._spin_r.setSuffix(" m")
 
         self._spin_theta = QDoubleSpinBox()
-        self._spin_theta.setRange(0.0, 2 * math.pi)
-        self._spin_theta.setSingleStep(0.1)
-        self._spin_theta.setDecimals(3)
-        self._spin_theta.setSuffix(" rad")
+        self._spin_theta.setRange(0.0, 360.0)
+        self._spin_theta.setSingleStep(1.0)
+        self._spin_theta.setDecimals(1)
+        self._spin_theta.setSuffix("°")
 
         layout.addRow("r :", self._spin_r)
         layout.addRow("θ :", self._spin_theta)
@@ -44,5 +44,5 @@ class MarkerPopup(QDialog):
         layout.addRow(buttons)
 
     def _on_accept(self):
-        self.marker_added.emit(self._spin_r.value(), self._spin_theta.value())
+        self.marker_added.emit(self._spin_r.value(), deg_to_rad(self._spin_theta.value()))
         self.accept()

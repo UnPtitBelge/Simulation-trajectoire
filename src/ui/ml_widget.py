@@ -9,14 +9,12 @@ Affichage : trajectoire prédite (x, y) en coordonnées cartésiennes,
 vue de dessus — même repère visuel que la physique polaire.
 """
 
-import math
 from pathlib import Path
 
 import numpy as np
 import pyqtgraph as pg
-from PySide6.QtCore import Signal
 
-from config.theme import CLR_ML_PRED, CLR_ML_TRUE, CLR_PLOT_ORANGE, RGB_MARKER
+from config.theme import CLR_ML_PRED, RGB_MARKER
 from ml.models import LinearStepModel, MLPStepModel
 from ml.predict import predict_trajectory
 from ui.base_sim_widget import BaseSimWidget
@@ -51,7 +49,7 @@ class MLWidget(BaseSimWidget):
         self._pw.showGrid(x=True, y=True, alpha=0.15)
 
         # Cercle de bord (rayon R)
-        angles = np.linspace(0, 2 * math.pi, 200)
+        angles = np.linspace(0, 2 * np.pi, 200)
         self._pw.plot(
             self.R_MAX * np.cos(angles), self.R_MAX * np.sin(angles),
             pen=pg.mkPen(color="#555555", width=1, style=pg.QtCore.Qt.PenStyle.DashLine),
@@ -91,15 +89,15 @@ class MLWidget(BaseSimWidget):
 
     def _compute(self) -> None:
         p     = self._params
-        phys  = self._cfg.get("physics", {})
-        n_steps = phys.get("n_steps", 500)
+        phys  = self._cfg.get("synth", {}).get("physics", {})
+        n_steps = phys.get("n_steps", 200)
         init  = np.array([p["r0"], p["theta0"], p["vr0"], p["vtheta0"]])
         model = self._load_model()
         if model is None:
             self._traj = np.zeros((1, 4))
             self._n_frames = 1
             return
-        self._traj     = predict_trajectory(model, init, n_steps)
+        self._traj     = predict_trajectory(model, init, n_steps, r_max=self.R_MAX)
         self._n_frames = len(self._traj)
 
     def _draw_initial(self) -> None:
@@ -115,13 +113,13 @@ class MLWidget(BaseSimWidget):
         if self._traj is None:
             return
         r, theta = self._traj[frame, 0], self._traj[frame, 1]
-        self._particle_item.setData([r * math.cos(theta)], [r * math.sin(theta)])
+        self._particle_item.setData([r * np.cos(theta)], [r * np.sin(theta)])
 
     # ── Marqueurs ─────────────────────────────────────────────────────────────
 
     def _add_marker(self, r: float, theta: float) -> None:
-        x = r * math.cos(theta)
-        y = r * math.sin(theta)
+        x = r * np.cos(theta)
+        y = r * np.sin(theta)
         item = self._pw.plot(
             [x], [y], pen=None, symbol="x", symbolSize=12,
             symbolBrush=pg.mkBrush(*[int(c * 255) for c in RGB_MARKER[:3]], 255),

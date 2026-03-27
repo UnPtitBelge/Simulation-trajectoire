@@ -90,52 +90,47 @@ def train_synth(data_dir: Path, models_dir: Path, contexts: dict) -> None:
         _train_one_context(all_chunks[:n_chunks], models_dir, name)
 
 
-def train_real(csv_path: Path, tracking_cfg: dict) -> tuple:
-    """Charge le CSV de tracking, entraîne LR + MLP, retourne (lr_model, mlp_model).
-
-    Les modèles sont retournés en mémoire (pas sauvegardés sur disque).
-    """
+def _iter_real_pairs(csv_path: Path, tracking_cfg: dict):
+    """Génère (X_feat, y_feat) expérience par expérience sans tout charger en RAM."""
     df = pd.read_csv(csv_path, sep=";", skipinitialspace=True)
     df.columns = df.columns.str.strip()
 
-    cx = tracking_cfg["center_x"]
-    cy = tracking_cfg["center_y"]
+    cx  = tracking_cfg["center_x"]
+    cy  = tracking_cfg["center_y"]
     ppm = tracking_cfg["px_per_meter"]
-
-    # Conversion pixels → mètres et coordonnées polaires
-    pairs_X, pairs_y = [], []
 
     for _, group in df.groupby("expID"):
         group = group.sort_values("temps")
-        xm = (group["x"].values - cx) / ppm
-        ym = (group["y"].values - cy) / ppm
+        xm  = (group["x"].values - cx) / ppm
+        ym  = (group["y"].values - cy) / ppm
         vxm = group["speedX"].values / ppm
         vym = group["speedY"].values / ppm
 
-        r = np.sqrt(xm**2 + ym**2)
-        theta = np.arctan2(ym, xm)
-        vr = (xm * vxm + ym * vym) / np.maximum(r, 1e-6)
+        r      = np.sqrt(xm**2 + ym**2)
+        theta  = np.arctan2(ym, xm)
+        vr     = (xm * vxm + ym * vym) / np.maximum(r, 1e-6)
         vtheta = (xm * vym - ym * vxm) / np.maximum(r, 1e-6)
 
-        states = np.column_stack([r, theta, vr, vtheta])
+        states = np.column_stack([r, theta, vr, vtheta]).astype(np.float32)
         if len(states) < 2:
             continue
-        pairs_X.append(states[:-1])
-        pairs_y.append(states[1:])
+        yield state_to_features(states[:-1]), state_to_features(states[1:])
 
-    X_all = np.vstack(pairs_X).astype(np.float32)
-    y_all = np.vstack(pairs_y).astype(np.float32)
 
-    X_feat = state_to_features(X_all)
-    y_feat = state_to_features(y_all)
+def train_real(csv_path: Path, tracking_cfg: dict, n_passes: int = 3) -> tuple:
+    """Charge le CSV de tracking, entraîne LR + MLP, retourne (lr_model, mlp_model).
 
-    lr_model = LinearStepModel()
-    lr_model.partial_fit(X_feat, y_feat)
-
+    Entraîne les deux modèles dans le même pass (une seule lecture du CSV par pass).
+    Les modèles sont retournés en mémoire (pas sauvegardés sur disque).
+    """
+    lr_model  = LinearStepModel()
     mlp_model = MLPStepModel()
-    mlp_model.partial_fit(X_feat, y_feat)
 
-    del X_feat, y_feat, X_all, y_all
-    gc.collect()
+    for pass_idx in range(n_passes):
+        log.info("Entraînement réel — pass %d/%d", pass_idx + 1, n_passes)
+        for X_feat, y_feat in _iter_real_pairs(csv_path, tracking_cfg):
+            lr_model.partial_fit(X_feat, y_feat)
+            mlp_model.partial_fit(X_feat, y_feat)
+        gc.collect()
 
     return lr_model, mlp_model

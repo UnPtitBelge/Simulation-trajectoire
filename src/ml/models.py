@@ -11,7 +11,6 @@ Entraînement incrémental :
 Les scalers sont inclus dans chaque modèle (fit sur le 1er chunk).
 """
 
-import gc
 import pickle
 from pathlib import Path
 
@@ -23,6 +22,16 @@ from sklearn.preprocessing import StandardScaler
 
 
 N_FEATURES = 5  # (r, cos θ, sin θ, vr, vθ)
+_R_MIN = 0.05   # rayon minimal physique (centre du cône)
+
+
+def _clip_state(state: np.ndarray) -> np.ndarray:
+    """Clippe r à [_R_MIN, +inf) et reflète vr si nécessaire."""
+    if state[0] < _R_MIN:
+        state = state.copy()
+        state[0] = _R_MIN
+        state[2] = max(state[2], 0.0)  # vr ≥ 0 au bord intérieur
+    return state
 
 
 def state_to_features(state: np.ndarray) -> np.ndarray:
@@ -67,7 +76,7 @@ class LinearStepModel:
         feat_s = self.scaler_X.transform(feat)
         pred_s = self.model.predict(feat_s)
         pred = self.scaler_y.inverse_transform(pred_s)[0]
-        return features_to_state(pred)
+        return _clip_state(features_to_state(pred))
 
     def save(self, path: Path) -> None:
         with open(path, "wb") as f:
@@ -110,7 +119,7 @@ class MLPStepModel:
         feat_s = self.scaler_X.transform(feat)
         pred_s = self.model.predict(feat_s)
         pred = self.scaler_y.inverse_transform(pred_s)[0]
-        return features_to_state(pred)
+        return _clip_state(features_to_state(pred))
 
     def save(self, path: Path) -> None:
         with open(path, "wb") as f:
