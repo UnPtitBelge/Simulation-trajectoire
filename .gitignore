@@ -441,4 +441,4 @@ htmlcov/
 .benchmarks
 .claude
 CLAUDE.md
-*.npz
+refactor/data/
