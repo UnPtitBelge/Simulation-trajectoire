@@ -2,6 +2,7 @@
 
 import csv
 import logging
+import math
 import os
 import random
 
@@ -31,6 +32,7 @@ __all__ = [
     "load_pool",
     "generate_and_save_pool",
     "_run_cone",
+    "_run_cone_xy",
     "_make_feat",
 ]
 
@@ -106,6 +108,26 @@ def _run_cone(r0: float, v0: float, phi0: float, n_frames: int | None = None) ->
         params = ConeParams(r0=r0, v0=v0, phi0=phi0, n_frames=n_frames)
     result = simulate_cone(params)
     return [(pt[0], pt[1]) for pt in result["trajectory"]]
+
+
+def _run_cone_xy(
+    x0: float, y0: float, v0: float, phi0_abs: float, n_frames: int | None = None
+) -> list:
+    """Lance une simulation cône depuis la position cartésienne (x0, y0).
+
+    phi0_abs est l'angle de la vitesse initiale en degrés dans le repère absolu.
+    Exploite la symétrie rotationnelle du cône : démarrer en (r0·cos α, r0·sin α)
+    avec vitesse d'angle phi0_abs est équivalent à démarrer en (r0, 0) avec vitesse
+    d'angle (phi0_abs - α), puis tourner toute la trajectoire de α.
+    """
+    r0 = math.sqrt(x0 * x0 + y0 * y0)
+    alpha = math.atan2(y0, x0)  # angle de position en radians
+    phi0_rel = math.degrees(alpha)  # angle relatif pour la simulation
+    traj = _run_cone(r0, v0, phi0_abs - phi0_rel, n_frames)
+
+    # Rotation de la trajectoire par alpha pour replacer dans le repère absolu
+    cos_a, sin_a = math.cos(alpha), math.sin(alpha)
+    return [(x * cos_a - y * sin_a, x * sin_a + y * cos_a) for x, y in traj]
 
 
 # ── Pool de données ────────────────────────────────────────────────────────────
@@ -207,9 +229,11 @@ def generate_and_save_pool(
 ) -> None:
     """Génère exactement n_target trajectoires via LHS et les sauvegarde dans path.
 
-    Les CI (r0, v0, phi0) sont échantillonnées par Latin Hypercube Sampling pour
-    une couverture uniforme de l'espace des paramètres. Aucune trajectoire n'est
-    rejetée — chaque CI produit exactement une trajectoire, quelle que soit sa durée.
+    Les CI (x0, y0, v0, phi0) sont échantillonnées par Latin Hypercube Sampling pour
+    une couverture uniforme de l'espace des paramètres. La position initiale (x0, y0)
+    est tirée uniformément sur le disque annulaire [R0_MIN, R0_MAX] en échantillonnant
+    r² (et non r) pour garantir une densité uniforme en aire.
+    Aucune trajectoire n'est rejetée — chaque CI produit exactement une trajectoire.
     Les trajectoires sont stockées en tableau d'objets numpy (longueurs variables).
     """
     from src.model.params.sim_to_real import SimToRealParams
@@ -222,21 +246,32 @@ def generate_and_save_pool(
     V0_MIN, V0_MAX = 0.10, 2.00
     PHI0_MIN, PHI0_MAX = 0.0, 360.0
 
-    r0_vals = _lhs_samples(n_target, R0_MIN, R0_MAX)
+    # Échantillonnage uniforme en aire : tirer r² dans [R0_MIN², R0_MAX²]
+    r0_sq_vals = _lhs_samples(n_target, R0_MIN**2, R0_MAX**2)
+    pos_phi_vals = _lhs_samples(n_target, PHI0_MIN, PHI0_MAX)  # angle de position
     v0_vals = _lhs_samples(n_target, V0_MIN, V0_MAX)
-    phi0_vals = _lhs_samples(n_target, PHI0_MIN, PHI0_MAX)
+    phi0_vals = _lhs_samples(n_target, PHI0_MIN, PHI0_MAX)  # direction de la vitesse
+
+    x0_vals = [
+        math.sqrt(r2) * math.cos(math.radians(p))
+        for r2, p in zip(r0_sq_vals, pos_phi_vals)
+    ]
+    y0_vals = [
+        math.sqrt(r2) * math.sin(math.radians(p))
+        for r2, p in zip(r0_sq_vals, pos_phi_vals)
+    ]
 
     trajectories: list[np.ndarray] = []
     csv_rows: list[tuple] = []
 
-    for i, (r0, v0, phi0) in enumerate(zip(r0_vals, v0_vals, phi0_vals)):
+    for i, (x0, y0, v0, phi0) in enumerate(zip(x0_vals, y0_vals, v0_vals, phi0_vals)):
         if progress_cb and i % 500 == 0:
             progress_cb(i, n_target)
 
-        traj = _run_cone(r0, v0, phi0, n_frames=SIM_FRAMES)
+        traj = _run_cone_xy(x0, y0, v0, phi0, n_frames=SIM_FRAMES)
         trajectories.append(np.array(traj, dtype=np.float32))
         if csv_path:
-            csv_rows.append((r0, v0, phi0, len(traj)))
+            csv_rows.append((x0, y0, v0, phi0, len(traj)))
 
     lengths = [len(t) for t in trajectories]
     n_usable = sum(1 for l in lengths if l >= _MIN_TRAJ_LEN)
@@ -269,7 +304,7 @@ def generate_and_save_pool(
     if csv_path and csv_rows:
         with open(csv_path, "w", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow(["r0", "v0", "phi0", "traj_len"])
+            writer.writerow(["x0", "y0", "v0", "phi0", "traj_len"])
             writer.writerows(csv_rows[:n_target])
 
     if progress_cb:
