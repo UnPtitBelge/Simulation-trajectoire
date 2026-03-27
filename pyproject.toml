@@ -1,83 +1,43 @@
 [build-system]
-requires = ["setuptools>=61.0.0", "wheel"]
+requires = ["setuptools>=61.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "simulation-trajectoire"
 version = "2.0.0"
-description = "Educational simulation software for physics and machine learning concepts"
-readme = "README.md"
-requires-python = ">=3.10"
-license = {text = "Proprietary"}
-authors = [{name = "Uni Project Team", email = "project@uni.edu"}]
-keywords = ["education", "physics", "simulation", "visualization", "academic"]
-classifiers = [
-    "Development Status :: 4 - Beta",
-    "Intended Audience :: Education",
-    "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Operating System :: OS Independent",
-    "Topic :: Education",
-    "Topic :: Scientific/Engineering :: Physics",
-    "Topic :: Scientific/Engineering :: Visualization",
-]
+requires-python = ">=3.11"
 
 dependencies = [
-    "PySide6>=6.4.0",
-    "PyQtGraph>=0.13.1",
-    "numpy>=1.23.5",
-    "scikit-learn>=1.2.0",
+    "PySide6>=6.6.0",
+    "pyqtgraph>=0.13.4",
     "PyOpenGL>=3.1.0",
+    "numpy>=1.26.0",
+    "scikit-learn>=1.4.0",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "mypy>=1.0",
-    "black>=23.0",
-    "flake8>=6.0",
-    "pylint>=3.0",
-    "pytest>=7.0",
-    "pytest-benchmark>=4.0",
-    "sphinx>=7.0",
-    "sphinx-rtd-theme>=1.0",
-    "build>=1.0",
+    "pyright>=1.1.0",
+    "black>=24.0",
+    "flake8>=7.0",
+    "pytest>=8.0",
 ]
 
-
-
-
+[project.scripts]
+generate-data = "scripts.generate_data:main"
+train-models  = "scripts.train_models:main"
 
 [tool.setuptools]
-package-dir = {"" = "src"}
+package-dir = {"" = "refactor"}
 
 [tool.black]
 line-length = 88
-target-version = ['py310', 'py311', 'py312']
-include = '\.pyi?$'
-exclude = '''
-/(
-    \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | _build
-  | buck-out
-  | build
-  | dist
-)/
-'''
+target-version = ["py311"]
 
 [tool.flake8]
 max-line-length = 88
 extend-ignore = ["E203", "W503"]
 
-[tool.mypy]
-ignore_missing_imports = true
-show_error_codes = true
-
-
+[tool.pyright]
+pythonVersion = "3.11"
+include = ["refactor"]

@@ -1,0 +1,32 @@
+[physics]
+R        = 0.4     # rayon du cône (m)
+depth    = 0.09    # profondeur du cône (m) → pente = depth/R
+friction = 0.05    # coefficient de frottement linéaire (1/s)
+g        = 9.81    # accélération gravitationnelle (m/s²)
+dt       = 0.01    # pas de temps (s)
+n_steps  = 3000
+frame_ms = 16
+
+[ranges]
+r0      = [0.02, 0.39]
+theta0  = [0.0,  6.28]
+vr0     = [-2.0, 2.0]
+vtheta0 = [-6.0, 6.0]
+
+[preset.default]
+r0      = 0.30
+theta0  = 0.0
+vr0     = 0.0
+vtheta0 = 1.5
+
+[preset.1]
+r0      = 0.0
+theta0  = 0.0
+vr0     = 0.0
+vtheta0 = 0.0
+
+[preset.2]
+r0      = 0.0
+theta0  = 0.0
+vr0     = 0.0
+vtheta0 = 0.0

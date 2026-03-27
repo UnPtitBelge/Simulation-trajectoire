@@ -1,0 +1,62 @@
+[paths]
+tracking_data = "data/tracking_data.csv"
+synth_data_dir = "data/synthetic"
+models_dir     = "data/models"
+
+# Calibration de la caméra (résolution 1920×1080)
+# center_x/center_y : position en pixels du centre du cône dans l'image.
+# Par défaut = centre géométrique de la frame. À ajuster si le cône
+# n'est pas centré dans la vidéo.
+#
+# px_per_meter : mesurer dans l'image le rayon du bord du cône en pixels,
+# puis calculer : px_per_meter = rayon_pixels / 0.4
+# Exemple : si le bord du cône est à 540 px du centre → 540 / 0.4 = 1350
+[tracking]
+center_x     = 960      # centre de la frame 1920×1080
+center_y     = 540
+px_per_meter = 1350.0   # à affiner : rayon_pixels_du_bord / 0.4 m
+R            = 0.4      # rayon physique du cône (m) — même que cone.toml
+
+# Paramètres physiques utilisés pour la génération synthétique
+# Doit correspondre à cone.toml pour cohérence avec les données réelles
+[synth.physics]
+R        = 0.4
+depth    = 0.09
+friction = 0.05
+g        = 9.81
+dt       = 0.01
+n_steps  = 200     # pas par trajectoire (court pour rester léger)
+
+[synth.generation]
+n_trajectories = 1_000_000
+chunk_size     = 10_000
+v_max          = 3.0    # vitesse max pour les CI (m/s)
+
+# Contextes d'entraînement (fraction des chunks utilisés)
+[synth.contexts]
+names     = ["10pct", "50pct", "100pct"]
+fractions = [0.10,    0.50,    1.00]
+
+[ranges]
+r0      = [0.02, 0.39]
+theta0  = [0.0,  6.28]
+vr0     = [-2.0, 2.0]
+vtheta0 = [-6.0, 6.0]
+
+[preset.default]
+r0      = 0.30
+theta0  = 0.0
+vr0     = 0.0
+vtheta0 = 1.5
+
+[preset.1]
+r0      = 0.0
+theta0  = 0.0
+vr0     = 0.0
+vtheta0 = 0.0
+
+[preset.2]
+r0      = 0.0
+theta0  = 0.0
+vr0     = 0.0
+vtheta0 = 0.0
