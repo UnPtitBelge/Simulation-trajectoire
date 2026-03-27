@@ -45,8 +45,8 @@ from .data_utils import (
     _run_cone, _make_feat,
 )
 from .model_utils import (
-    save_trained_models, load_trained_models, models_are_ready,
-    get_cached_models, set_cached_models,
+    load_trained_models, models_are_ready,
+    set_cached_models,
 )
 from .preset_utils import load_presets, presets_are_ready
 
