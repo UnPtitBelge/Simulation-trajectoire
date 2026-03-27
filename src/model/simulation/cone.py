@@ -18,7 +18,11 @@ from src.model.params.cone_params import ConeParams
 from src.model.params.integrators import Integrator
 from src.model.params.physics_constants import LARGE_BALL_RADIUS, SMALL_BALL_RADIUS
 from src.model.simulation.base import Plot3dBase
-from src.model.simulation.integrators import step_euler_semi_implicit, step_rk4, step_verlet
+from src.model.simulation.integrators import (
+    step_euler_semi_implicit,
+    step_rk4,
+    step_verlet,
+)
 
 log = logging.getLogger(__name__)
 
@@ -33,15 +37,15 @@ _INTEGRATOR_FN = {
 
 # Colors for comparison mode trails
 _COMPARE_COLORS = [
-    (1.0, 0.3, 0.3, 0.8),   # Euler — red
-    (0.3, 1.0, 0.3, 0.8),   # Verlet — green
-    (0.3, 0.5, 1.0, 0.8),   # RK4 — blue
+    (1.0, 0.3, 0.3, 0.8),  # Euler — red
+    (0.3, 1.0, 0.3, 0.8),  # Verlet — green
+    (0.3, 0.5, 1.0, 0.8),  # RK4 — blue
 ]
 
 
 def _cone_center_z(slope: float, R: float) -> float:
     """z of the large ball's centre resting in the cone."""
-    return -slope * R + LARGE_BALL_RADIUS * math.sqrt(1.0 + slope ** 2)
+    return -slope * R + LARGE_BALL_RADIUS * math.sqrt(1.0 + slope**2)
 
 
 def _cone_accel(g: float, sin_a: float, cos_a: float, mu: float):
@@ -80,8 +84,8 @@ def simulate_cone(p: ConeParams, integrator: Integrator | None = None) -> dict:
     R_squared = R * R
     integ = integrator or p.integrator
 
-    sin_a = slope / math.sqrt(1 + slope ** 2)
-    cos_a = 1.0 / math.sqrt(1 + slope ** 2)
+    sin_a = slope / math.sqrt(1 + slope**2)
+    cos_a = 1.0 / math.sqrt(1 + slope**2)
 
     accel = _cone_accel(p.gravity, sin_a, cos_a, p.friction)
     step_fn = _INTEGRATOR_FN[integ]
@@ -176,8 +180,11 @@ class PlotCone(Plot3dBase):
 
         md = gl.MeshData(vertexes=verts, faces=faces)
         return gl.GLMeshItem(
-            meshdata=md, vertexColors=colors, smooth=True,
-            shader="shaded", glOptions="translucent",
+            meshdata=md,
+            vertexColors=colors,
+            smooth=True,
+            shader="shaded",
+            glOptions="translucent",
         )
 
     def _get_cache_data(self) -> dict:
@@ -226,7 +233,10 @@ class PlotCone(Plot3dBase):
             for idx, ctraj in enumerate(self._compare_trajs):
                 color = _COMPARE_COLORS[idx % len(_COMPARE_COLORS)]
                 ct = gl.GLLinePlotItem(
-                    pos=np.array(ctraj), color=color, width=2, antialias=True,
+                    pos=np.array(ctraj),
+                    color=color,
+                    width=2,
+                    antialias=True,
                 )
                 self.widget.addItem(ct)
                 self._compare_trails.append(ct)
@@ -256,11 +266,36 @@ class PlotCone(Plot3dBase):
 
     def get_metrics_schema(self) -> list[dict]:
         from src.util.theme import CLR_PRIMARY, CLR_TEXT_SECONDARY, CLR_WARNING
+
         return [
-            {"key": "r",     "label": "Rayon",    "unit": "m",   "fmt": ".3f", "color": CLR_PRIMARY},
-            {"key": "z",     "label": "Hauteur",  "unit": "m",   "fmt": ".3f", "color": "#6B48FF"},
-            {"key": "speed", "label": "Vitesse",  "unit": "m/s", "fmt": ".3f", "color": CLR_WARNING},
-            {"key": "t",     "label": "Temps",    "unit": "s",   "fmt": ".2f", "color": CLR_TEXT_SECONDARY},
+            {
+                "key": "r",
+                "label": "Rayon",
+                "unit": "m",
+                "fmt": ".3f",
+                "color": CLR_PRIMARY,
+            },
+            {
+                "key": "z",
+                "label": "Hauteur",
+                "unit": "m",
+                "fmt": ".3f",
+                "color": "#6B48FF",
+            },
+            {
+                "key": "speed",
+                "label": "Vitesse",
+                "unit": "m/s",
+                "fmt": ".3f",
+                "color": CLR_WARNING,
+            },
+            {
+                "key": "t",
+                "label": "Temps",
+                "unit": "s",
+                "fmt": ".2f",
+                "color": CLR_TEXT_SECONDARY,
+            },
         ]
 
     def get_frame_metrics(self, i: int) -> dict:
@@ -271,7 +306,9 @@ class PlotCone(Plot3dBase):
         if i > 0:
             px, py, pz = self.traj[i - 1]
             dt = self.params.dt
-            speed = math.sqrt((x-px)**2 + (y-py)**2 + (z-pz)**2) / max(dt, 1e-9)
+            speed = math.sqrt((x - px) ** 2 + (y - py) ** 2 + (z - pz) ** 2) / max(
+                dt, 1e-9
+            )
         else:
             speed = 0.0
         t_sec = i * self.params.dt

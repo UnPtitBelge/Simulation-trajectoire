@@ -12,7 +12,7 @@ from typing import Any
 
 import numpy as np
 import pyqtgraph.opengl as gl
-from PySide6.QtCore import QObject, QThread, Qt, QTimer, Signal, Slot
+from PySide6.QtCore import QObject, Qt, QThread, QTimer, Signal, Slot
 from PySide6.QtWidgets import QSizePolicy
 
 from src.model.params.physics_constants import LARGE_BALL_RADIUS, SMALL_BALL_RADIUS

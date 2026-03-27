@@ -13,9 +13,9 @@ import pyqtgraph as pg
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeySequence, QShortcut
 
-from src.util.geometry import disk_xy
 from src.model.params.mcu_params import MCUParams
 from src.model.simulation.base import Plot
+from src.util.geometry import disk_xy
 from src.util.theme import (
     CLR_PLOT_BG,
     CLR_PLOT_CENTER,

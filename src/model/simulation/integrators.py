@@ -13,8 +13,12 @@ AccelFn = Callable[[float, float, float, float], tuple[float, float]]
 
 
 def step_euler_semi_implicit(
-    x: float, y: float, vx: float, vy: float,
-    accel: AccelFn, dt: float,
+    x: float,
+    y: float,
+    vx: float,
+    vy: float,
+    accel: AccelFn,
+    dt: float,
 ) -> tuple[float, float, float, float]:
     """Semi-implicit Euler (symplectic Euler) — order O(dt).
 
@@ -33,8 +37,12 @@ def step_euler_semi_implicit(
 
 
 def step_verlet(
-    x: float, y: float, vx: float, vy: float,
-    accel: AccelFn, dt: float,
+    x: float,
+    y: float,
+    vx: float,
+    vy: float,
+    accel: AccelFn,
+    dt: float,
 ) -> tuple[float, float, float, float]:
     """Velocity-Verlet (Störmer-Verlet) — order O(dt²), symplectic.
 
@@ -53,8 +61,12 @@ def step_verlet(
 
 
 def step_rk4(
-    x: float, y: float, vx: float, vy: float,
-    accel: AccelFn, dt: float,
+    x: float,
+    y: float,
+    vx: float,
+    vy: float,
+    accel: AccelFn,
+    dt: float,
 ) -> tuple[float, float, float, float]:
     """Classic 4th-order Runge-Kutta — order O(dt⁴).
 

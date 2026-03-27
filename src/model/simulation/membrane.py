@@ -16,9 +16,17 @@ import pyqtgraph.opengl as gl
 
 from src.model.params.integrators import Integrator
 from src.model.params.membrane_params import MembraneParams
-from src.model.params.physics_constants import LARGE_BALL_RADIUS, MEMBRANE_R_MIN, SMALL_BALL_RADIUS
+from src.model.params.physics_constants import (
+    LARGE_BALL_RADIUS,
+    MEMBRANE_R_MIN,
+    SMALL_BALL_RADIUS,
+)
 from src.model.simulation.base import Plot3dBase
-from src.model.simulation.integrators import step_euler_semi_implicit, step_rk4, step_verlet
+from src.model.simulation.integrators import (
+    step_euler_semi_implicit,
+    step_rk4,
+    step_verlet,
+)
 from src.util.theme import CLR_PRIMARY, CLR_TEXT_SECONDARY, CLR_WARNING
 
 log = logging.getLogger(__name__)
@@ -34,9 +42,9 @@ _INTEGRATOR_FN = {
 }
 
 _COMPARE_COLORS = [
-    (1.0, 0.3, 0.3, 0.8),   # Euler — red
-    (0.3, 1.0, 0.3, 0.8),   # Verlet — green
-    (0.3, 0.5, 1.0, 0.8),   # RK4 — blue
+    (1.0, 0.3, 0.3, 0.8),  # Euler — red
+    (0.3, 1.0, 0.3, 0.8),  # Verlet — green
+    (0.3, 0.5, 1.0, 0.8),  # RK4 — blue
 ]
 
 
@@ -50,11 +58,12 @@ def _membrane_center_z(A: float, R: float) -> float:
         else:
             hi = mid
     r_t = max((lo + hi) * 0.5, _R_MIN)
-    return -A * math.log(R / r_t) + r_t ** 2 / A
+    return -A * math.log(R / r_t) + r_t**2 / A
 
 
 def _membrane_accel(g: float, mu: float, A: float):
     """Return an acceleration closure for the Laplace membrane."""
+
     def accel(x: float, y: float, vx: float, vy: float) -> tuple[float, float]:
         r = math.sqrt(x * x + y * y)
         r = max(r, _R_MIN)
@@ -213,8 +222,11 @@ class PlotMembrane(Plot3dBase):
 
         md = gl.MeshData(vertexes=verts, faces=faces)
         self._mesh = gl.GLMeshItem(
-            meshdata=md, vertexColors=colors, smooth=True,
-            shader="shaded", glOptions="translucent",
+            meshdata=md,
+            vertexColors=colors,
+            smooth=True,
+            shader="shaded",
+            glOptions="translucent",
         )
         z_center = _membrane_center_z(self.params.A, self.params.R_membrane)
         self._particle, self._trail = self._setup_3d_scene(
@@ -235,7 +247,10 @@ class PlotMembrane(Plot3dBase):
             for idx, ctraj in enumerate(self._compare_trajs):
                 color = _COMPARE_COLORS[idx % len(_COMPARE_COLORS)]
                 ct = gl.GLLinePlotItem(
-                    pos=np.array(ctraj), color=color, width=2, antialias=True,
+                    pos=np.array(ctraj),
+                    color=color,
+                    width=2,
+                    antialias=True,
                 )
                 self.widget.addItem(ct)
                 self._compare_trails.append(ct)
@@ -264,10 +279,34 @@ class PlotMembrane(Plot3dBase):
 
     def get_metrics_schema(self) -> list[dict]:
         return [
-            {"key": "r",     "label": "Rayon",   "unit": "m",   "fmt": ".3f", "color": CLR_PRIMARY},
-            {"key": "z",     "label": "Hauteur", "unit": "m",   "fmt": ".3f", "color": "#6B48FF"},
-            {"key": "speed", "label": "Vitesse", "unit": "m/s", "fmt": ".3f", "color": CLR_WARNING},
-            {"key": "t",     "label": "Temps",   "unit": "s",   "fmt": ".2f", "color": CLR_TEXT_SECONDARY},
+            {
+                "key": "r",
+                "label": "Rayon",
+                "unit": "m",
+                "fmt": ".3f",
+                "color": CLR_PRIMARY,
+            },
+            {
+                "key": "z",
+                "label": "Hauteur",
+                "unit": "m",
+                "fmt": ".3f",
+                "color": "#6B48FF",
+            },
+            {
+                "key": "speed",
+                "label": "Vitesse",
+                "unit": "m/s",
+                "fmt": ".3f",
+                "color": CLR_WARNING,
+            },
+            {
+                "key": "t",
+                "label": "Temps",
+                "unit": "s",
+                "fmt": ".2f",
+                "color": CLR_TEXT_SECONDARY,
+            },
         ]
 
     def get_frame_metrics(self, i: int) -> dict:
@@ -278,7 +317,9 @@ class PlotMembrane(Plot3dBase):
         if i > 0:
             px, py, pz = self.traj[i - 1]
             dt = self.params.dt
-            speed = math.sqrt((x-px)**2 + (y-py)**2 + (z-pz)**2) / max(dt, 1e-9)
+            speed = math.sqrt((x - px) ** 2 + (y - py) ** 2 + (z - pz) ** 2) / max(
+                dt, 1e-9
+            )
         else:
             speed = 0.0
         t_sec = i * self.params.dt

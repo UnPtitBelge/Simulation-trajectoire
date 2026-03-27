@@ -441,3 +441,4 @@ htmlcov/
 .benchmarks
 .claude
 CLAUDE.md
+*.npz

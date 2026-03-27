@@ -24,7 +24,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 from src.model.params.integrators import MLModel
-from src.model.params.ml_params import MLParams, TEST_ICS
+from src.model.params.ml_params import TEST_ICS, MLParams
 from src.model.simulation.base import Plot
 from src.util.theme import (
     CLR_DANGER,
@@ -33,28 +33,25 @@ from src.util.theme import (
     CLR_ML_TRUE,
     CLR_PRIMARY,
     CLR_SUCCESS,
-    CLR_SURFACE,
-    CLR_TEXT,
-    CLR_TEXT_SECONDARY,
     CLR_WARNING,
-    FS_LG,
-    FS_MD,
-    FS_SM,
-    FS_XS,
 )
 
 log = logging.getLogger(__name__)
 
 _CSV = os.path.normpath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..", "data", "tracking_data.csv")
+    os.path.join(
+        os.path.dirname(__file__), "..", "..", "..", "data", "tracking_data.csv"
+    )
 )
 
 _N_OUT = 350  # nombre de positions prédites par chaque modèle (x et y séparés)
-              # Toutes les trajectoires ont ≥ 353 points → rows 1..350 toujours présents
+# Toutes les trajectoires ont ≥ 353 points → rows 1..350 toujours présents
 
-_PEN_TRAIN = pg.mkPen((150, 150, 150, 70), width=1)   # gris — trajectoires d'entraînement
-_PEN_TRUTH = pg.mkPen(CLR_ML_TRUE, width=2)            # vert — vérité terrain (holdout)
-_PEN_PRED  = pg.mkPen(CLR_ML_PRED, width=2)            # bleu — prédiction du modèle
+_PEN_TRAIN = pg.mkPen(
+    (150, 150, 150, 70), width=1
+)  # gris — trajectoires d'entraînement
+_PEN_TRUTH = pg.mkPen(CLR_ML_TRUE, width=2)  # vert — vérité terrain (holdout)
+_PEN_PRED = pg.mkPen(CLR_ML_PRED, width=2)  # bleu — prédiction du modèle
 
 
 def _load_all_trajectories() -> list[dict] | None:
@@ -78,9 +75,9 @@ def _load_all_trajectories() -> list[dict] | None:
                 }
                 try:
                     exp_id = int(clean["expID"])
-                    t  = float(clean["temps"])
-                    x  = float(clean["x"])
-                    y  = float(clean["y"])
+                    t = float(clean["temps"])
+                    x = float(clean["x"])
+                    y = float(clean["y"])
                     vx = float(clean["speedX"])
                     vy = float(clean["speedY"])
                 except (KeyError, ValueError):
@@ -96,9 +93,9 @@ def _load_all_trajectories() -> list[dict] | None:
             trajectories.append(
                 {
                     "exp_id": exp_id,
-                    "t":  arr[:, 0],
-                    "x":  arr[:, 1],
-                    "y":  arr[:, 2],
+                    "t": arr[:, 0],
+                    "x": arr[:, 1],
+                    "y": arr[:, 2],
                     "vx": arr[:, 3],
                     "vy": arr[:, 4],
                 }
@@ -124,10 +121,10 @@ def _build_training_data(
     X, Yx, Yy = [], [], []
     for traj in trajectories[:n_train]:
         X.append([traj["x"][0], traj["y"][0], traj["vx"][0], traj["vy"][0]])
-        Yx.append(traj["x"][1:_N_OUT + 1])
-        Yy.append(traj["y"][1:_N_OUT + 1])
+        Yx.append(traj["x"][1 : _N_OUT + 1])
+        Yy.append(traj["y"][1 : _N_OUT + 1])
     return (
-        np.array(X,  dtype=float),
+        np.array(X, dtype=float),
         np.array(Yx, dtype=float),
         np.array(Yy, dtype=float),
     )
@@ -158,15 +155,23 @@ def simulate_ml(p: MLParams) -> dict:
     mlp_x = make_pipeline(
         StandardScaler(),
         MLPRegressor(
-            hidden_layer_sizes=(64, 32), solver="adam",
-            max_iter=300, early_stopping=_es, n_iter_no_change=15, random_state=42,
+            hidden_layer_sizes=(64, 32),
+            solver="adam",
+            max_iter=300,
+            early_stopping=_es,
+            n_iter_no_change=15,
+            random_state=42,
         ),
     ).fit(X_train, Yx_train)
     mlp_y = make_pipeline(
         StandardScaler(),
         MLPRegressor(
-            hidden_layer_sizes=(64, 32), solver="adam",
-            max_iter=300, early_stopping=_es, n_iter_no_change=15, random_state=42,
+            hidden_layer_sizes=(64, 32),
+            solver="adam",
+            max_iter=300,
+            early_stopping=_es,
+            n_iter_no_change=15,
+            random_state=42,
         ),
     ).fit(X_train, Yy_train)
 
@@ -176,7 +181,7 @@ def simulate_ml(p: MLParams) -> dict:
         xy = np.column_stack((mx.predict(feat)[0], my.predict(feat)[0]))
         return np.vstack([np.array([[ic["x"], ic["y"]]]), xy])  # (N+1, 2)
 
-    pred_lr  = _predict(lr_x, lr_y)
+    pred_lr = _predict(lr_x, lr_y)
     pred_mlp = _predict(mlp_x, mlp_y)
 
     # Vérité terrain (uniquement pour les holdouts ICs 0 et 1)
@@ -192,33 +197,32 @@ def simulate_ml(p: MLParams) -> dict:
             truth_x = t["x"].tolist()
             truth_y = t["y"].tolist()
             # Cibles pour les métriques : les 40 positions que le modèle devait prédire
-            truth_target_x = t["x"][1:_N_OUT + 1]
-            truth_target_y = t["y"][1:_N_OUT + 1]
+            truth_target_x = t["x"][1 : _N_OUT + 1]
+            truth_target_y = t["y"][1 : _N_OUT + 1]
 
     def _metrics(pred: np.ndarray) -> dict[str, float]:
         if truth_target_x is None or truth_target_y is None:
             return {}
         return {
-            "r2_x":   float(r2_score(truth_target_x, pred[1:, 0])),
-            "r2_y":   float(r2_score(truth_target_y, pred[1:, 1])),
+            "r2_x": float(r2_score(truth_target_x, pred[1:, 0])),
+            "r2_y": float(r2_score(truth_target_y, pred[1:, 1])),
             "rmse_x": float(np.sqrt(mean_squared_error(truth_target_x, pred[1:, 0]))),
             "rmse_y": float(np.sqrt(mean_squared_error(truth_target_y, pred[1:, 1]))),
         }
 
     train_trajs = [
-        {"x": t["x"].tolist(), "y": t["y"].tolist()}
-        for t in trajectories[:n_train]
+        {"x": t["x"].tolist(), "y": t["y"].tolist()} for t in trajectories[:n_train]
     ]
 
     return {
-        "train_trajs":  train_trajs,
-        "truth_x":      truth_x,
-        "truth_y":      truth_y,
-        "pred_lr":      pred_lr.tolist(),
-        "pred_mlp":     pred_mlp.tolist(),
-        "metrics_lr":   _metrics(pred_lr),
-        "metrics_mlp":  _metrics(pred_mlp),
-        "n_frames":     len(pred_lr),
+        "train_trajs": train_trajs,
+        "truth_x": truth_x,
+        "truth_y": truth_y,
+        "pred_lr": pred_lr.tolist(),
+        "pred_mlp": pred_mlp.tolist(),
+        "metrics_lr": _metrics(pred_lr),
+        "metrics_mlp": _metrics(pred_mlp),
+        "n_frames": len(pred_lr),
     }
 
 
@@ -241,21 +245,22 @@ class PlotML(Plot):
         legend.setBrush(pg.mkBrush(31, 41, 55, 200))
         self.widget.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
-        self._train_trajs:  list[dict]  = []
-        self._truth_x:      list | None = None
-        self._truth_y:      list | None = None
-        self._pred_lr:      list        = []
-        self._pred_mlp:     list        = []
-        self._metrics_lr:   dict        = {}
-        self._metrics_mlp:  dict        = {}
-        self._pred_np:      np.ndarray  = np.empty((0, 2))
-        self.metrics:       dict        = {}
+        self._train_trajs: list[dict] = []
+        self._truth_x: list | None = None
+        self._truth_y: list | None = None
+        self._pred_lr: list = []
+        self._pred_mlp: list = []
+        self._metrics_lr: dict = {}
+        self._metrics_mlp: dict = {}
+        self._pred_np: np.ndarray = np.empty((0, 2))
+        self.metrics: dict = {}
 
         # Courbes nommées (légende)
         self.truth_curve = self.widget.plot([], [], pen=_PEN_TRUTH, name="Vrai")
-        self.pred_curve  = self.widget.plot([], [], pen=_PEN_PRED,  name="Prédit")
+        self.pred_curve = self.widget.plot([], [], pen=_PEN_PRED, name="Prédit")
         self.cursor = self.widget.plot(
-            [], [],
+            [],
+            [],
             pen=None,
             symbol="o",
             symbolSize=8,
@@ -277,37 +282,37 @@ class PlotML(Plot):
     def _get_cache_data(self) -> dict:
         return {
             "_train_trajs": self._train_trajs,
-            "_truth_x":     self._truth_x,
-            "_truth_y":     self._truth_y,
-            "_pred_lr":     self._pred_lr,
-            "_pred_mlp":    self._pred_mlp,
-            "_metrics_lr":  self._metrics_lr,
+            "_truth_x": self._truth_x,
+            "_truth_y": self._truth_y,
+            "_pred_lr": self._pred_lr,
+            "_pred_mlp": self._pred_mlp,
+            "_metrics_lr": self._metrics_lr,
             "_metrics_mlp": self._metrics_mlp,
-            "_n_frames":    self._n_frames,
+            "_n_frames": self._n_frames,
         }
 
     def _set_cache_data(self, data: dict) -> None:
         self._train_trajs = data["_train_trajs"]
-        self._truth_x     = data["_truth_x"]
-        self._truth_y     = data["_truth_y"]
-        self._pred_lr     = data["_pred_lr"]
-        self._pred_mlp    = data["_pred_mlp"]
-        self._metrics_lr  = data["_metrics_lr"]
+        self._truth_x = data["_truth_x"]
+        self._truth_y = data["_truth_y"]
+        self._pred_lr = data["_pred_lr"]
+        self._pred_mlp = data["_pred_mlp"]
+        self._metrics_lr = data["_metrics_lr"]
         self._metrics_mlp = data["_metrics_mlp"]
-        self._n_frames    = data["_n_frames"]
+        self._n_frames = data["_n_frames"]
 
     # ── calcul ─────────────────────────────────────────────────
 
     def _compute(self) -> None:
         r = simulate_ml(self.params)
         self._train_trajs = r["train_trajs"]
-        self._truth_x     = r["truth_x"]
-        self._truth_y     = r["truth_y"]
-        self._pred_lr     = r["pred_lr"]
-        self._pred_mlp    = r["pred_mlp"]
-        self._metrics_lr  = r["metrics_lr"]
+        self._truth_x = r["truth_x"]
+        self._truth_y = r["truth_y"]
+        self._pred_lr = r["pred_lr"]
+        self._pred_mlp = r["pred_mlp"]
+        self._metrics_lr = r["metrics_lr"]
         self._metrics_mlp = r["metrics_mlp"]
-        self._n_frames    = r["n_frames"]
+        self._n_frames = r["n_frames"]
 
     # ── rendu ──────────────────────────────────────────────────
 
@@ -328,7 +333,7 @@ class PlotML(Plot):
             self.truth_curve.setData([], [])
 
         # Sélectionner prédictions et métriques selon le modèle actif
-        use_mlp  = self.params.model_type == MLModel.MLP
+        use_mlp = self.params.model_type == MLModel.MLP
         pred_list = self._pred_mlp if use_mlp else self._pred_lr
         self.metrics = self._metrics_mlp if use_mlp else self._metrics_lr
 
@@ -346,7 +351,7 @@ class PlotML(Plot):
     def _draw(self, i: int) -> None:
         if not (0 <= i < len(self._pred_np)):
             return
-        trail = self._pred_np[:i + 1]
+        trail = self._pred_np[: i + 1]
         self.pred_curve.setData(trail[:, 0], trail[:, 1])
         self.cursor.setData([self._pred_np[i, 0]], [self._pred_np[i, 1]])
 
@@ -355,8 +360,8 @@ class PlotML(Plot):
     def format_metrics(self) -> str:
         if not self.metrics:
             return ""
-        r2x    = self.metrics.get("r2_x",   0.0)
-        r2y    = self.metrics.get("r2_y",   0.0)
+        r2x = self.metrics.get("r2_x", 0.0)
+        r2y = self.metrics.get("r2_y", 0.0)
         rmse_x = self.metrics.get("rmse_x", 0.0)
         rmse_y = self.metrics.get("rmse_y", 0.0)
         return (
@@ -366,16 +371,58 @@ class PlotML(Plot):
 
     def get_metrics_schema(self) -> list[dict]:
         schema = [
-            {"key": "prog", "label": "Progression", "unit": "%",  "fmt": ".0f", "color": CLR_PRIMARY},
-            {"key": "x",    "label": "x prédit",    "unit": "px", "fmt": ".1f", "color": CLR_WARNING},
-            {"key": "y",    "label": "y prédit",    "unit": "px", "fmt": ".1f", "color": CLR_WARNING},
+            {
+                "key": "prog",
+                "label": "Progression",
+                "unit": "%",
+                "fmt": ".0f",
+                "color": CLR_PRIMARY,
+            },
+            {
+                "key": "x",
+                "label": "x prédit",
+                "unit": "px",
+                "fmt": ".1f",
+                "color": CLR_WARNING,
+            },
+            {
+                "key": "y",
+                "label": "y prédit",
+                "unit": "px",
+                "fmt": ".1f",
+                "color": CLR_WARNING,
+            },
         ]
         if self.metrics:
             schema += [
-                {"key": "r2_x",   "label": "R² x",   "unit": "",   "fmt": ".3f", "color": CLR_SUCCESS},
-                {"key": "r2_y",   "label": "R² y",   "unit": "",   "fmt": ".3f", "color": CLR_SUCCESS},
-                {"key": "rmse_x", "label": "RMSE x", "unit": "px", "fmt": ".1f", "color": CLR_DANGER},
-                {"key": "rmse_y", "label": "RMSE y", "unit": "px", "fmt": ".1f", "color": CLR_DANGER},
+                {
+                    "key": "r2_x",
+                    "label": "R² x",
+                    "unit": "",
+                    "fmt": ".3f",
+                    "color": CLR_SUCCESS,
+                },
+                {
+                    "key": "r2_y",
+                    "label": "R² y",
+                    "unit": "",
+                    "fmt": ".3f",
+                    "color": CLR_SUCCESS,
+                },
+                {
+                    "key": "rmse_x",
+                    "label": "RMSE x",
+                    "unit": "px",
+                    "fmt": ".1f",
+                    "color": CLR_DANGER,
+                },
+                {
+                    "key": "rmse_y",
+                    "label": "RMSE y",
+                    "unit": "px",
+                    "fmt": ".1f",
+                    "color": CLR_DANGER,
+                },
             ]
         return schema
 
@@ -386,8 +433,8 @@ class PlotML(Plot):
         prog = (i + 1) / max(len(self._pred_np), 1) * 100.0
         d: dict = {"prog": prog, "x": x, "y": y}
         if self.metrics:
-            d["r2_x"]   = self.metrics.get("r2_x",   0.0)
-            d["r2_y"]   = self.metrics.get("r2_y",   0.0)
+            d["r2_x"] = self.metrics.get("r2_x", 0.0)
+            d["r2_y"] = self.metrics.get("r2_y", 0.0)
             d["rmse_x"] = self.metrics.get("rmse_x", 0.0)
             d["rmse_y"] = self.metrics.get("rmse_y", 0.0)
         return d
