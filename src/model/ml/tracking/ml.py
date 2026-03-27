@@ -46,7 +46,7 @@ from src.util.theme import (
 log = logging.getLogger(__name__)
 
 _CSV = os.path.normpath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "data", "tracking_data.csv")
+    os.path.join(os.path.dirname(__file__), "..", "..", "..", "data", "tracking_data.csv")
 )
 
 _N_OUT = 350  # nombre de positions prédites par chaque modèle (x et y séparés)

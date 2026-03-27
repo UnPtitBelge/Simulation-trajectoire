@@ -1,9 +1,5 @@
-"""Application modes: Normal."""
+"""Mode system — presentation mode only."""
 
-from src.view.modes.base import BaseMode
-from src.view.modes.normal import NormalMode
+from .presentation import PresentationMode
 
-__all__ = [
-    "BaseMode",
-    "NormalMode",
-]
+__all__ = ["PresentationMode"]

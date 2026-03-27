@@ -6,7 +6,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QProgressDialog
 
 from src.view import MainWindow
-from src.view.modes import NormalMode
+from src.view.modes import PresentationMode
 from src.util.logging import setup_logger
 from src.util.theme import apply_theme
 
@@ -62,7 +62,7 @@ class MainApplication:
         self._load_models_into_memory()
 
         self.window = MainWindow()
-        self.logger.info("Starting app in normal mode")
+        self.logger.info("Starting app in presentation mode")
     
     def _load_models_into_memory(self):
         """Charge les modèles ML en mémoire au démarrage pour prédictions instantanées."""
@@ -76,5 +76,5 @@ class MainApplication:
             log.warning("⚠️  Modèles ML non disponibles")
 
     def run(self):
-        NormalMode().apply(self.window)
+        PresentationMode().apply(self.window)
         self.qt_app.exec()

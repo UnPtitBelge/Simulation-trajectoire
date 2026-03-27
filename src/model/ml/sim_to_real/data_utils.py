@@ -15,11 +15,23 @@ log = logging.getLogger(__name__)
 # ── Constantes ML ─────────────────────────────────────────────────────────────
 
 __all__ = [
-    "_N_IN", "_N_OUT", "_MIN_TRAJ_LEN", "_POOL_SIZE", "_MAX_DISPLAY_TRAJS",
-    "_PRESET_LABELS", "_PRESET_N_SIMS", "_CONTEXT_LABELS",
-    "_SYNTHETIC_CSV", "_SYNTHETIC_NPZ", "_PRESETS_NPZ", "_MODELS_PKL",
-    "pool_is_ready", "load_pool", "generate_and_save_pool",
-    "_run_cone", "_make_feat",
+    "_N_IN",
+    "_N_OUT",
+    "_MIN_TRAJ_LEN",
+    "_POOL_SIZE",
+    "_MAX_DISPLAY_TRAJS",
+    "_PRESET_LABELS",
+    "_PRESET_N_SIMS",
+    "_CONTEXT_LABELS",
+    "_SYNTHETIC_CSV",
+    "_SYNTHETIC_NPZ",
+    "_PRESETS_NPZ",
+    "_MODELS_PKL",
+    "pool_is_ready",
+    "load_pool",
+    "generate_and_save_pool",
+    "_run_cone",
+    "_make_feat",
 ]
 
 # Nombre de points de contexte utilisés comme features d'entrée de la régression.
@@ -37,36 +49,48 @@ _MIN_TRAJ_LEN = _N_IN + _N_OUT
 _MAX_DISPLAY_TRAJS = 100
 
 # Taille cible du pool pré-généré (stocké dans synthetic_data.npz).
-_POOL_SIZE = 100_000
+_POOL_SIZE = 1_000_000
 
 # Labels des modèles ML disponibles
 _PRESET_LABELS: list[str] = ["RL", "MLP"]
 
-# Tailles de contexte pour Ctrl+1/2/3
-_PRESET_N_SIMS: list[int] = [50, 45_000, 90_000]
+# Tailles de contexte pour Ctrl+1/2/3/4
+_PRESET_N_SIMS: list[int] = [50, 45_000, 90_000, 1_000_000]
 _CONTEXT_LABELS: list[str] = [
     "50 trajectoires",
     "45 000 trajectoires",
     "90 000 trajectoires",
+    "1 000 000 trajectoires",
 ]
 
 # Chemins des fichiers de données
 _SYNTHETIC_CSV = os.path.normpath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..", "data", "synthetic_data.csv")
+    os.path.join(
+        os.path.dirname(__file__), "..", "..", "..", "data", "synthetic_data.csv"
+    )
 )
 _SYNTHETIC_NPZ = os.path.normpath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..", "data", "synthetic_data.npz")
+    os.path.join(
+        os.path.dirname(__file__), "..", "..", "..", "data", "synthetic_data.npz"
+    )
 )
 _PRESETS_NPZ = os.path.normpath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..", "data", "sim_to_real_presets.npz")
+    os.path.join(
+        os.path.dirname(__file__), "..", "..", "..", "data", "sim_to_real_presets.npz"
+    )
 )
 _MODELS_PKL = os.path.normpath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..", "data", "trained_models.pkl")
+    os.path.join(
+        os.path.dirname(__file__), "..", "..", "..", "data", "trained_models.pkl"
+    )
 )
 
 # ── Fonctions de base ─────────────────────────────────────────────────────────
 
-def _make_feat(ctx_x: np.ndarray, ctx_y: np.ndarray, vx0: float, vy0: float) -> np.ndarray:
+
+def _make_feat(
+    ctx_x: np.ndarray, ctx_y: np.ndarray, vx0: float, vy0: float
+) -> np.ndarray:
     """Construit le vecteur de features 1-D pour la régression.
 
     Format : [x₀, y₀, x₁, y₁, …, x_{N_IN-1}, y_{N_IN-1}, vx₀, vy₀]
@@ -86,18 +110,57 @@ def _run_cone(r0: float, v0: float, phi0: float, n_frames: int | None = None) ->
 
 # ── Pool de données ────────────────────────────────────────────────────────────
 
+
 def pool_is_ready(path: str = _SYNTHETIC_NPZ, min_n: int = _POOL_SIZE) -> bool:
     """Retourne True si le pool .npz existe et contient suffisamment de trajectoires.
 
     Accepte 90% de min_n comme seuil (filtrage des trajectoires trop courtes).
+    Supporte les formats legacy (object array de dicts) et normalisé (float array 3D).
     """
     if not os.path.exists(path):
         return False
     try:
-        with np.load(path) as data:
-            return len(data["trajectories"]) >= int(min_n * 0.9)
+        with np.load(path, allow_pickle=True) as data:
+            trajs = _normalize_trajectories(data["trajectories"])
+            return len(trajs) >= int(min_n * 0.9)
     except Exception:
         return False
+
+
+def _normalize_trajectories(trajs: np.ndarray) -> np.ndarray:
+    """Normalise les trajectoires en tableau d'objets numpy (N,), chaque élément (n_i, 2).
+
+    Accepte trois formats d'entrée :
+    - Format float 3D  : (N, M, 2) → converti en object array pour uniformité.
+    - Format object    : object array de numpy arrays (n_i, 2) → retourné tel quel.
+    - Format legacy    : object array de dicts {"x": [...], "y": [...]} → converti.
+    """
+    if trajs.dtype != object:
+        # Format float 3D (N, M, 2) — convertir en object array de tableaux 2D
+        result = np.empty(len(trajs), dtype=object)
+        for i, t in enumerate(trajs):
+            result[i] = np.asarray(t, dtype=np.float32)
+        return result
+
+    if len(trajs) == 0:
+        return trajs
+
+    first = trajs[0]
+    if isinstance(first, dict):
+        # Format legacy : object array de dicts {"x": [...], "y": [...]}
+        result = np.empty(len(trajs), dtype=object)
+        for i, traj in enumerate(trajs):
+            try:
+                x = np.asarray(traj["x"], dtype=np.float32)
+                y = np.asarray(traj["y"], dtype=np.float32)
+                n = min(len(x), len(y))
+                result[i] = np.column_stack([x[:n], y[:n]])
+            except (KeyError, TypeError):
+                result[i] = np.empty((0, 2), dtype=np.float32)
+        return result
+
+    # Format object array de numpy arrays — retourner tel quel
+    return trajs
 
 
 def load_pool(path: str = _SYNTHETIC_NPZ, n_sims: int | None = None) -> dict | None:
@@ -106,13 +169,15 @@ def load_pool(path: str = _SYNTHETIC_NPZ, n_sims: int | None = None) -> dict | N
     Returns:
         {"trajectories": np.ndarray (N, MIN_TRAJ_LEN, 2), "ref_trajs": dict[str, np.ndarray]}
         ou None si le fichier est absent ou illisible.
+    Accepte les formats legacy (object array de dicts) et normalisé (float array 3D).
     """
     if not os.path.exists(path):
         log.warning("Pool introuvable : %s", path)
         return None
     try:
-        d = np.load(path, allow_pickle=False)
-        trajs: np.ndarray = d["trajectories"]
+        d = np.load(path, allow_pickle=True)
+        trajs = _normalize_trajectories(d["trajectories"])
+        log.info("load_pool : %d trajectoires disponibles", len(trajs))
         if n_sims is not None and n_sims < len(trajs):
             idx = np.random.choice(len(trajs), n_sims, replace=False)
             trajs = trajs[idx]
@@ -138,40 +203,58 @@ def generate_and_save_pool(
     path: str = _SYNTHETIC_NPZ,
     csv_path: str | None = None,
     progress_cb=None,
+    n_target: int = _POOL_SIZE,
 ) -> None:
-    """Génère _POOL_SIZE trajectoires via LHS et les sauvegarde dans path.
+    """Génère exactement n_target trajectoires via LHS et les sauvegarde dans path.
 
-    Les CI (r0, v0, phi0) sont échantillonnées par Latin Hypercube Sampling.
-    Les trajectoires de longueur insuffisante (<_MIN_TRAJ_LEN) sont filtrées.
+    Les CI (r0, v0, phi0) sont échantillonnées par Latin Hypercube Sampling pour
+    une couverture uniforme de l'espace des paramètres. Aucune trajectoire n'est
+    rejetée — chaque CI produit exactement une trajectoire, quelle que soit sa durée.
+    Les trajectoires sont stockées en tableau d'objets numpy (longueurs variables).
     """
     from src.model.params.sim_to_real import SimToRealParams
 
-    R0_MIN, R0_MAX     = 0.08, 0.35
-    V0_MIN, V0_MAX     = 0.10, 2.50
-    PHI0_MIN, PHI0_MAX = 0.0,  360.0
+    SIM_FRAMES = (
+        _MIN_TRAJ_LEN + 5
+    )  # durée max simulée (légère marge au-dessus du seuil ML)
 
-    n = _POOL_SIZE
-    r0_vals   = _lhs_samples(n, R0_MIN, R0_MAX)
-    v0_vals   = _lhs_samples(n, V0_MIN, V0_MAX)
-    phi0_vals = _lhs_samples(n, PHI0_MIN, PHI0_MAX)
+    R0_MIN, R0_MAX = 0.1, 0.36
+    V0_MIN, V0_MAX = 0.10, 2.00
+    PHI0_MIN, PHI0_MAX = 0.0, 360.0
+
+    r0_vals = _lhs_samples(n_target, R0_MIN, R0_MAX)
+    v0_vals = _lhs_samples(n_target, V0_MIN, V0_MAX)
+    phi0_vals = _lhs_samples(n_target, PHI0_MIN, PHI0_MAX)
 
     trajectories: list[np.ndarray] = []
     csv_rows: list[tuple] = []
 
     for i, (r0, v0, phi0) in enumerate(zip(r0_vals, v0_vals, phi0_vals)):
         if progress_cb and i % 500 == 0:
-            progress_cb(i, n)
-        traj = _run_cone(r0, v0, phi0, n_frames=_MIN_TRAJ_LEN + 5)
-        if len(traj) >= _MIN_TRAJ_LEN:
-            trajectories.append(np.array(traj[:_MIN_TRAJ_LEN], dtype=np.float32))
-            if csv_path:
-                csv_rows.append((r0, v0, phi0, len(traj)))
+            progress_cb(i, n_target)
 
-    if not trajectories:
-        raise RuntimeError("generate_and_save_pool : aucune trajectoire valide générée")
+        traj = _run_cone(r0, v0, phi0, n_frames=SIM_FRAMES)
+        trajectories.append(np.array(traj, dtype=np.float32))
+        if csv_path:
+            csv_rows.append((r0, v0, phi0, len(traj)))
 
-    trajs_array = np.stack(trajectories)
-    log.info("Pool généré : %d / %d trajectoires valides", len(trajectories), n)
+    lengths = [len(t) for t in trajectories]
+    n_usable = sum(1 for l in lengths if l >= _MIN_TRAJ_LEN)
+    log.info(
+        "Pool : %d trajectoires générées — %d utilisables pour ML (≥ %d frames), "
+        "longueur min/moy/max : %d / %.0f / %d",
+        n_target,
+        n_usable,
+        _MIN_TRAJ_LEN,
+        min(lengths),
+        sum(lengths) / len(lengths),
+        max(lengths),
+    )
+
+    # Tableau d'objets : longueurs variables, pas de np.stack
+    trajs_array = np.empty(n_target, dtype=object)
+    for i, t in enumerate(trajectories):
+        trajs_array[i] = t
 
     presets = SimToRealParams.PRESETS
     arrays: dict[str, np.ndarray] = {"trajectories": trajs_array}
@@ -187,7 +270,7 @@ def generate_and_save_pool(
         with open(csv_path, "w", newline="") as f:
             writer = csv.writer(f)
             writer.writerow(["r0", "v0", "phi0", "traj_len"])
-            writer.writerows(csv_rows)
+            writer.writerows(csv_rows[:n_target])
 
     if progress_cb:
-        progress_cb(n, n)
+        progress_cb(n_target, n_target)

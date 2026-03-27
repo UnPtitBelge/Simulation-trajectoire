@@ -306,7 +306,7 @@ class PlotSimToReal(Plot):
             lay.addWidget(sep)
             for i, n in enumerate(ns_list):
                 key = f"{model_tag}_{n}"
-                btn = QPushButton(_PRESET_LABELS[i])
+                btn = QPushButton(model_label)
                 btn.setFixedHeight(28)
                 btn.setStyleSheet(_INACTIVE)
                 btn.setProperty("_preset_key", key)
@@ -584,22 +584,41 @@ class PlotSimToReal(Plot):
     # ── Calcul (QThread) ──────────────────────────────────────────────────────
 
     def _compute(self) -> None:
-        from .model_utils import train_and_evaluate
-        data = load_pool(n_sims=self.params.n_sims)
-        if data is None:
-            raise RuntimeError(
-                "Pool synthétique introuvable. "
-                "Veuillez générer les données avant de lancer l'application."
+        from .model_utils import load_trained_models, train_and_evaluate
+
+        # Tenter de charger les modèles pré-entraînés (créés par train_ml_models.py)
+        all_models = load_trained_models(_MODELS_PKL)
+        n = self.params.n_sims
+
+        if all_models and n in all_models:
+            # Chemin rapide : modèle pré-entraîné disponible pour ce contexte
+            result = all_models[n]
+            self._ref_trajs = all_models.get("ref_trajs", {})
+            log.info("✓ Modèles pré-entraînés chargés pour n_sims=%d", n)
+        else:
+            # Fallback : entraînement à la volée (pkl absent ou contexte manquant)
+            log.warning(
+                "Modèles pré-entraînés introuvables pour n_sims=%d — "
+                "entraînement en direct (lent). "
+                "Exécutez scripts/train_ml_models.py pour pré-entraîner.",
+                n,
             )
-        result            = train_and_evaluate(data)
+            data = load_pool(n_sims=n)
+            if data is None:
+                raise RuntimeError(
+                    "Pool synthétique introuvable. "
+                    "Veuillez générer les données avant de lancer l'application."
+                )
+            result = train_and_evaluate(data)
+            self._ref_trajs = data.get("ref_trajs", {})
+
         self._result      = result
         self.metrics      = result["metrics_lr"]
         self._lr_x        = result["lr_x"]
         self._lr_y        = result["lr_y"]
         self._mlp_x       = result["mlp_x"]
         self._mlp_y       = result["mlp_y"]
-        self._ref_trajs   = data["ref_trajs"]
-        self._last_n_sims = self.params.n_sims
+        self._last_n_sims = n
         self._do_predict()
 
     # ── Rendu (main thread) ───────────────────────────────────────────────────

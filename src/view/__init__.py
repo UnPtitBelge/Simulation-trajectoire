@@ -1,9 +1,5 @@
-"""UI components package."""
+"""View layer — MainWindow and presentation components."""
 
 from src.view.main_window import MainWindow
-from src.view.pages.theory import TheoryPage
 
-__all__ = [
-    "MainWindow",
-    "TheoryPage",
-]
+__all__ = ["MainWindow"]

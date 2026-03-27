@@ -1,11 +1,7 @@
-"""MainWindow — central widget with stacked views for all modes."""
-
-from enum import IntEnum
-from typing import cast
+"""MainWindow — presentation mode with chapter navigation."""
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QBoxLayout,
     QHBoxLayout,
     QLabel,
     QMainWindow,
@@ -28,20 +24,9 @@ from src.util.theme import (
     FS_XS,
 )
 
-from .dashboard import ComparisonView, SimDashboard, SimToRealView
-from .components.menu import build_menu, make_card
+from .dashboard import SimToRealView
 from .param_panel import ParamPanel
 from .presentation import GuardPage, TimelineBar
-from .pages.theory import TheoryPage
-
-
-class Page(IntEnum):
-    """Indices of pages in the central QStackedWidget."""
-    GUARD = 0
-    MENU = 1
-    DASHBOARD = 2
-    THEORY = 3
-    SIM_TO_REAL = 4
 
 
 class MainWindow(QMainWindow):
@@ -63,26 +48,12 @@ class MainWindow(QMainWindow):
         self.installEventFilter(self)
 
         self._pres_widget = self._build_guard_page()
-
-        # Initialize UI components and simulations
-        self._menu_widget, self._sim_grid = build_menu(
-            on_open_comparison=self._open_comparison,
-            on_open_theory=self._open_theory,
-        )
-        self._dash_stack = QStackedWidget()
-        self._theory_page = TheoryPage(on_back=self.show_menu)
         self._sim_to_real_view: "SimToRealView | None" = None
 
-        self.stack.addWidget(self._pres_widget)      # Page.GUARD
-        self.stack.addWidget(self._menu_widget)      # Page.MENU
-        self.stack.addWidget(self._dash_stack)       # Page.DASHBOARD
-        self.stack.addWidget(self._theory_page)      # Page.THEORY
-        # Page.SIM_TO_REAL : ajoutée plus tard en lazy init
+        self.stack.addWidget(self._pres_widget)
 
         self.plots = []
         self.keys = []
-        self.dashboards = []
-        self._comparison = None
 
         for sim_key, _label, PlotCls, _in_pres in SIMULATIONS:
             plot = PlotCls()
@@ -90,16 +61,10 @@ class MainWindow(QMainWindow):
             self.plots.append(plot)
             self.keys.append(sim_key)
 
-            dash = SimDashboard(sim_key, plot, on_back=self.show_menu, parent=self)
-            self.dashboards.append(dash)
-            self._dash_stack.addWidget(dash)
-
-        # Indices des simulations visibles en mode normal (navigation 1-4 / ←→)
+        # Indices of simulations visible in presentation mode (navigation 1-4 / ←→)
         self._pres_indices: list[int] = [
             i for i, (*_, in_pres) in enumerate(SIMULATIONS) if in_pres
         ]
-
-        self._populate_sim_cards()
 
         # Param panel — floating overlay on the right edge
         self._param_panel = ParamPanel(self)
@@ -182,7 +147,7 @@ class MainWindow(QMainWindow):
         self._pres_status.setStyleSheet(f"background:transparent; color:{CLR_STATUS_TEXT};")
         h.addWidget(self._pres_status)
 
-        hint = QLabel("←→ · 1-4 · Espace · R · F1-3 · T · Ctrl+1-3 · Échap")
+        hint = QLabel("←→ · 1-4 · Espace · R · F1-3 · T · Ctrl+1-4 · Échap")
         hint.setStyleSheet(f"background:transparent; color:{CLR_STATUS_TEXT}; font-size:{FS_XS};")
         h.addWidget(hint)
 
@@ -232,47 +197,15 @@ class MainWindow(QMainWindow):
 
         return w
 
-    def _populate_sim_cards(self):
-        for i, key in enumerate(self.keys):
-            info = SIM.get(key, {})
-            c = make_card(
-                info.get("title") or key,
-                info.get("short") or "",
-                lambda _, idx=i: self.open_dashboard(idx),
-            )
-            self._sim_grid.addWidget(c, i // 2, i % 2)
-
     # ── navigation ─────────────────────────────────────────────
 
-    def show_menu(self):
-        self.stack.setCurrentIndex(Page.MENU)
-
     def show_guard(self):
-        self.stack.setCurrentIndex(Page.GUARD)
-
-    def open_dashboard(self, idx: int):
-        if 0 <= idx < len(self.dashboards):
-            self._sim_idx = idx
-            self._dash_stack.setCurrentIndex(idx)
-            self.stack.setCurrentIndex(Page.DASHBOARD)
-            self._param_panel.update_plot(self.plots[idx])
-
-    def _open_theory(self):
-        self.stack.setCurrentIndex(Page.THEORY)
-
-    def _open_comparison(self):
-        if self._comparison is None:
-            self._comparison = ComparisonView(self.plots, self.keys, self)
-            back = QPushButton("← Retour au menu")
-            back.setProperty("flat", True)
-            back.clicked.connect(self.show_menu)
-            cast(QBoxLayout, self._comparison.layout()).insertWidget(0, back, alignment=Qt.AlignmentFlag.AlignLeft)
-            self.stack.addWidget(self._comparison)
-        self.stack.setCurrentWidget(self._comparison)
+        self.stack.setCurrentIndex(0)
 
     def _open_sim_to_real(self):
+        """Open sim-to-real view (lazy initialized)."""
         if self._sim_to_real_view is None:
-            view = SimToRealView(on_back=self.show_menu, parent=self)
+            view = SimToRealView(on_back=self.pres_show_guard, parent=self)
             self._sim_to_real_view = view
             self.stack.addWidget(view)
         if self._sim_to_real_view is not None:
@@ -343,7 +276,7 @@ class MainWindow(QMainWindow):
 
     def _guard_start(self) -> None:
         """Called when user clicks 'Commencer' on the guard page."""
-        self.show_menu()
+        self.pres_goto_chapter(0, 0)  # Start at first chapter, first step
 
     def pres_show_guard(self) -> None:
         """Return to the guard page — stops simulation and hides sim area."""
@@ -361,7 +294,7 @@ class MainWindow(QMainWindow):
             if item and item.widget():
                 item.widget().setParent(None)
 
-        self.stack.setCurrentIndex(Page.GUARD)
+        self.stack.setCurrentIndex(0)  # GUARD page
         self._guard.setFocus()
 
     def pres_goto_chapter(self, ch_idx: int, step_idx: int = 0) -> None:

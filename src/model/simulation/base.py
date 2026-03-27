@@ -97,7 +97,7 @@ class Plot(QObject):
         return {}
 
     def get_chart_data(self) -> dict | None:
-        """Return precomputed r(t) data for the libre-mode chart panel.
+        """Return precomputed r(t) data for distance vs time charts.
 
         Keys: 't' (time array s), 'r' (radius array m), 'label' (y-axis label).
         Returns None if this simulation type has no chart.
