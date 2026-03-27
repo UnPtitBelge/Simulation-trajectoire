@@ -763,15 +763,3 @@ class PlotSimToReal(Plot):
             return
         self.params.n_sims = _PRESET_N_SIMS[idx]
         self.restart()
-
-    def _update_train_curve_visibility(self, n_sims: int) -> None:
-        """Affiche un nombre de courbes grises proportionnel à n_sims (5 à max)."""
-        n_curves = len(self._train_curves)
-        if not n_curves:
-            return
-        max_n = _PRESET_N_SIMS[-1]
-        n_display = max(5, min(n_curves, int(n_curves * n_sims / max_n)))
-        for i, curve in enumerate(self._train_curves):
-            visible = i < n_display
-            if curve.isVisible() != visible:
-                curve.setVisible(visible)

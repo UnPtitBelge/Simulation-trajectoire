@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from model.ml.sim_to_real import PlotSimToReal
 from src.content import APP_TITLE, SIM
 from src.content.chapters import CHAPTERS
 from src.model.simulation import SIMULATIONS
@@ -24,7 +25,6 @@ from src.util.theme import (
     FS_XS,
 )
 
-from .dashboard import SimToRealView
 from .param_panel import ParamPanel
 from .presentation import GuardPage, TimelineBar
 
@@ -48,7 +48,7 @@ class MainWindow(QMainWindow):
         self.installEventFilter(self)
 
         self._pres_widget = self._build_guard_page()
-        self._sim_to_real_view: "SimToRealView | None" = None
+        self._sim_to_real_plot: "PlotSimToReal | None" = None
 
         self.stack.addWidget(self._pres_widget)
 
@@ -136,19 +136,27 @@ class MainWindow(QMainWindow):
         h.setContentsMargins(16, 4, 16, 4)
 
         self._pres_title = QLabel(APP_TITLE)
-        self._pres_title.setStyleSheet(f"background:transparent; color:white; font-size:{FS_LG}; font-weight:500;")
+        self._pres_title.setStyleSheet(
+            f"background:transparent; color:white; font-size:{FS_LG}; font-weight:500;"
+        )
         h.addWidget(self._pres_title)
 
         self._pres_subtitle = QLabel("")
-        self._pres_subtitle.setStyleSheet(f"background:transparent; color:{CLR_HEADER_SUBTITLE}; font-size:{FS_SM}; font-style:italic;")
+        self._pres_subtitle.setStyleSheet(
+            f"background:transparent; color:{CLR_HEADER_SUBTITLE}; font-size:{FS_SM}; font-style:italic;"
+        )
         h.addWidget(self._pres_subtitle, stretch=1)
 
         self._pres_status = QLabel("Prêt")
-        self._pres_status.setStyleSheet(f"background:transparent; color:{CLR_STATUS_TEXT};")
+        self._pres_status.setStyleSheet(
+            f"background:transparent; color:{CLR_STATUS_TEXT};"
+        )
         h.addWidget(self._pres_status)
 
         hint = QLabel("←→ · 1-4 · Espace · R · F1-3 · T · Ctrl+1-4 · Échap")
-        hint.setStyleSheet(f"background:transparent; color:{CLR_STATUS_TEXT}; font-size:{FS_XS};")
+        hint.setStyleSheet(
+            f"background:transparent; color:{CLR_STATUS_TEXT}; font-size:{FS_XS};"
+        )
         h.addWidget(hint)
 
         self._pres_header = header
@@ -167,7 +175,9 @@ class MainWindow(QMainWindow):
         mbar.setContentsMargins(16, 5, 16, 5)
         mbar.setSpacing(12)
         lbl = QLabel("Repères :")
-        lbl.setStyleSheet(f"background: transparent; color: {CLR_STATUS_TEXT}; font-size: {FS_SM};")
+        lbl.setStyleSheet(
+            f"background: transparent; color: {CLR_STATUS_TEXT}; font-size: {FS_SM};"
+        )
         mbar.addWidget(lbl)
         self._marker_count_lbl = QLabel("0")
         self._marker_count_lbl.setStyleSheet(
@@ -201,15 +211,6 @@ class MainWindow(QMainWindow):
 
     def show_guard(self):
         self.stack.setCurrentIndex(0)
-
-    def _open_sim_to_real(self):
-        """Open sim-to-real view (lazy initialized)."""
-        if self._sim_to_real_view is None:
-            view = SimToRealView(on_back=self.pres_show_guard, parent=self)
-            self._sim_to_real_view = view
-            self.stack.addWidget(view)
-        if self._sim_to_real_view is not None:
-            self.stack.setCurrentWidget(self._sim_to_real_view)
 
     # ── simulation control (used by modes) ─────────────────────
 
@@ -340,7 +341,9 @@ class MainWindow(QMainWindow):
         self._pres_header.show()
         self._timeline.show()
         self._timeline.set_chapter(
-            self._pres_ch_idx, self._pres_step_idx, len(ch.steps),
+            self._pres_ch_idx,
+            self._pres_step_idx,
+            len(ch.steps),
         )
 
         sim_key = step.sim_key
@@ -424,9 +427,7 @@ class MainWindow(QMainWindow):
     def _reposition_param_panel(self) -> None:
         """Keep panel flush against the right edge, full height."""
         pw = self._param_panel.width()
-        self._param_panel.setGeometry(
-            self.width() - pw, 0, pw, self.height()
-        )
+        self._param_panel.setGeometry(self.width() - pw, 0, pw, self.height())
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)

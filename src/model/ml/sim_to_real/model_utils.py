@@ -11,12 +11,12 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 from .data_utils import (
+    _MAX_DISPLAY_TRAJS,
+    _MODELS_PKL,
     _N_IN,
     _N_OUT,
-    _MODELS_PKL,
-    _MAX_DISPLAY_TRAJS,
-    _run_cone,
     _make_feat,
+    _run_cone,
 )
 
 _CACHED_MODELS: dict | None = None
@@ -155,8 +155,8 @@ def train_and_evaluate(pool_data: dict, chunk_size: int = 50000) -> dict:
         chunk_trajs = trajs[chunk_start:chunk_end]
 
         log.info(
-            f"  → Chunk {chunk_start//chunk_size + 1}/"
-            f"{(n_total + chunk_size - 1)//chunk_size} "
+            f"  → Chunk {chunk_start // chunk_size + 1}/"
+            f"{(n_total + chunk_size - 1) // chunk_size} "
             f"({chunk_start}–{chunk_end})"
         )
 
@@ -164,11 +164,7 @@ def train_and_evaluate(pool_data: dict, chunk_size: int = 50000) -> dict:
         for i, traj in enumerate(chunk_trajs):
             global_idx = chunk_start + i
             traj_arr = np.asarray(traj, dtype=np.float32)
-            if (
-                traj_arr.ndim != 2
-                or traj_arr.shape[1] != 2
-                or traj_arr.shape[0] < 2
-            ):
+            if traj_arr.ndim != 2 or traj_arr.shape[1] != 2 or traj_arr.shape[0] < 2:
                 # trajectoire malformée (< 2 points : vitesse initiale
                 # incalculable)
                 continue
@@ -253,23 +249,6 @@ def train_and_evaluate(pool_data: dict, chunk_size: int = 50000) -> dict:
     }
 
 
-def save_trained_models(models_dict: dict, path: str = _MODELS_PKL) -> None:
-    """Sauvegarde les modèles sklearn entraînés dans un fichier pickle.
-
-    Args:
-        models_dict: Structure {config_key: {"rl_x": model, "rl_y": model,
-                                             "mlp_x": model, "mlp_y": model}}
-                     Exemple: {"linear": {...}, "mlp": {...}}
-        path: Chemin du fichier pickle
-
-    Les modèles sont des objets sklearn (LinearRegression ou Pipeline).
-    Taille typique : ~50-100 MB pour tous les modèles.
-    """
-    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-    with open(path, "wb") as f:
-        pickle.dump(models_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
-    log.info("Modèles sauvegardés : %d configs → %s", len(models_dict), path)
-
 
 def load_trained_models(path: str = _MODELS_PKL) -> dict | None:
     """Charge les modèles sklearn depuis un fichier pickle.
@@ -313,11 +292,6 @@ def models_are_ready(path: str = _MODELS_PKL) -> bool:
         )
     except Exception:
         return False
-
-
-def get_cached_models() -> dict | None:
-    """Retourne les modèles chargés en mémoire (si disponibles)."""
-    return _CACHED_MODELS
 
 
 def set_cached_models(models: dict) -> None:

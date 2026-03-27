@@ -26,11 +26,6 @@ DIFFICULTY_COLORS: dict[str, str] = {
     "Central": CLR_PRIMARY,
 }
 
-
-def difficulty_color(diff: str) -> str:
-    """Return the badge color for a given difficulty string."""
-    return DIFFICULTY_COLORS.get(diff, CLR_TEXT_SECONDARY)
-
 # ── Normal mode header ──────────────────────────────────────────────────────
 
 CLR_HEADER_BG = "#202124"

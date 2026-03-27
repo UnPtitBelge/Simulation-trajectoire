@@ -1,6 +1,5 @@
 """Data generation utilities for sim-to-real pipeline."""
 
-import csv
 import logging
 import math
 import os
@@ -30,7 +29,6 @@ __all__ = [
     "_MODELS_PKL",
     "pool_is_ready",
     "load_pool",
-    "generate_and_save_pool",
     "_run_cone",
     "_run_cone_xy",
     "_make_feat",
@@ -219,93 +217,3 @@ def _lhs_samples(n: int, lo: float, hi: float) -> list[float]:
     intervals = [(i + random.random()) / n for i in range(n)]
     random.shuffle(intervals)
     return [lo + (hi - lo) * x for x in intervals]
-
-
-def generate_and_save_pool(
-    path: str = _SYNTHETIC_NPZ,
-    csv_path: str | None = None,
-    progress_cb=None,
-    n_target: int = _POOL_SIZE,
-) -> None:
-    """Génère exactement n_target trajectoires via LHS et les sauvegarde dans path.
-
-    Les CI (x0, y0, v0, phi0) sont échantillonnées par Latin Hypercube Sampling pour
-    une couverture uniforme de l'espace des paramètres. La position initiale (x0, y0)
-    est tirée uniformément sur le disque annulaire [R0_MIN, R0_MAX] en échantillonnant
-    r² (et non r) pour garantir une densité uniforme en aire.
-    Aucune trajectoire n'est rejetée — chaque CI produit exactement une trajectoire.
-    Les trajectoires sont stockées en tableau d'objets numpy (longueurs variables).
-    """
-    from src.model.params.sim_to_real import SimToRealParams
-
-    SIM_FRAMES = (
-        _MIN_TRAJ_LEN + 5
-    )  # durée max simulée (légère marge au-dessus du seuil ML)
-
-    R0_MIN, R0_MAX = 0.1, 0.36
-    V0_MIN, V0_MAX = 0.10, 2.00
-    PHI0_MIN, PHI0_MAX = 0.0, 360.0
-
-    # Échantillonnage uniforme en aire : tirer r² dans [R0_MIN², R0_MAX²]
-    r0_sq_vals = _lhs_samples(n_target, R0_MIN**2, R0_MAX**2)
-    pos_phi_vals = _lhs_samples(n_target, PHI0_MIN, PHI0_MAX)  # angle de position
-    v0_vals = _lhs_samples(n_target, V0_MIN, V0_MAX)
-    phi0_vals = _lhs_samples(n_target, PHI0_MIN, PHI0_MAX)  # direction de la vitesse
-
-    x0_vals = [
-        math.sqrt(r2) * math.cos(math.radians(p))
-        for r2, p in zip(r0_sq_vals, pos_phi_vals)
-    ]
-    y0_vals = [
-        math.sqrt(r2) * math.sin(math.radians(p))
-        for r2, p in zip(r0_sq_vals, pos_phi_vals)
-    ]
-
-    trajectories: list[np.ndarray] = []
-    csv_rows: list[tuple] = []
-
-    for i, (x0, y0, v0, phi0) in enumerate(zip(x0_vals, y0_vals, v0_vals, phi0_vals)):
-        if progress_cb and i % 500 == 0:
-            progress_cb(i, n_target)
-
-        traj = _run_cone_xy(x0, y0, v0, phi0, n_frames=SIM_FRAMES)
-        trajectories.append(np.array(traj, dtype=np.float32))
-        if csv_path:
-            csv_rows.append((x0, y0, v0, phi0, len(traj)))
-
-    lengths = [len(t) for t in trajectories]
-    n_usable = sum(1 for l in lengths if l >= _MIN_TRAJ_LEN)
-    log.info(
-        "Pool : %d trajectoires générées — %d utilisables pour ML (≥ %d frames), "
-        "longueur min/moy/max : %d / %.0f / %d",
-        n_target,
-        n_usable,
-        _MIN_TRAJ_LEN,
-        min(lengths),
-        sum(lengths) / len(lengths),
-        max(lengths),
-    )
-
-    # Tableau d'objets : longueurs variables, pas de np.stack
-    trajs_array = np.empty(n_target, dtype=object)
-    for i, t in enumerate(trajectories):
-        trajs_array[i] = t
-
-    presets = SimToRealParams.PRESETS
-    arrays: dict[str, np.ndarray] = {"trajectories": trajs_array}
-    for key, preset in presets.items():
-        ref = _run_cone(float(preset["r0"]), float(preset["v0"]), float(preset["phi0"]))
-        arrays[f"ref_{key}"] = np.array(ref, dtype=np.float32)
-
-    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-    np.savez_compressed(path, **arrays)  # type: ignore[arg-type]
-    log.info("Pool sauvegardé : %s", path)
-
-    if csv_path and csv_rows:
-        with open(csv_path, "w", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow(["x0", "y0", "v0", "phi0", "traj_len"])
-            writer.writerows(csv_rows[:n_target])
-
-    if progress_cb:
-        progress_cb(n_target, n_target)

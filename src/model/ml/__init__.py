@@ -7,8 +7,8 @@ from .sim_to_real.data_utils import (
     pool_is_ready, load_pool,
 )
 from .sim_to_real.model_utils import (
-    save_trained_models, load_trained_models, models_are_ready,
-    get_cached_models, set_cached_models,
+    load_trained_models, models_are_ready,
+    set_cached_models,
 )
 from .sim_to_real.preset_utils import (
     presets_are_ready, load_presets,
@@ -22,8 +22,8 @@ __all__ = [
     # Chargement de données
     "pool_is_ready", "load_pool",
     # Modèles
-    "save_trained_models", "load_trained_models", "models_are_ready",
-    "get_cached_models", "set_cached_models",
+    "load_trained_models", "models_are_ready",
+    "set_cached_models",
     # Presets
     "presets_are_ready", "load_presets",
     # Visualisation
