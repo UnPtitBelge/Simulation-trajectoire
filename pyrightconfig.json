@@ -1,5 +1,5 @@
 {
-  "include": ["refactor"],
+  "include": ["src"],
   "pythonVersion": "3.12",
   "reportMissingTypeStubs": "none",
   "reportAny": "none",
@@ -8,5 +8,5 @@
   "reportUnknownArgumentType": "none",
   "reportUnknownVariableType": "none",
   "reportUnknownParameterType": "none",
-  "reportUnknownLambdaType": "none"
+  "reportUnknownLambdaType": "none",
 }

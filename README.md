@@ -7,8 +7,8 @@ Projet universitaire ULB Ba3 — simulation de trajectoires sur surfaces physiqu
 Avant le premier lancement, générer les données synthétiques et entraîner les modèles :
 
 ```bash
-python refactor/scripts/generate_data.py
-python refactor/scripts/train_models.py
+python src/scripts/generate_data.py
+python src/scripts/train_models.py
 ```
 
 Les modèles entraînés sur données réelles (tracking CSV) sont produits automatiquement au lancement de l'app.
@@ -23,7 +23,7 @@ pip install -e ".[dev]"   # + outils de dev
 ## Lancement
 
 ```bash
-python refactor/app.py
+python src/app.py
 ```
 
 ## Simulations
@@ -41,7 +41,7 @@ Appuyer sur **P** dans n'importe quelle vue pour poser un marqueur de référenc
 ## Structure
 
 ```
-refactor/
+src/
 ├── app.py                  # Point d'entrée
 ├── config/                 # Fichiers TOML (mcu, cone, membrane, ml) + thème
 ├── physics/                # Intégrateurs physiques (cone, membrane, mcu)
@@ -54,8 +54,8 @@ refactor/
 ## Qualité du code
 
 ```bash
-black refactor/
-flake8 refactor/
-pyright refactor/
+black src/
+flake8 src/
+pyright src/
 pytest
 ```

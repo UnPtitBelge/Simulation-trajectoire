@@ -6,7 +6,7 @@ Au démarrage :
   3. Lance la fenêtre principale.
 
 Usage :
-    python refactor/app.py
+    python src/app.py
 """
 
 import logging
@@ -66,8 +66,8 @@ def main():
             None,
             "Fichiers manquants",
             f"Les fichiers suivants sont requis avant de lancer l'application :\n\n{msg}\n\n"
-            "Générez les données : python refactor/scripts/generate_data.py\n"
-            "Entraînez les modèles : python refactor/scripts/train_models.py",
+            "Générez les données : python src/scripts/generate_data.py\n"
+            "Entraînez les modèles : python src/scripts/train_models.py",
         )
         sys.exit(1)
 
