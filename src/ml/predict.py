@@ -9,7 +9,7 @@ import numpy as np
 from ml.models import LinearStepModel, MLPStepModel
 
 
-_V_STOP_DEFAULT = 2e-3  # seuil vitesse (m/s) — lire depuis [synth.physics].v_stop dans ml.toml
+_V_STOP_DEFAULT = 2e-3  # seuil vitesse — en m/s pour le mode synth, en px/frame pour le mode réel
 
 
 def predict_trajectory(
@@ -35,12 +35,14 @@ def predict_trajectory(
 
     for i in range(n_steps):
         traj[i] = state
+        state = model.predict_step(state)
+        # Conditions d'arrêt vérifiées sur le nouvel état (miroir de compute_cone
+        # qui teste r/speed après la mise à jour de position/vitesse).
         if r_max is not None and state[0] >= r_max:
             return traj[:i + 1]
         if r_min is not None and state[0] <= r_min:
             return traj[:i + 1]
         if np.sqrt(state[2] ** 2 + state[3] ** 2) < v_stop:
             return traj[:i + 1]
-        state = model.predict_step(state)
 
     return traj
