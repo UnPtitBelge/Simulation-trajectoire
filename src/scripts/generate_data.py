@@ -25,9 +25,6 @@ sys.path.insert(0, str(ROOT))
 from physics.cone import compute_cone
 
 
-_CENTER_RADIUS = 0.05  # rayon minimal (centre du cône, identique à cone.py)
-
-
 def _sample_initial_conditions(n: int, cfg: dict, rng: np.random.Generator):
     """Tire n CI plausibles uniformément sur la surface du cône.
 
@@ -35,12 +32,13 @@ def _sample_initial_conditions(n: int, cfg: dict, rng: np.random.Generator):
     Cela évite le biais des diagonales du carré (vr, vtheta) ∈ [-v_max, v_max]²
     et garantit que toutes les directions sont équiprobables.
     """
-    R     = cfg["R"]
-    v_min = cfg.get("v_min", 0.3)
-    v_max = cfg.get("v_max", 2.0)
+    R             = cfg["R"]
+    center_radius = cfg.get("center_radius", 0.03)
+    v_min         = cfg.get("v_min", 0.3)
+    v_max         = cfg.get("v_max", 2.0)
 
-    # densité uniforme sur surface ; clippé à [_CENTER_RADIUS, R) pour éviter r0=0
-    r_frac = (_CENTER_RADIUS / R) ** 2
+    # densité uniforme sur surface ; clippé à [center_radius, R) pour éviter r0=0
+    r_frac = (center_radius / R) ** 2
     r0     = R * np.sqrt(rng.uniform(r_frac, 1.0, n))
     theta0 = rng.uniform(0.0, 2 * np.pi, n)
 
