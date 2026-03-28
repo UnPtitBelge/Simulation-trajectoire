@@ -29,6 +29,7 @@ sys.path.insert(0, str(ROOT))
 
 from ml.models import LinearStepModel, MLPStepModel, state_to_features
 from ml.predict import predict_trajectory
+from ml.train import compute_exp_centers
 
 warnings.filterwarnings("ignore")
 
@@ -36,17 +37,23 @@ warnings.filterwarnings("ignore")
 # ── Chargement ─────────────────────────────────────────────────────────────────
 
 
-def load_experiments(csv_path: Path, cx: float, cy: float) -> dict[int, np.ndarray]:
-    """Charge toutes les expériences en pixels centrés.
+def load_experiments(csv_path: Path, tracking_cfg: dict) -> dict[int, np.ndarray]:
+    """Charge toutes les expériences en pixels centrés avec correction d'offset caméra.
+
+    Utilise compute_exp_centers pour estimer le centre propre à chaque expérience
+    (la bille finit toujours au même endroit physique, mais la caméra peut être décalée).
 
     Retourne {expID: states} où states est (N, 4) = (r_px, θ, vr_px, vθ_px).
     """
     df = pd.read_csv(csv_path, sep=";", skipinitialspace=True)
     df.columns = df.columns.str.strip()
 
+    centers = compute_exp_centers(df, tracking_cfg)
+
     experiments: dict[int, np.ndarray] = {}
     for exp_id, group in df.groupby("expID"):
         group = group.sort_values("temps")
+        cx, cy = centers[exp_id]
         xc = group["x"].values     - cx
         yc = group["y"].values     - cy
         vx = group["speedX"].values
@@ -153,7 +160,7 @@ def plot_comparison(
     ax_v   = fig.add_subplot(gs[1, 0])
     ax_err = fig.add_subplot(gs[1, 1])
 
-    t_s = timestamps / 1000.0  # ms → s
+    t_s = timestamps / 1000.0  # ms → s  # noqa: E501
 
     # Cercle de bord (en pixels)
     ang = np.linspace(0, 2 * np.pi, 300)
@@ -248,8 +255,8 @@ if __name__ == "__main__":
     cx, cy   = tracking["center_x"], tracking["center_y"]
     R_px     = tracking["R"] * tracking["px_per_meter"]
 
-    print("\nChargement des données de tracking (unités pixels)...")
-    experiments = load_experiments(csv_path, cx, cy)
+    print("\nChargement des données de tracking (unités pixels, correction offset caméra)...")
+    experiments = load_experiments(csv_path, tracking)
     all_ids     = sorted(experiments.keys())
     test_id     = args.test_id if args.test_id is not None else all_ids[-1]
 

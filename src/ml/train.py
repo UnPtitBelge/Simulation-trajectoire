@@ -141,24 +141,71 @@ def train_synth(
                     raise
 
 
+def compute_exp_centers(df: pd.DataFrame, tracking_cfg: dict) -> dict:
+    """Estime le centre du cône pour chaque expérience depuis sa position finale.
+
+    Algorithme :
+      1. Pour chaque expérience, médiane des 15 dernières positions → endpoint_i.
+      2. Centre de référence global = médiane de tous les endpoints.
+      3. Outliers (endpoint à > 2 × MAD du centre de référence) → remplacés par
+         le centre de référence.
+      4. Chaque expérience est centrée sur son propre endpoint (ou le centre de
+         référence pour les outliers).
+
+    Cela corrige les offsets caméra inter-expériences sans dépendre de
+    center_x/center_y dans la config (qui peut être approximatif).
+
+    Retourne {expID: (cx_px, cy_px)}.
+    """
+    last_n = 15  # frames finales pour estimer la position d'arrêt
+
+    raw: dict = {}
+    for exp_id, group in df.groupby("expID"):
+        tail   = group.sort_values("temps").tail(last_n)
+        raw[exp_id] = (float(tail["x"].median()), float(tail["y"].median()))
+
+    all_x = np.array([v[0] for v in raw.values()])
+    all_y = np.array([v[1] for v in raw.values()])
+    cx_ref = float(np.median(all_x))
+    cy_ref = float(np.median(all_y))
+
+    # Seuil outlier : 2 × MAD (Median Absolute Deviation) sur la distance au centre
+    dists  = np.sqrt((all_x - cx_ref) ** 2 + (all_y - cy_ref) ** 2)
+    mad    = float(np.median(np.abs(dists - np.median(dists))))
+    thresh = max(2 * mad, 50.0)   # au moins 50 px de tolérance
+
+    n_valid = int((dists <= thresh).sum())
+    log.info(
+        "compute_exp_centers : centre de référence (%.1f, %.1f) px, "
+        "%d/%d expériences dans le seuil (±%.0f px)",
+        cx_ref, cy_ref, n_valid, len(raw), thresh,
+    )
+
+    return {
+        eid: (cx, cy) if np.sqrt((cx - cx_ref) ** 2 + (cy - cy_ref) ** 2) <= thresh
+             else (cx_ref, cy_ref)
+        for eid, (cx, cy) in raw.items()
+    }
+
+
 def _iter_real_pairs(csv_path: Path, tracking_cfg: dict):
     """Génère (X_feat, y_feat) expérience par expérience sans tout charger en RAM.
 
-    Coordonnées en pixels (centrées sur le centre du cône) — pas de conversion
-    en mètres. Toutes les expériences étant enregistrées de la même façon, les
-    modèles apprennent directement dans l'espace pixel/unité-temps du tracking.
+    Coordonnées en pixels centrées sur le centre propre à chaque expérience
+    (correction de l'offset caméra via compute_exp_centers).
+    Les vitesses (speedX, speedY) sont invariantes à la translation.
     """
     df = pd.read_csv(csv_path, sep=";", skipinitialspace=True)
     df.columns = df.columns.str.strip()
 
-    cx = tracking_cfg["center_x"]
-    cy = tracking_cfg["center_y"]
+    centers = compute_exp_centers(df, tracking_cfg)
 
-    for _, group in df.groupby("expID"):
+    for exp_id, group in df.groupby("expID"):
         group = group.sort_values("temps")
-        xc = group["x"].values    - cx   # pixels centrés
-        yc = group["y"].values    - cy
-        vx = group["speedX"].values       # px / unité-temps (cohérent entre expériences)
+        cx, cy = centers[exp_id]
+        xc = group["x"].values     - cx
+        yc = group["y"].values     - cy
+        vx = group["speedX"].values
         vy = group["speedY"].values
 
         r      = np.sqrt(xc**2 + yc**2)
