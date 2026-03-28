@@ -33,20 +33,72 @@ warnings.filterwarnings("ignore")
 # ── Entraînement ──────────────────────────────────────────────────────────────
 
 
+def _load_chunk(path: Path):
+    """Charge un chunk .npz → (X_feat, y_feat)."""
+    data = np.load(path)
+    X = state_to_features(data["X"].astype(np.float32))
+    y = state_to_features(data["y"].astype(np.float32))
+    return X, y
+
+
+def _val_loss_chunks(model, val_paths: list[Path]) -> float:
+    """MSE moyen en espace normalisé sur les chunks de validation."""
+    if not val_paths:
+        return float("nan")
+    losses = []
+    for path in val_paths:
+        X, y = _load_chunk(path)
+        losses.append(model.val_loss(X, y))
+    return float(np.mean(losses))
+
+
 def train_on_chunks(
     chunk_paths: list[Path],
+    n_epochs: int = 3,
+    val_fraction: float = 0.1,
 ) -> tuple[LinearStepModel, MLPStepModel]:
-    """Entraîne LR et MLP sur les chunks donnés. Retourne les deux modèles."""
+    """Entraîne LR et MLP selon les specs du pipeline complet.
+
+    - Scalers partagés calibrés sur un échantillon uniforme de tous les chunks.
+    - LR : 1 seule passe (équations normales exactes, répétitions inutiles).
+    - MLP : n_epochs passes avec shuffle des chunks + val_loss après chaque epoch.
+    - val_fraction : fraction de chunks réservée à la validation.
+    """
+    from ml.train import fit_shared_scalers
+
+    n_val       = max(0, min(int(len(chunk_paths) * val_fraction), len(chunk_paths) - 1))
+    train_paths = chunk_paths[:len(chunk_paths) - n_val]
+    val_paths   = chunk_paths[len(chunk_paths) - n_val:]
+
+    print(f"  Split : {len(train_paths)} chunks train, {len(val_paths)} chunks val")
+
+    # Scalers calibrés sur un échantillon uniforme de tous les chunks (train + val)
+    scaler_X, scaler_y = fit_shared_scalers(chunk_paths, n_sample=max(3, len(chunk_paths)))
+
     lr_model  = LinearStepModel()
     mlp_model = MLPStepModel()
+    lr_model.inject_scalers(scaler_X, scaler_y)
+    mlp_model.inject_scalers(scaler_X, scaler_y)
 
-    for i, path in enumerate(chunk_paths):
-        data = np.load(path)
-        X = state_to_features(data["X"].astype(np.float32))
-        y = state_to_features(data["y"].astype(np.float32))
+    # ── LR : 1 passe ──────────────────────────────────────────────────────────
+    print("  LR — 1 passe (solution exacte)...")
+    for i, path in enumerate(train_paths):
+        X, y = _load_chunk(path)
         lr_model.partial_fit(X, y)
-        mlp_model.partial_fit(X, y)
-        print(f"  chunk {i + 1}/{len(chunk_paths)}  ({len(X):,} paires)")
+        print(f"    chunk {i + 1}/{len(train_paths)}  ({len(X):,} paires)")
+    if val_paths:
+        print(f"  LR   val MSE = {_val_loss_chunks(lr_model, val_paths):.6f}")
+
+    # ── MLP : n_epochs passes avec shuffle ────────────────────────────────────
+    rng = np.random.default_rng(0)
+    for epoch in range(n_epochs):
+        order = rng.permutation(len(train_paths))
+        print(f"  MLP — epoch {epoch + 1}/{n_epochs} (chunks shufflés)...")
+        for idx in order:
+            X, y = _load_chunk(train_paths[int(idx)])
+            mlp_model.partial_fit(X, y)
+        if val_paths:
+            print(f"  MLP  val MSE = {_val_loss_chunks(mlp_model, val_paths):.6f}")
 
     return lr_model, mlp_model
 
@@ -210,6 +262,10 @@ if __name__ == "__main__":
         "--chunks", type=int, default=10,
         help="Nombre de chunks synthétiques à utiliser pour l'entraînement (défaut : 10)",
     )
+    parser.add_argument(
+        "--epochs", type=int, default=3,
+        help="Nombre d'epochs MLP (défaut : 3)",
+    )
     args = parser.parse_args()
 
     cfg = load_config("ml")
@@ -239,7 +295,7 @@ if __name__ == "__main__":
     n_use = min(args.chunks, len(all_chunks))
     print(f"\nEntraînement sur {n_use} chunk(s) / {len(all_chunks)} disponibles...")
 
-    lr_model, mlp_model = train_on_chunks(all_chunks[:n_use])
+    lr_model, mlp_model = train_on_chunks(all_chunks[:n_use], n_epochs=args.epochs)
 
     # Vérité terrain (n_steps_pred comme borne — arrêt anticipé par les conditions physiques)
     true_traj = compute_cone(
@@ -249,9 +305,12 @@ if __name__ == "__main__":
         g=phys["g"], dt=dt, n_steps=n_steps_pred,
     )
 
+    r_min  = phys.get("center_radius", 0.03)
+    v_stop = phys.get("v_stop", 0.002)
+
     # Prédictions
-    lr_traj  = predict_trajectory(lr_model,  init_state, n_steps_pred, r_max=R)
-    mlp_traj = predict_trajectory(mlp_model, init_state, n_steps_pred, r_max=R)
+    lr_traj  = predict_trajectory(lr_model,  init_state, n_steps_pred, r_max=R, r_min=r_min, v_stop=v_stop)
+    mlp_traj = predict_trajectory(mlp_model, init_state, n_steps_pred, r_max=R, r_min=r_min, v_stop=v_stop)
 
     # Métriques
     print(f"\n{'═' * 52}")

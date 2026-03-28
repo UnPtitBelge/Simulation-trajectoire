@@ -22,6 +22,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import numpy as np
 import pandas as pd
+from sklearn.preprocessing import StandardScaler
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -51,6 +52,8 @@ def load_experiments(csv_path: Path, tracking_cfg: dict) -> dict[int, np.ndarray
 
     centers = compute_exp_centers(df, tracking_cfg)
 
+    r_min_px = tracking_cfg.get("center_radius", 0.03) * tracking_cfg.get("px_per_meter", 1350.0)
+
     experiments: dict[int, np.ndarray] = {}
     for exp_id, group in df.groupby("expID"):
         group = group.sort_values("temps")
@@ -62,8 +65,8 @@ def load_experiments(csv_path: Path, tracking_cfg: dict) -> dict[int, np.ndarray
 
         r      = np.sqrt(xc**2 + yc**2)
         theta  = np.arctan2(yc, xc)
-        vr     = (xc * vx + yc * vy) / np.maximum(r, 1e-6)
-        vtheta = (xc * vy - yc * vx) / np.maximum(r, 1e-6)
+        vr     = (xc * vx + yc * vy) / np.maximum(r, r_min_px)
+        vtheta = (xc * vy - yc * vx) / np.maximum(r, r_min_px)
 
         states = np.column_stack([r, theta, vr, vtheta]).astype(np.float32)
         experiments[int(exp_id)] = states
@@ -88,22 +91,58 @@ def train_on_experiments(
     test_id: int,
     n_passes: int,
 ) -> tuple[LinearStepModel, MLPStepModel]:
-    """Entraîne LR et MLP sur toutes les expériences sauf test_id."""
-    lr_model  = LinearStepModel()
-    mlp_model = MLPStepModel()
+    """Entraîne LR et MLP sur toutes les expériences sauf test_id.
 
+    - Scalers calibrés en pré-passe sur toutes les expériences d'entraînement.
+    - LR : 1 seule passe (équations normales exactes, répétitions inutiles).
+    - MLP : n_passes passes avec shuffle des expériences à chaque pass.
+    """
     train_ids = sorted(k for k in experiments if k != test_id)
     print(f"  Expériences d'entraînement : {train_ids}")
 
+    # Pré-passe : calibrer les scalers sur l'ensemble des données d'entraînement
+    print("  Pré-passe : calibration des scalers...")
+    X_parts, res_parts = [], []
+    for exp_id in train_ids:
+        states = experiments[exp_id]
+        if len(states) < 2:
+            continue
+        X = state_to_features(states[:-1])
+        y = state_to_features(states[1:])
+        X_parts.append(X)
+        res_parts.append(y - X)
+
+    X_all    = np.vstack(X_parts)
+    res_all  = np.vstack(res_parts)
+    scaler_X = StandardScaler().fit(X_all)
+    scaler_y = StandardScaler().fit(res_all)
+
+    lr_model  = LinearStepModel()
+    mlp_model = MLPStepModel()
+    lr_model.inject_scalers(scaler_X, scaler_y)
+    mlp_model.inject_scalers(scaler_X, scaler_y)
+
+    # LR : 1 passe (équations normales — répéter biaise la régularisation Ridge)
+    print("  LR — 1 passe (solution exacte)...")
+    for exp_id in train_ids:
+        states = experiments[exp_id]
+        if len(states) < 2:
+            continue
+        X = state_to_features(states[:-1])
+        y = state_to_features(states[1:])
+        lr_model.partial_fit(X, y)
+
+    # MLP : n_passes passes avec shuffle
+    rng = np.random.default_rng(0)
     for pass_idx in range(n_passes):
-        print(f"  Pass {pass_idx + 1}/{n_passes}...")
-        for exp_id in train_ids:
-            states = experiments[exp_id]
+        order = rng.permutation(train_ids).tolist()
+        print(f"  MLP — pass {pass_idx + 1}/{n_passes} (expériences shufflées)...")
+        for exp_id in order:
+            states = experiments[int(exp_id)]
             if len(states) < 2:
                 continue
             X = state_to_features(states[:-1])
             y = state_to_features(states[1:])
-            lr_model.partial_fit(X, y)
             mlp_model.partial_fit(X, y)
 
     return lr_model, mlp_model
@@ -279,10 +318,15 @@ if __name__ == "__main__":
     print(f"\nEntraînement sur {n_train} expériences ({args.passes} passes)...")
     lr_model, mlp_model = train_on_experiments(experiments, test_id, args.passes)
 
+    # Seuils en unités pixel : r_min_px, v_stop_px
+    r_min_px   = tracking["center_radius"] * tracking["px_per_meter"]
+    vel_scale  = tracking.get("real_width", 172) / tracking.get("video_width", 960)
+    v_stop_px  = tracking["v_stop"] * tracking["px_per_meter"] * vel_scale
+
     # r_max=None : le tracking peut dépasser R (calibration approx.)
     n_steps = len(test_states)
-    lr_traj  = predict_trajectory(lr_model,  init_state, n_steps, r_max=None)
-    mlp_traj = predict_trajectory(mlp_model, init_state, n_steps, r_max=None)
+    lr_traj  = predict_trajectory(lr_model,  init_state, n_steps, r_max=None, r_min=r_min_px, v_stop=v_stop_px)
+    mlp_traj = predict_trajectory(mlp_model, init_state, n_steps, r_max=None, r_min=r_min_px, v_stop=v_stop_px)
 
     print(f"\n{'═' * 52}")
     print(f"  Trajectoire test : {len(test_states)} pts"

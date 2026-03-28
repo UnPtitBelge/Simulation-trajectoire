@@ -159,13 +159,16 @@ if __name__ == "__main__":
     trajs: dict = {}
     missing: list[str] = []
 
+    r_min  = phys.get("center_radius", 0.03)
+    v_stop = phys.get("v_stop", 0.002)
+
     for algo in ALGOS:
         for context in CONTEXTS:
             model = load_model(models_dir, algo, context)
             if model is None:
                 missing.append(f"synth_{algo}_{context}.pkl")
                 continue
-            traj = predict_trajectory(model, init_state, n_steps, r_max=R)
+            traj = predict_trajectory(model, init_state, n_steps, r_max=R, r_min=r_min, v_stop=v_stop)
             trajs[(algo, context)] = traj
             print_stats(algo, context, traj, dt, n_steps, R)
 

@@ -19,14 +19,23 @@ from physics.membrane import compute_membrane
 from utils.angle import v0_dir_to_vr_vtheta
 
 
-def print_stats(name: str, traj: np.ndarray, dt: float, n_max: int) -> None:
+def print_stats(name: str, traj: np.ndarray, dt: float, n_max: int,
+                R: float, r_min: float) -> None:
     r      = traj[:, 0]
     vr     = traj[:, 2]
     vtheta = traj[:, 3]
     speed  = np.sqrt(vr ** 2 + vtheta ** 2)
 
-    n_used   = len(traj)
-    early    = " (arrêt anticipé)" if n_used < n_max else " (borne atteinte)"
+    n_used  = len(traj)
+    r_final = float(r[-1])
+    if n_used >= n_max:
+        early = " (borne atteinte)"
+    elif r_final >= R - 1e-6:
+        early = " (sortie bord)"
+    elif r_final <= r_min + 1e-6:
+        early = " (collision centre)"
+    else:
+        early = " (bille arrêtée)"
 
     print(f"\n{'─' * 40}")
     print(f"  {name}")
@@ -120,8 +129,14 @@ if __name__ == "__main__":
     traj_cone     = run_cone(cone_cfg)
     traj_membrane = run_membrane(membrane_cfg)
 
-    print_stats("CÔNE",     traj_cone,     cone_cfg["physics"]["dt"],     cone_cfg["physics"]["n_steps"])
-    print_stats("MEMBRANE", traj_membrane, membrane_cfg["physics"]["dt"], membrane_cfg["physics"]["n_steps"])
+    print_stats("CÔNE",     traj_cone,     cone_cfg["physics"]["dt"],
+                cone_cfg["physics"]["n_steps"],
+                R=cone_cfg["physics"]["R"],
+                r_min=cone_cfg["physics"]["center_radius"])
+    print_stats("MEMBRANE", traj_membrane, membrane_cfg["physics"]["dt"],
+                membrane_cfg["physics"]["n_steps"],
+                R=membrane_cfg["physics"]["R"],
+                r_min=membrane_cfg["physics"]["r_min"])
     print()
 
     plot_trajectories(traj_cone, cone_cfg, traj_membrane, membrane_cfg)
