@@ -103,7 +103,9 @@ def _generate_one_chunk(
     Doit être défini au niveau module pour être picklable par multiprocessing.
     """
     rng = np.random.default_rng(seed)
-    r0, theta0, vr0, vtheta0 = _sample_initial_conditions(n_this, gen_cfg | phys_cfg, rng)
+    overlap = set(gen_cfg) & set(phys_cfg)
+    assert not overlap, f"Clés communes entre gen_cfg et phys_cfg : {overlap!r}"
+    r0, theta0, vr0, vtheta0 = _sample_initial_conditions(n_this, {**gen_cfg, **phys_cfg}, rng)
     X, y = _simulate_chunk(r0, theta0, vr0, vtheta0, phys_cfg, gen_cfg)
     out_path = Path(out_dir) / f"chunk_{chunk_idx:05d}.npz"
     np.savez_compressed(out_path, X=X, y=y)

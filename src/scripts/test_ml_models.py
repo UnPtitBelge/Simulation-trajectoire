@@ -19,11 +19,12 @@ from ml.predict import predict_trajectory
 from utils.angle import v0_dir_to_vr_vtheta
 
 
-ALGOS    = ["linear", "mlp"]
-CONTEXTS = ["10pct", "50pct", "100pct"]
+ALGOS       = ["linear", "mlp"]
+ALGO_LABELS = {"linear": "Régression linéaire", "mlp": "MLP"}
 
-CONTEXT_COLORS = {"10pct": "steelblue", "50pct": "darkorange", "100pct": "seagreen"}
-ALGO_LABELS    = {"linear": "Régression linéaire", "mlp": "MLP"}
+# Palette construite dynamiquement depuis la config pour éviter un KeyError
+# si un nouveau contexte est ajouté dans ml.toml.
+_PALETTE = ["steelblue", "darkorange", "seagreen", "crimson", "mediumpurple"]
 
 
 def load_model(models_dir: Path, algo: str, context: str):
@@ -65,10 +66,12 @@ def print_stats(
 
 
 def plot_results(
-    trajs: dict,   # {(algo, context): np.ndarray}
+    trajs: dict,           # {(algo, context): np.ndarray}
     R: float,
     dt: float,
     preset_name: str,
+    contexts: list[str],
+    context_colors: dict[str, str],
 ) -> None:
     """
     Figure 2×2 :
@@ -93,12 +96,12 @@ def plot_results(
             color="gray", linestyle="--", linewidth=1,
         )
 
-        for context in CONTEXTS:
+        for context in contexts:
             traj = trajs.get((algo, context))
             if traj is None:
                 continue
 
-            color = CONTEXT_COLORS[context]
+            color = context_colors[context]
             t     = np.arange(len(traj)) * dt
             r     = traj[:, 0]
             theta = traj[:, 1]
@@ -143,6 +146,9 @@ if __name__ == "__main__":
     models_dir = ROOT / cfg["paths"]["models_dir"]
     preset     = cfg["preset"]["default"]
 
+    CONTEXTS       = cfg["synth"]["contexts"]["names"]
+    CONTEXT_COLORS = {name: _PALETTE[i % len(_PALETTE)] for i, name in enumerate(CONTEXTS)}
+
     vr0, vtheta0 = v0_dir_to_vr_vtheta(preset["v0"], preset["direction_deg"])
     init_state = np.array([preset["r0"], preset["theta0"], vr0, vtheta0])
 
@@ -171,4 +177,4 @@ if __name__ == "__main__":
 
     if trajs:
         print()
-        plot_results(trajs, R, dt, "default")
+        plot_results(trajs, R, dt, "default", CONTEXTS, CONTEXT_COLORS)

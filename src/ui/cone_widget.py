@@ -85,7 +85,7 @@ class ConeWidget(BaseSimWidget):
         )
         self._gl.addItem(self._trail)
 
-        # Centre de la bille = surface au sommet + un rayon (bille posée sur la surface)
+        # z_surface(r=0) + ball_radius : bille centrale posée au sommet du cône
         center_z = -self._slope * self.R_MAX + self._center_r
         self._center = gl.GLScatterPlotItem(
             pos=np.array([[0, 0, center_z]]), size=self._center_r * 2,

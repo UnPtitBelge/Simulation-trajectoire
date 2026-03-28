@@ -34,8 +34,14 @@ def _merge(base: dict, override: dict) -> dict:
 
 def load_config(name: str) -> dict:
     """Charge common.toml puis le fusionne avec <name>.toml."""
-    with open(_CONFIG_DIR / "common.toml", "rb") as f:
+    common_path = _CONFIG_DIR / "common.toml"
+    if not common_path.exists():
+        raise FileNotFoundError(f"Config introuvable : common.toml (cherché dans {_CONFIG_DIR})")
+    specific_path = _CONFIG_DIR / f"{name}.toml"
+    if not specific_path.exists():
+        raise FileNotFoundError(f"Config introuvable : {name}.toml (cherché dans {_CONFIG_DIR})")
+    with open(common_path, "rb") as f:
         common = tomllib.load(f)
-    with open(_CONFIG_DIR / f"{name}.toml", "rb") as f:
+    with open(specific_path, "rb") as f:
         specific = tomllib.load(f)
     return _merge(common, specific)

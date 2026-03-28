@@ -40,6 +40,8 @@ def compute_membrane(
 
     r_min doit être ≥ center_radius pour éviter la collision avec la bille centrale.
     """
+    assert center_radius > 0, f"center_radius doit être > 0, reçu {center_radius}"
+    assert r_min <= R, f"r_min ({r_min}) doit être ≤ R ({R})"
     traj = np.empty((n_steps, 4))
     r, theta, vr, vtheta = r0, theta0, vr0, vtheta0
     r_min = max(r_min, center_radius)
