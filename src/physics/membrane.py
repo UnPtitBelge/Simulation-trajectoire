@@ -25,10 +25,10 @@ def compute_membrane(
     g: float,
     dt: float,
     n_steps: int,
-    ball_radius: float = 0.01,
+    ball_radius: float = 0.005,
     ball_mass: float = 0.005,
     center_mass: float = 1.0,
-    center_radius: float = 0.05,
+    center_radius: float = 0.03,
 ) -> np.ndarray:
     """Retourne array (n_steps, 4) : colonnes = r, θ, vr, vθ.
 

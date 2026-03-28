@@ -1,28 +1,25 @@
-# Physique des simulations
+# Simulations physiques
 
-Ce dossier contient les backends de simulation numérique. Chaque module calcule une trajectoire complète en coordonnées polaires (r, θ, vr, vθ) avant que l'affichage commence.
+Trois simulateurs indépendants. Cône et membrane partagent la même convention d'état polaire ; MCU est purement analytique.
 
 ---
 
-## Coordonnées et conventions
+## Système de coordonnées (cône et membrane)
 
-Toutes les simulations (sauf MCU) utilisent des **coordonnées polaires sur la surface** :
+État interne : **(r, θ, vr, vθ)**
 
-| Variable | Signification |
+| Variable | Définition |
 |---|---|
-| r | distance radiale au centre (m) |
-| θ | angle azimutal (rad) |
-| vr = dr/dt | vitesse radiale (m/s) |
-| vθ = r·dθ/dt | vitesse tangentielle (m/s) |
+| `r` | distance radiale au centre (m) |
+| `θ` | angle polaire (rad) |
+| `vr` | composante radiale = dr/dt (m/s) |
+| `vθ` | composante tangentielle = **r · dθ/dt** (m/s) |
 
-Le choix vθ = r·dθ/dt (plutôt que dθ/dt seule) rend les deux composantes homogènes (m/s)
-et simplifie l'expression du moment cinétique L = r·vθ.
+Le choix `vθ = r·dθ/dt` rend les deux composantes homogènes en m/s et simplifie l'expression de la force centrifuge (`vθ²/r`) et du terme de Coriolis (`−vr·vθ/r`).
 
 ---
 
-## 1. MCU — Mouvement Circulaire Uniforme (`mcu.py`)
-
-### Équations
+## MCU — Mouvement Circulaire Uniforme (`mcu.py`)
 
 Solution analytique exacte, sans intégration numérique :
 
@@ -31,205 +28,129 @@ x(t) = r · cos(θ₀ + ω·t)
 y(t) = r · sin(θ₀ + ω·t)
 ```
 
-### Paramètres
-
-| Paramètre | Symbole | Unité |
-|---|---|---|
-| Rayon d'orbite | r | m |
-| Angle initial | θ₀ | rad |
-| Vitesse angulaire | ω | rad/s |
-
-### Pertinence
-
-Le MCU est le cas limite d'une bille sur le cône **sans frottement** démarrée exactement à
-la vitesse orbitale v_orb. Il sert de référence idéale pour comprendre les simulations
-plus complexes.
+Retourne un tableau `(n_steps, 2)` en Cartésien. Aucune condition d'arrêt, orbite parfaite.
 
 ---
 
-## 2. Cône (`cone.py`)
+## Cône (`cone.py`)
 
-### Surface
+### Géométrie
 
-```
-z(r) = -s·(R - r)     avec s = depth/R  (pente constante)
-```
+Surface conique plane : `z(r) = slope · (r − R_centre)` avec `slope = depth / R`.
 
-Le bord (r = R) est à z = 0 et le centre (r = 0) à z = -depth.
-
-### Dérivation — Lagrangien
-
-L'élément de longueur sur la surface conique est :
-
-```
-ds² = (1 + s²)·dr² + r²·dθ²
-```
-
-car dz = s·dr. Le Lagrangien par unité de masse est donc :
-
-```
-L = ½·[(1+s²)·ṙ² + r²·θ̇²] + g·s·(R-r)
-  = énergie cinétique sur surface - énergie potentielle
-```
-
-Les équations d'Euler-Lagrange donnent :
-
-```
-d/dt[(1+s²)·ṙ]  -  r·θ̇²  +  g·s  =  0   (coordonnée r)
-d/dt[r²·θ̇]                         =  0   (coordonnée θ → conservation de L)
-```
-
-### Équations du mouvement (avec frottement)
-
-En passant aux variables (vr, vθ) et en ajoutant un frottement linéaire -μ·v :
-
-```
-dvr/dt = (vθ²/r  -  g·s) / (1 + s²)  -  μ·vr
-
-dvθ/dt = -(vr·vθ) / r  -  μ·vθ
-```
-
-**Interprétation terme par terme :**
-
-| Terme | Rôle physique |
-|---|---|
-| `vθ²/r` | Force centrifuge effective (pousse vers l'extérieur) |
-| `-g·s` | Composante radiale de la gravité sur la pente (pousse vers l'intérieur) |
-| `1/(1+s²)` | Facteur métrique — la pente augmente la masse effective en direction radiale |
-| `-vr·vθ/r` | Terme de Coriolis — conserve L = r·vθ sans frottement |
-| `-μ·vr`, `-μ·vθ` | Frottement de glissement (modèle visqueux linéaire, μ en 1/s) |
-
-### Vitesse orbitale
-
-L'orbite circulaire impose l'équilibre centrifuge–gravité (dvr/dt = 0, vr = 0) :
-
-```
-vθ²/r = g·s   →   v_orb(r) = sqrt(g·s·r)
-```
-
-La vitesse orbitale **croît avec r** : les orbites extérieures sont plus rapides.
-Démarrer à vθ = v_orb donne une orbite circulaire ; le frottement réduit vθ
-progressivement, brisant l'équilibre et provoquant une spirale vers le centre.
-
-### Moment cinétique
-
-```
-dL/dt = d(r·vθ)/dt = -μ·L   →   L(t) = L₀·exp(-μ·t)
-```
-
-Le rayon orbital décroît selon r_orb(t) = (L(t) / sqrt(g·s))^(2/3).
-
----
-
-## 3. Membrane (`membrane.py`)
-
-### Surface
-
-```
-z(r) = k·ln(r/R)     (k = F/(2πT), paramètre de courbure)
-```
-
-Le bord (r = R) est à z = 0. La surface plonge vers -∞ au centre (singularité
-logarithmique). La simulation s'arrête à r = r_ball.
-
-### Dérivation — Lagrangien
-
-La pente locale varie : dz/dr = k/r. L'élément de longueur est :
-
-```
-ds² = [1 + (k/r)²]·dr² + r²·dθ²
-```
-
-Le Lagrangien est le même que pour le cône mais avec une métrique dépendant de r.
-La dérivée temporelle d/dt[1+(k/r)²] produit un terme supplémentaire
-(terme de connexion géodésique) absent sur le cône.
+- `depth` : dénivelé entre le bord (`r = R`) et le centre (`r ≈ 0`)
+- L'angle de la pente est **constant** : `α = arctan(slope)`
+- `g_radial = −g · sin(α)` et `g_friction = μ · g · cos(α)` sont donc des constantes
 
 ### Équations du mouvement
 
-```
-dvr/dt = (vθ²/r  -  g·k/r  +  k²·vr²/r³) / (1 + (k/r)²)  -  μ·vr
-
-dvθ/dt = -(vr·vθ) / r  -  μ·vθ
-```
-
-**Différences par rapport au cône :**
-
-| Terme | Origine | Absent dans le cône ? |
-|---|---|---|
-| `-g·k/r` | Gravité sur pente variable k/r | Non (analogue à -g·s) |
-| `+k²·vr²/r³` | Dérivée temporelle de la métrique (k/r)² | **Oui** — pente constante sur le cône |
-| `1+(k/r)²` | Facteur métrique variable avec r | Non (valeur fixe 1+s² sur le cône) |
-
-### Vitesse orbitale — propriété remarquable
-
-L'équilibre dvr/dt = 0, vr = 0 donne :
+Bille glissante (pas de roulement) → la masse se simplifie. Modèle de frottement de **Coulomb** (force proportionnelle à la normale, direction opposée à la vitesse) :
 
 ```
-vθ²/r = g·k/r   →   v_orb = sqrt(g·k)   (indépendante de r !)
+dvr/dt =  vθ²/r                           [centrifuge]
+        − g·sin(α)                         [gravité radiale, vers le centre]
+        − μ·g·cos(α) · vr / |v|           [Coulomb radial, opposé à v]
+
+dvθ/dt = −vr·vθ / r                        [Coriolis — conserve L = r·vθ sans friction]
+        − μ·g·cos(α) · vθ / |v|           [Coulomb tangentiel]
 ```
 
-La vitesse orbitale est **la même à tous les rayons**. C'est une propriété unique
-du puits gravitationnel logarithmique : la pente k/r augmente vers le centre
-exactement assez vite pour que la gravité compense toujours la même force centrifuge,
-quel que soit le rayon.
+`|v| = √(vr² + vθ²)` est la norme totale de vitesse. Le frottement de Coulomb a une amplitude constante `μ·g·cos(α)` sur le cône.
 
-Conséquence directe : une bille démarrée à vθ = v_orb depuis n'importe quel r₀
-ne dépasse jamais r₀ — la trajectoire spirale vers l'intérieur sans jamais s'éloigner
-du point de départ.
-
-### Moment cinétique
+**Équilibre orbital (`dvr/dt = 0`, `vr = 0`) :**
 
 ```
-L(t) = L₀·exp(-μ·t)   →   r_orb(t) = (r₀·v₀ / v_orb)·exp(-μ·t)
+vθ_orb(r) = √(g · sin(α) · r)
 ```
 
-Le rayon orbital décroît **linéairement avec L** (et non en puissance 2/3 comme sur le cône).
+La vitesse orbitale croît avec r. Avec friction, le moment cinétique `L = r·vθ` décroît → la bille spirale vers le centre.
+
+### Cas vitesse nulle (frottement statique)
+
+Quand `|v| = 0`, on teste la condition de glissement statique :
+
+- `|g·sin(α)| > μ·g·cos(α)` → `tan(α) > μ` : la pente est trop raide, la bille repart vers le centre (`ar = g_radial + g_friction` pour compenser)
+- `|g·sin(α)| ≤ μ·g·cos(α)` → `tan(α) ≤ μ` : frottement statique suffit, la bille reste immobile (`ar = at = 0`)
+
+**Snap-to-zero** : si `|v| < μ·g·cos(α)·dt` après la mise à jour de vitesse ET que le frottement statique tient → on force `vr = vθ = 0` pour absorber les oscillations numériques.
 
 ---
 
-## 4. Intégrateur numérique
+## Membrane (`membrane.py`)
 
-### Semi-implicite Euler (symplectique)
+### Géométrie
 
-Les deux simulations utilisent un intégrateur **semi-implicite Euler** :
+Surface logarithmique : `z(r) = k · ln(r / R)` avec `k = F / (2πT)`.
+
+- `F` : force exercée au centre (poids de la bille centrale)
+- `T` : tension de la membrane (N/m)
+- La pente locale `dz/dr = k/r` varie avec r : douce au bord, forte au centre
+
+L'angle local `β(r) = arctan(k/r)`. Contrairement au cône, β n'est pas constant.
+
+### Équations du mouvement
+
+Même structure que le cône, mais `sin β` et `cos β` dépendent de r à chaque pas :
+
+```
+local_slope = k / r
+inv_norm    = 1 / √(1 + (k/r)²)     [= cos β(r)]
+
+dvr/dt =  vθ²/r
+        − g · (k/r) · inv_norm        [gravité radiale = g·sin β(r)]
+        − μ·g · inv_norm · vr/|v|    [Coulomb = μ·g·cos β(r)]
+
+dvθ/dt = −vr·vθ / r
+        − μ·g · inv_norm · vθ/|v|
+```
+
+**Propriété remarquable — vitesse orbitale constante :**
+
+```
+vθ_orb = √(g · k)     (indépendante de r)
+```
+
+La pente `k/r` croît exactement assez vite vers le centre pour que `g·sin β(r)` compense toujours la même force centrifuge `vθ²/r`, quel que soit r. Toutes les orbites circulaires ont la même vitesse tangentielle.
+
+### Cas vitesse nulle
+
+Identique au cône, avec `a_gravity = −g · (k/r) · inv_norm` à la place de `g·sin(α)`.
+
+---
+
+## Intégrateur commun — Euler semi-implicite
+
+Les positions sont calculées avec les vitesses **déjà mises à jour** :
 
 ```python
-vr     += dt * ar(r, vr, vθ)     # vitesses mises à jour en premier
-vθ     += dt * aθ(r, vr, vθ)
-r      += dt * vr                 # positions calculées avec les nouvelles vitesses
+# 1. Mise à jour des vitesses (accélérations calculées à l'état courant)
+vr     += dt * ar
+vθ     += dt * at
+# 2. Avancement des positions avec les nouvelles vitesses
+r      += dt * vr
 θ      += dt * vθ / r
 ```
 
-L'ordre d'application (vitesses avant positions) est essentiel : il rend le schéma
-**symplectique**, c'est-à-dire qu'il conserve exactement une énergie modifiée proche
-de l'énergie physique. Contrairement à l'Euler explicite, il ne dissipe pas l'énergie
-numériquement et ne diverge pas pour des systèmes oscillatoires.
-
-### Choix des pas de temps
-
-| Simulation | dt (s) | Justification |
-|---|---|---|
-| Cône | 0.01 | Pente constante, dynamique modérée |
-| Membrane | 0.005 | Pente k/r → ∞ près du centre ; pas plus petit requis pour la stabilité |
+Cet ordre rend le schéma **symplectique** : il conserve une forme d'énergie modifiée proche de l'énergie physique. L'Euler explicite pur dissiperait (ou accumulerait) de l'énergie artificiellement.
 
 ### Conditions d'arrêt
 
 | Condition | Critère |
 |---|---|
-| Collision | r ≤ r_ball (bille centrale) |
-| Sortie | r ≥ R (bord de la surface) |
-| Complet | n_steps atteint |
+| Sortie du bord | `r ≥ R` |
+| Collision centrale | `r ≤ center_radius` |
+| Bille immobile | `|v| = 0` et frottement statique tient |
+| Borne de sécurité | `n_steps` atteint |
 
 ---
 
 ## Comparaison cône / membrane
 
-| Propriété | Cône | Membrane |
+| | Cône | Membrane |
 |---|---|---|
-| Surface z(r) | -s·(R-r)  linéaire | k·ln(r/R)  logarithmique |
-| Pente dz/dr | s  (constante) | k/r  (croît vers le centre) |
-| Métrique (ds/dr)² | 1+s²  (constante) | 1+(k/r)²  (variable) |
-| v_orb(r) | sqrt(g·s·r)  (croît avec r) | sqrt(g·k)  (**constante**) |
-| Terme de connexion | absent | +k²·vr²/r³ |
-| r_orb(t) avec frottement | r₀·exp(-2μt/3) | r₀·exp(-μt) |
-| Spirale avec μ > 0 | ~21 tours avant collision | ~27 tours, r_max = r₀ |
+| Profil `z(r)` | linéaire `slope·r` | logarithmique `k·ln(r/R)` |
+| Pente `dz/dr` | `slope` **constant** | `k/r` **variable**, → ∞ près du centre |
+| Angle local β | constant, calculé une fois | recalculé à chaque pas |
+| `g·sin β` | constant | croît vers le centre |
+| `μ·g·cos β` | constant | décroît vers le centre |
+| Vitesse orbitale | `√(g·sin(α)·r)` croît avec r | `√(g·k)` **constante** |
