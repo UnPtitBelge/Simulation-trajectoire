@@ -172,7 +172,7 @@ def compute_exp_centers(df: pd.DataFrame, tracking_cfg: dict) -> dict:
     # Seuil outlier : 2 × MAD (Median Absolute Deviation) sur la distance au centre
     dists  = np.sqrt((all_x - cx_ref) ** 2 + (all_y - cy_ref) ** 2)
     mad    = float(np.median(np.abs(dists - np.median(dists))))
-    thresh = max(2 * mad, 50.0)   # au moins 50 px de tolérance
+    thresh = max(2 * mad, 50.0)   # au moins 50 px ≈ 3.7 cm @ 1350 px/m
 
     n_valid = int((dists <= thresh).sum())
     log.info(
@@ -188,12 +188,14 @@ def compute_exp_centers(df: pd.DataFrame, tracking_cfg: dict) -> dict:
     }
 
 
-def _iter_real_pairs(df: pd.DataFrame, centers: dict):
+def _iter_real_pairs(df: pd.DataFrame, centers: dict, r_min_px: float = 1.0):
     """Génère (X_feat, y_feat) expérience par expérience depuis un DataFrame déjà chargé.
 
     Coordonnées en pixels centrées sur le centre propre à chaque expérience
     (correction de l'offset caméra via compute_exp_centers).
     Les vitesses (speedX, speedY) sont invariantes à la translation.
+    r_min_px : rayon minimum en pixels (= center_radius × px_per_meter) ; clippe le
+    dénominateur pour éviter que vr/vtheta explosent quand la bille passe au centre.
     """
     for exp_id, group in df.groupby("expID"):
         group = group.sort_values("temps")
@@ -205,8 +207,9 @@ def _iter_real_pairs(df: pd.DataFrame, centers: dict):
 
         r      = np.sqrt(xc**2 + yc**2)
         theta  = np.arctan2(yc, xc)
-        vr     = (xc * vx + yc * vy) / np.maximum(r, 1e-6)
-        vtheta = (xc * vy - yc * vx) / np.maximum(r, 1e-6)
+        # Projection polaire : vr = (r⃗·v⃗)/r, vθ = (r⃗×v⃗)/r (composante z du produit vectoriel 2D)
+        vr     = (xc * vx + yc * vy) / np.maximum(r, r_min_px)
+        vtheta = (xc * vy - yc * vx) / np.maximum(r, r_min_px)
 
         states = np.column_stack([r, theta, vr, vtheta]).astype(np.float32)
         if len(states) < 2:
@@ -226,10 +229,11 @@ def train_real(csv_path: Path, tracking_cfg: dict, n_passes: int = 3) -> tuple:
     df = pd.read_csv(csv_path, sep=";", skipinitialspace=True)
     df.columns = df.columns.str.strip()
     centers = compute_exp_centers(df, tracking_cfg)
+    r_min_px = tracking_cfg.get("center_radius", 0.03) * tracking_cfg.get("px_per_meter", 1350.0)
 
     for pass_idx in range(n_passes):
         log.info("Entraînement réel — pass %d/%d", pass_idx + 1, n_passes)
-        for X_feat, y_feat in _iter_real_pairs(df, centers):
+        for X_feat, y_feat in _iter_real_pairs(df, centers, r_min_px=r_min_px):
             lr_model.partial_fit(X_feat, y_feat)
             mlp_model.partial_fit(X_feat, y_feat)
         gc.collect()
