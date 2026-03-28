@@ -63,6 +63,7 @@ class MembraneWidget(BaseSimWidget):
         self._gl.setCameraPosition(distance=1.2, elevation=30, azimuth=45)
         self._gl.setBackgroundColor("k")
         self._gl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self._gl.setMinimumSize(300, 300)
         self._gl.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
         mesh = _membrane_surface_mesh(self.R_MAX, self._r_min, self._k)
@@ -119,15 +120,21 @@ class MembraneWidget(BaseSimWidget):
     def _draw(self, frame: int) -> None:
         if self._traj is None:
             return
+        r0, th0 = self._traj[frame, 0], self._traj[frame, 1]
+        self._particle.setData(pos=np.array([[
+            r0 * math.cos(th0), r0 * math.sin(th0), self._surface_z(r0),
+        ]]))
+        if frame < 1:
+            return  # GL_LINE_STRIP nécessite ≥ 2 points
         r, theta = self._traj[:frame + 1, 0], self._traj[:frame + 1, 1]
         x = r * np.cos(theta)
         y = r * np.sin(theta)
         z = self._k * np.log(np.maximum(r, self._r_min) / self._R)
         self._trail.setData(pos=np.column_stack([x, y, z]).astype(np.float32))
-        r0, th0 = self._traj[frame, 0], self._traj[frame, 1]
-        self._particle.setData(pos=np.array([[
-            r0 * math.cos(th0), r0 * math.sin(th0), self._surface_z(r0),
-        ]]))
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        self._gl.update()
 
     # ── Marqueurs ─────────────────────────────────────────────────────────────
 

@@ -42,7 +42,8 @@ class MLWidget(BaseSimWidget):
         self.R_MAX   = cfg["tracking"]["R"]
         self._mode   = mode
         self._models = models or {}
-        self._models_dir = Path(cfg["paths"]["models_dir"])
+        _src = Path(__file__).resolve().parents[1]  # src/ui/../../ → src/
+        self._models_dir = _src / cfg["paths"]["models_dir"]
 
         # Sélection active
         self._active_algo    = "linear"

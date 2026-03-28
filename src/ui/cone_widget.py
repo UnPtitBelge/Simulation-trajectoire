@@ -62,6 +62,7 @@ class ConeWidget(BaseSimWidget):
         self._gl.setCameraPosition(distance=1.2, elevation=30, azimuth=45)
         self._gl.setBackgroundColor("k")
         self._gl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self._gl.setMinimumSize(300, 300)
         self._gl.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
         mesh = _cone_surface_mesh(self.R_MAX, self._slope)
@@ -117,14 +118,20 @@ class ConeWidget(BaseSimWidget):
     def _draw(self, frame: int) -> None:
         if self._traj is None:
             return
+        r0, th0 = self._traj[frame, 0], self._traj[frame, 1]
+        xp, yp, zp = self._xyz(r0, th0)
+        self._particle.setData(pos=np.array([[xp, yp, zp]]))
+        if frame < 1:
+            return  # GL_LINE_STRIP nécessite ≥ 2 points
         r, theta = self._traj[:frame + 1, 0], self._traj[:frame + 1, 1]
         x = r * np.cos(theta)
         y = r * np.sin(theta)
         z = -self._slope * (self.R_MAX - r)
         self._trail.setData(pos=np.column_stack([x, y, z]).astype(np.float32))
-        r0, th0 = self._traj[frame, 0], self._traj[frame, 1]
-        xp, yp, zp = self._xyz(r0, th0)
-        self._particle.setData(pos=np.array([[xp, yp, zp]]))
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        self._gl.update()
 
     # ── Marqueurs ─────────────────────────────────────────────────────────────
 
