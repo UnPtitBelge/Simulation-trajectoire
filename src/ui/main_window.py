@@ -15,6 +15,8 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import QComboBox, QMainWindow, QSplitter, QTabWidget, QWidget
 
+from ui.base_sim_widget import BaseSimWidget
+
 from ui.controls import ControlsPanel
 from ui.cone_widget import ConeWidget
 from ui.membrane_widget import MembraneWidget
@@ -120,19 +122,28 @@ class MainWindow(QMainWindow):
         splitter.setStretchFactor(1, 1)
         return splitter, controls, algo_combo, ctx_combo
 
-    # ── Raccourcis clavier ────────────────────────────────────────────────────
-
-    def _setup_shortcuts(self) -> None:
-        QShortcut(QKeySequence("["),        self, self._prev_preset)
-        QShortcut(QKeySequence("]"),        self, self._next_preset)
-        QShortcut(QKeySequence("L"),        self, self._algo_linear)
-        QShortcut(QKeySequence("M"),        self, self._algo_mlp)
-        QShortcut(QKeySequence("Ctrl+1"),   self, lambda: self._set_context(0))
-        QShortcut(QKeySequence("Ctrl+2"),   self, lambda: self._set_context(1))
-        QShortcut(QKeySequence("Ctrl+3"),   self, lambda: self._set_context(2))
+    # ── Contrôle de lecture ───────────────────────────────────────────────────
 
     def _active_controls(self) -> ControlsPanel:
         return self._tab_controls[self._tabs.currentIndex()]
+
+    def _active_sim_widget(self) -> BaseSimWidget | None:
+        splitter = self._tabs.widget(self._tabs.currentIndex())
+        if isinstance(splitter, QSplitter):
+            w = splitter.widget(0)
+            if isinstance(w, BaseSimWidget):
+                return w
+        return None
+
+    def _toggle_play(self) -> None:
+        w = self._active_sim_widget()
+        if w:
+            w.toggle()
+
+    def _reset_sim(self) -> None:
+        w = self._active_sim_widget()
+        if w:
+            w.reset()
 
     def _prev_preset(self) -> None:
         self._active_controls().cycle_preset(-1)
@@ -156,6 +167,19 @@ class MainWindow(QMainWindow):
             combo = self._ctx_combos[idx]
             if n < combo.count():
                 combo.setCurrentIndex(n)
+
+    # ── Raccourcis clavier ────────────────────────────────────────────────────
+
+    def _setup_shortcuts(self) -> None:
+        QShortcut(QKeySequence("["),        self, self._prev_preset)
+        QShortcut(QKeySequence("]"),        self, self._next_preset)
+        QShortcut(QKeySequence("Space"),    self, self._toggle_play)
+        QShortcut(QKeySequence("R"),        self, self._reset_sim)
+        QShortcut(QKeySequence("L"),        self, self._algo_linear)
+        QShortcut(QKeySequence("M"),        self, self._algo_mlp)
+        QShortcut(QKeySequence("Ctrl+1"),   self, lambda: self._set_context(0))
+        QShortcut(QKeySequence("Ctrl+2"),   self, lambda: self._set_context(1))
+        QShortcut(QKeySequence("Ctrl+3"),   self, lambda: self._set_context(2))
 
     # ── Feedback erreurs ──────────────────────────────────────────────────────
 

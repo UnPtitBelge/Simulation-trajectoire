@@ -113,6 +113,13 @@ class BaseSimWidget(QWidget):
     def stop(self) -> None:
         self._timer.stop()
 
+    def toggle(self) -> None:
+        """Pause / reprend l'animation."""
+        if self._timer.isActive():
+            self._timer.stop()
+        elif self._ready:
+            self._timer.start()
+
     def reset(self) -> None:
         self._timer.stop()
         self._frame = 0
