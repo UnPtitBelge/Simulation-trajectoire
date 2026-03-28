@@ -1,12 +1,35 @@
 """Benchmark LinearStepModel — précision vs nombre de trajectoires d'entraînement.
 
-Génère les trajectoires à la volée (sans passer par les chunks pré-calculés),
-entraîne depuis zéro sur n trajectoires (progression géométrique : 1, 2, 4, 8, …)
-et mesure l'erreur moyennée sur un jeu de test indépendant (--n-test trajectoires).
+Mécanisme d'évolution du modèle
+────────────────────────────────
+LinearStepModel est une régression Ridge incrémentale. `partial_fit(X, y)` accule
+XᵀX et Xᵀy (équations normales) puis résout W = (XᵀX + αI)⁻¹ Xᵀy à chaque appel.
 
-Un chunk pré-généré contient ~10 000 paires — la régression linéaire y converge
-déjà en grande partie. Ce script descend au niveau de la trajectoire individuelle
-pour observer la convergence réelle depuis 1 trajectoire.
+À chaque étape n de la progression géométrique :
+  1. Un modèle vierge est créé (compteurs XᵀX / Xᵀy remis à zéro).
+  2. `partial_fit` est appelé une fois par trajectoire sur les n premières paires
+     (états successifs de la simulation).  Chaque appel accumule les équations
+     normales — l'ordre des trajectoires n'a pas d'importance pour le résultat final.
+  3. La solution Ridge est calculée : W est la solution de moindres carrés
+     régularisée (α = 0.001) sur la totalité des n × len(traj) paires.
+
+Les scalers (StandardScaler sur X et sur les résidus Δ = feat(s_{t+1}) - feat(s_t))
+sont calibrés UNE SEULE FOIS sur l'ensemble des --n-trajectories trajectoires.
+Cela garantit une normalisation stable même pour les petits n, sans biais de
+distribution.
+
+Pourquoi trajectoire par trajectoire et non chunk par chunk ?
+Un chunk pré-généré (~10 000 paires ≈ plusieurs trajectoires complètes) suffit à
+approcher la convergence de la régression Ridge.  Ce script descend au niveau de la
+trajectoire individuelle (~100–500 paires) pour observer la convergence réelle depuis
+1 trajectoire d'entraînement.
+
+Évaluation
+──────────
+Les métriques (MAE r, MAE total, longueur prédite) sont moyennées sur --n-test
+trajectoires de test tirées indépendamment (seed=999 ≠ seed=42 pour l'entraînement).
+Pour chaque cas de test, on compare la trajectoire prédite par le modèle à la
+trajectoire physique exacte simulée avec les mêmes conditions initiales.
 
 Usage :
     python src/scripts/benchmark_linear.py
