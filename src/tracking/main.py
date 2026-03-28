@@ -1,11 +1,12 @@
-import os
 import argparse
+import os
 
+from gui import Window
 from model.TrackBall import TrackBall
+from path import *
 from stats.DataWriter import DataWriter
 from stats.PositionsAnalytics import PositionsAnalytics
-from path import *
-from gui import Window
+
 
 def main(filePath: str = "", saveData: bool = False) -> None:
     RESOURCE_PATH = os.path.join(os.getcwd(), RESOURCES_DIR)
@@ -20,9 +21,9 @@ def main(filePath: str = "", saveData: bool = False) -> None:
         experiment.ballPositions,
         width=experiment.frames[0].shape[1],
         height=experiment.frames[0].shape[0],
-        fps=30, # hypothesis, 30 frames per second uniformly.
+        fps=30,  # hypothesis, 30 frames per second uniformly.
         realWidth=172,
-        realHeight=100
+        realHeight=100,
     )
     pa.calculateSpeed()
     # pa.setInitialSpeed() # Assuming the ball starts from rest, set initial speed to 0.
@@ -40,23 +41,25 @@ def getArguments() -> dict:
         description="Track a colored ball in a video and save the trajectory data."
     )
     parser.add_argument(
-        "--video_path", "-video_path",
+        "--video_path",
+        "-video_path",
         default="first/big_blue.mp4",
         type=str,
-        help="The path to the video file to be processed. Should be relative to the resources directory."
+        help="The path to the video file to be processed. Should be relative to the resources directory.",
     )
     parser.add_argument(
-        "--save_data", "-save_data",
+        "--save_data",
+        "-save_data",
         action="store_true",
         default=False,
-        help="Flag to indicate whether to save the tracking data into a file. Default is False."
+        help="Flag to indicate whether to save the tracking data into a file. Default is False.",
     )
     return vars(parser.parse_args())
 
 
 if __name__ == "__main__":
-    # app = Window.Window()
-    # app.mainloop()
+    app = Window.Window()
+    app.mainloop()
 
-    args = list(getArguments().values())
-    main(*args)
+    # args = list(getArguments().values())
+    # main(*args)

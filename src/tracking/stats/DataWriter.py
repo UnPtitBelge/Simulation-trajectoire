@@ -17,8 +17,12 @@ class DataWriter:
     finalFile = ""
     expID = 0
 
-    def __init__(self, finaleFile: str):
-        self.finalFile = DEFAULT_TRACKING_DIR + finaleFile
+    def __init__(self, finalFile: str):
+        # Chemin absolu → utilisé tel quel ; relatif → préfixé par DEFAULT_TRACKING_DIR
+        if os.path.isabs(finalFile):
+            self.finalFile = finalFile
+        else:
+            self.finalFile = DEFAULT_TRACKING_DIR + finalFile
 
     def appendData(self, data: list) -> None:
         self.expID = self._findLastExpID() + 1
