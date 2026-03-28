@@ -4,15 +4,19 @@ Toutes les vues de simulation héritent de BaseSimWidget.
 
 Cycle de vie :
   setup(params) → incrémente _gen, lance _compute() dans un QThread
-                → quand terminé : _on_done_checked() vérifie le gen avant de dessiner
+                → quand terminé : _on_done(gen) vérifie le gen avant de dessiner
   timer.timeout → _draw(frame)
   touche P      → MarkerPopup → _add_marker(r, theta)
 
 Sécurité thread :
   Chaque appel setup() incrémente un compteur de génération (_gen).
-  Les callbacks _on_done / _on_failed capturent la génération via lambda.
-  Les résultats d'un ancien thread sont ignorés si la génération ne correspond plus.
-  thread.finished → thread.deleteLater  (pas de _cleanup_thread qui écrase la ref)
+  _Worker.finished/failed portent le gen directement (Signal(int) / Signal(int, str)).
+  Connectés aux méthodes de self (QWidget dans le thread principal) → Qt utilise
+  automatiquement une Queued Connection → _on_done/_on_failed s'exécutent dans le
+  thread principal, pas dans le thread worker.
+  thread.finished → thread.deleteLater  (C++ libéré après la fin du thread)
+  _stop() protège isRunning() par try/except RuntimeError au cas où deleteLater
+  a déjà supprimé l'objet C++ entre-temps.
 """
 
 import logging
@@ -26,12 +30,13 @@ log = logging.getLogger(__name__)
 
 
 class _Worker(QObject):
-    finished = Signal()
-    failed   = Signal(str)
+    finished = Signal(int)       # porte gen
+    failed   = Signal(int, str)  # porte gen + message d'erreur
 
-    def __init__(self, widget: "BaseSimWidget"):
+    def __init__(self, widget: "BaseSimWidget", gen: int):
         super().__init__()
         self._widget   = widget
+        self._gen      = gen
         self.cancelled = False
 
     @Slot()
@@ -39,10 +44,10 @@ class _Worker(QObject):
         try:
             self._widget._compute()
             if not self.cancelled:
-                self.finished.emit()
+                self.finished.emit(self._gen)
         except Exception as exc:
             if not self.cancelled:
-                self.failed.emit(str(exc))
+                self.failed.emit(self._gen, str(exc))
 
 
 class BaseSimWidget(QWidget):
@@ -102,16 +107,16 @@ class BaseSimWidget(QWidget):
         gen = self._gen
 
         thread = QThread()
-        worker = _Worker(self)
+        worker = _Worker(self, gen)
         worker.moveToThread(thread)
 
         thread.started.connect(worker.run)
-        worker.finished.connect(lambda: self._on_done(gen))
-        worker.failed.connect(lambda msg: self._on_failed(gen, msg))
+        # Connexion vers self (QWidget dans le thread principal) :
+        # Qt choisit automatiquement Queued Connection → callbacks dans le thread Qt.
+        worker.finished.connect(self._on_done)
+        worker.failed.connect(self._on_failed)
         worker.finished.connect(thread.quit)
         worker.failed.connect(thread.quit)
-        # deleteLater : l'objet C++ reste vivant jusqu'à la fin du thread,
-        # indépendamment de la durée de vie du wrapper Python.
         thread.finished.connect(thread.deleteLater)
 
         self._thread = thread
@@ -150,6 +155,7 @@ class BaseSimWidget(QWidget):
 
     # ── Slots internes ────────────────────────────────────────────────────────
 
+    @Slot(int)
     def _on_done(self, gen: int) -> None:
         if gen != self._gen:
             return  # résultat périmé — un nouveau setup() a déjà été lancé
@@ -159,6 +165,7 @@ class BaseSimWidget(QWidget):
         self.compute_done.emit()
         self._timer.start()
 
+    @Slot(int, str)
     def _on_failed(self, gen: int, msg: str) -> None:
         if gen != self._gen:
             return
@@ -184,8 +191,12 @@ class BaseSimWidget(QWidget):
         self._timer.stop()
         if self._worker:
             self._worker.cancelled = True
-        if self._thread and self._thread.isRunning():
-            self._thread.quit()
-            self._thread.wait()
+        if self._thread:
+            try:
+                if self._thread.isRunning():
+                    self._thread.quit()
+                    self._thread.wait()
+            except RuntimeError:
+                pass  # C++ object already deleted via deleteLater
         self._thread = None
         self._worker = None

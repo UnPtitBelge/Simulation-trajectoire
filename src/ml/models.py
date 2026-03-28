@@ -105,7 +105,7 @@ class MLPStepModel:
             hidden_layer_sizes=(64, 32),   # réduit : résidus = problème plus simple
             activation="relu",
             alpha=0.001,                   # L2 renforcé pour limiter la dérive
-            max_iter=100,                  # convergence réelle par chunk
+            max_iter=500,                  # borne haute ; early stopping (n_iter_no_change) coupe avant
             warm_start=True,               # conserve les poids entre chunks
             random_state=0,
             n_iter_no_change=10,           # patience early stopping (< max_iter)
