@@ -143,15 +143,13 @@ class BaseSimWidget(QWidget):
         if self._ready:
             self._draw_initial()
 
-    # ── Événements clavier ────────────────────────────────────────────────────
+    # ── Marqueur ─────────────────────────────────────────────────────────────
 
-    def keyPressEvent(self, event) -> None:
-        if event.text().lower() == "p":
-            popup = MarkerPopup(r_max=self.R_MAX, parent=self)
-            popup.marker_added.connect(self._on_marker_added)
-            popup.exec()
-        else:
-            super().keyPressEvent(event)
+    def open_marker_popup(self) -> None:
+        """Ouvre la popup d'ajout de marqueur. Appelé depuis le raccourci P (ApplicationShortcut)."""
+        popup = MarkerPopup(r_max=self.R_MAX, parent=self)
+        popup.marker_added.connect(self._on_marker_added)
+        popup.exec()
 
     # ── Slots internes ────────────────────────────────────────────────────────
 

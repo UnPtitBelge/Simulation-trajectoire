@@ -56,8 +56,8 @@ class MembraneWidget(BaseSimWidget):
         self._k        = phys["k"]
         self._r_min    = phys["r_min"]
         self._R        = phys["R"]
-        self._ball_r   = phys.get("ball_radius",   0.01)
-        self._center_r = phys.get("center_radius", 0.05)
+        self._ball_r   = phys.get("ball_radius",   0.005)
+        self._center_r = phys.get("center_radius", 0.03)
         self._traj: np.ndarray | None = None
 
         self._gl: gl.GLViewWidget = gl.GLViewWidget()

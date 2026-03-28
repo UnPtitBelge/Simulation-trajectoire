@@ -107,6 +107,9 @@ class MainWindow(QMainWindow):
             ctx_names = cfg.get("synth", {}).get("contexts", {}).get("names", ["100pct"])
             ctx_combo = QComboBox()
             ctx_combo.addItems(ctx_names)
+            # Synchroniser _active_context avec le 1er item AVANT de connecter,
+            # car addItems() a déjà déclenché currentTextChanged avant la connexion.
+            ml_widget.set_context(ctx_names[0])
             ctx_combo.currentTextChanged.connect(ml_widget.set_context)
             ctx_combo.currentTextChanged.connect(
                 lambda _: ml_widget.setup(controls.current_params())
@@ -177,17 +180,34 @@ class MainWindow(QMainWindow):
 
     # ── Raccourcis clavier ────────────────────────────────────────────────────
 
+    def _place_marker(self) -> None:
+        w = self._active_sim_widget()
+        if w:
+            w.open_marker_popup()
+
     def _setup_shortcuts(self) -> None:
         ctx = Qt.ShortcutContext.ApplicationShortcut  # actif même si un widget enfant a le focus
-        QShortcut(QKeySequence("["),        self, self._prev_preset,           context=ctx)
-        QShortcut(QKeySequence("]"),        self, self._next_preset,           context=ctx)
-        QShortcut(QKeySequence("Space"),    self, self._toggle_play,           context=ctx)
-        QShortcut(QKeySequence("R"),        self, self._reset_sim,             context=ctx)
-        QShortcut(QKeySequence("L"),        self, self._algo_linear,           context=ctx)
-        QShortcut(QKeySequence("M"),        self, self._algo_mlp,              context=ctx)
-        QShortcut(QKeySequence("Ctrl+1"),   self, lambda: self._set_context(0), context=ctx)
-        QShortcut(QKeySequence("Ctrl+2"),   self, lambda: self._set_context(1), context=ctx)
-        QShortcut(QKeySequence("Ctrl+3"),   self, lambda: self._set_context(2), context=ctx)
+        pairs = [
+            ("[",      self._prev_preset),
+            ("]",      self._next_preset),
+            ("Space",  self._toggle_play),
+            ("R",      self._reset_sim),
+            ("P",      self._place_marker),
+            ("L",      self._algo_linear),
+            ("M",      self._algo_mlp),
+        ]
+        for key, slot in pairs:
+            sc = QShortcut(QKeySequence(key), self)
+            sc.setContext(ctx)
+            sc.activated.connect(slot)
+        for i, handler in enumerate([
+            lambda: self._set_context(0),
+            lambda: self._set_context(1),
+            lambda: self._set_context(2),
+        ]):
+            sc = QShortcut(QKeySequence(f"Ctrl+{i + 1}"), self)
+            sc.setContext(ctx)
+            sc.activated.connect(handler)
 
     # ── Feedback erreurs ──────────────────────────────────────────────────────
 

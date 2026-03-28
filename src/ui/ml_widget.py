@@ -6,7 +6,9 @@ Utilisée pour les deux modes :
                    sélectionnables par contexte (10%/50%/100%) et algo.
 
 Couches affichées (de bas en haut) :
-  1. Trajectoires physiques aléatoires en fond (gris semi-transparent)
+  1. Trajectoires d'entraînement en fond (gris semi-transparent)
+       – synth : échantillon aléatoire d'un chunk .npz
+       – réel  : sous-ensemble aléatoire des expériences CSV
   2. Trajectoire de référence physique / vérité terrain (vert)
   3. Trajectoire prédite par le modèle ML (bleu)
   4. Bille animée suivant la prédiction (rouge)
@@ -27,7 +29,6 @@ from physics.cone import compute_cone
 from ui.base_sim_widget import BaseSimWidget
 from utils.angle import v0_dir_to_vr_vtheta
 
-N_BG_TRAJS = 8  # nombre de trajectoires physiques en arrière-plan
 
 
 class MLWidget(BaseSimWidget):
@@ -39,9 +40,15 @@ class MLWidget(BaseSimWidget):
         models : {"linear": LinearStepModel, "mlp": MLPStepModel} pour mode="real"
         """
         super().__init__(cfg, parent)
-        self.R_MAX   = cfg["tracking"]["R"]
-        self._mode   = mode
-        self._models = models or {}
+        # Mode réel : coordonnées en pixels (comme les données d'entraînement)
+        # Mode synth : coordonnées en mètres
+        if mode == "real":
+            self.R_MAX = cfg["tracking"]["R"] * cfg["tracking"]["px_per_meter"]
+        else:
+            self.R_MAX = cfg["tracking"]["R"]
+        self._mode      = mode
+        self._models    = models or {}
+        self._n_train   = cfg.get("display", {}).get("n_train_trajs", 20)
         _src = Path(__file__).resolve().parents[1]  # src/ui/../../ → src/
         self._models_dir = _src / cfg["paths"]["models_dir"]
 
@@ -70,9 +77,9 @@ class MLWidget(BaseSimWidget):
             pen=pg.mkPen(color="#555555", width=1, style=pg.QtCore.Qt.PenStyle.DashLine),
         )
 
-        # Couche 1 — trajectoires physiques en fond (gris semi-transparent)
+        # Couche 1 — trajectoires d'entraînement en fond (gris semi-transparent)
         bg_pen = pg.mkPen(color=RGBA_ML_TRAIN_TRAJ, width=1)
-        self._bg_curves = [self._pw.plot(pen=bg_pen) for _ in range(N_BG_TRAJS)]
+        self._bg_curves = [self._pw.plot(pen=bg_pen) for _ in range(self._n_train)]
 
         # Couche 2 — vérité terrain / trajectoire physique (vert)
         self._true_curve = self._pw.plot(
@@ -113,6 +120,70 @@ class MLWidget(BaseSimWidget):
             return LinearStepModel.load(path)
         return MLPStepModel.load(path)
 
+    # ── Chargement trajectoires d'entraînement ────────────────────────────────
+
+    def _load_synth_train_trajs(self, n: int) -> list[np.ndarray]:
+        """Charge n trajectoires depuis un chunk .npz synthétique.
+
+        Les chunks stockent des paires (X, y) concaténées depuis plusieurs
+        trajectoires. La frontière entre deux trajectoires est détectée quand
+        y[i] ≠ X[i+1] (états non-consécutifs).
+        """
+        synth_dir = self._models_dir.parent / "synthetic"
+        chunks = sorted(synth_dir.glob("chunk_*.npz"))
+        if not chunks:
+            return []
+        rng = np.random.default_rng(42)
+        chunk_path = chunks[int(rng.integers(0, min(5, len(chunks))))]
+        try:
+            data = np.load(chunk_path)
+            X = data["X"].astype(np.float32)
+            y = data["y"].astype(np.float32)
+        except Exception:
+            return []
+
+        boundaries = [0]
+        for i in range(len(X) - 1):
+            if not np.array_equal(y[i], X[i + 1]):
+                boundaries.append(i + 1)
+        boundaries.append(len(X))
+
+        trajs = [
+            np.vstack([X[s:e], y[e - 1:e]])
+            for s, e in zip(boundaries[:-1], boundaries[1:])
+            if e > s
+        ]
+        if not trajs:
+            return []
+        idxs = rng.choice(len(trajs), min(n, len(trajs)), replace=False)
+        return [trajs[int(i)] for i in idxs]
+
+    def _build_real_train_trajs(
+        self, df, centers: dict, n: int
+    ) -> list[np.ndarray]:
+        """Construit n trajectoires d'entraînement en pixels centrés per-expérience.
+
+        Chaque trajectoire est centrée sur son propre endpoint (compute_exp_centers),
+        identique au système de coordonnées du modèle. Toutes convergent vers (0, 0)
+        dans l'espace du plot → cohérent avec le cercle de bord centré en (0, 0).
+        """
+        trajs = []
+        for exp_id, group in df.groupby("expID"):
+            group = group.sort_values("temps")
+            cx, cy = centers[exp_id]
+            xc = group["x"].values - cx
+            yc = group["y"].values - cy
+            r     = np.sqrt(xc ** 2 + yc ** 2)
+            theta = np.arctan2(yc, xc)
+            traj  = np.column_stack([r, theta])
+            if len(traj) >= 2:
+                trajs.append(traj)
+        if not trajs:
+            return []
+        rng = np.random.default_rng(42)
+        idxs = rng.choice(len(trajs), min(n, len(trajs)), replace=False)
+        return [trajs[int(i)] for i in idxs]
+
     # ── Simulation ────────────────────────────────────────────────────────────
 
     def _compute(self) -> None:
@@ -125,29 +196,52 @@ class MLWidget(BaseSimWidget):
             self._compute_synth(p, n_steps)
 
     def _compute_real(self, p: dict, n_steps: int) -> None:
-        """Mode réel : modèles entraînés en unités pixels/unité-temps du tracking."""
-        tracking = self._cfg["tracking"]
-        ppm      = tracking["px_per_meter"]
+        """Mode réel : tout en pixels, centré sur le centre du cône estimé.
 
-        # Init depuis les contrôles (mètres) → pixels
-        vr0_px, vth0_px = v0_dir_to_vr_vtheta(p["v0"] * ppm, p["direction_deg"])
-        init    = np.array([p["r0"] * ppm, p["theta0"], vr0_px, vth0_px])
-        r_max_px = tracking["R"] * ppm
+        Coordonnées d'entraînement (ml/train.py::_iter_real_pairs) :
+          - r     : pixels centrés sur l'endpoint de chaque expérience
+          - vr/vθ : unités PositionsAnalytics = dx_px × (real_width/video_width) × fps
 
-        # Pas de vérité terrain physique ni de bg_trajs en mode réel
+        Le CSV est chargé une seule fois ; compute_exp_centers fournit le centre
+        de chaque expérience → même référentiel pour le display et le modèle.
+        """
+        import pandas as pd
+        from ml.train import compute_exp_centers
+
+        tracking  = self._cfg["tracking"]
+        ppm       = tracking["px_per_meter"]
+        vel_scale = tracking.get("real_width", 172) / tracking.get("video_width", 960)
+
+        # Chargement CSV + centres d'expériences (une seule passe)
+        csv_path = self._models_dir.parent / "tracking_data.csv"
         self._true_traj = None
         self._bg_trajs  = []
+        if csv_path.exists():
+            try:
+                df = pd.read_csv(csv_path, sep=";", skipinitialspace=True)
+                df.columns = df.columns.str.strip()
+                centers = compute_exp_centers(df, tracking)
+                self._bg_trajs = self._build_real_train_trajs(df, centers, self._n_train)
+            except Exception:
+                pass
+
+        # État initial en unités d'entraînement
+        r0_px       = p["r0"] * ppm
+        v0_scaled   = p["v0"] * ppm * vel_scale
+        vr0, vth0   = v0_dir_to_vr_vtheta(v0_scaled, p["direction_deg"])
+        init        = np.array([r0_px, p["theta0"], vr0, vth0])
+        r_min_px    = tracking.get("center_radius", 0.03) * ppm
+        v_stop_real = tracking.get("v_stop", 0.002) * ppm * vel_scale
 
         model = self._load_model()
         if model is None:
             self._traj = np.zeros((1, 4))
             self._n_frames = 1
             return
-        r_min_px = tracking.get("center_radius", 0.05) * ppm
-        traj_px = predict_trajectory(model, init, n_steps, r_max=r_max_px, r_min=r_min_px)
-        # Convertir r de pixels → mètres pour l'affichage (le plot est en mètres)
-        self._traj = traj_px.copy()
-        self._traj[:, 0] /= ppm
+        self._traj     = predict_trajectory(
+            model, init, n_steps,
+            r_max=self.R_MAX, r_min=r_min_px, v_stop=v_stop_real,
+        )
         self._n_frames = len(self._traj)
 
     def _compute_synth(self, p: dict, n_steps: int) -> None:
@@ -164,6 +258,7 @@ class MLWidget(BaseSimWidget):
             g=phys.get("g", 9.81),
             dt=phys.get("dt", 0.01),
             n_steps=n_steps,
+            center_radius=phys.get("center_radius", 0.03),
         )
 
         # Vérité terrain — simulateur physique
@@ -172,22 +267,8 @@ class MLWidget(BaseSimWidget):
             **cone_kw,
         )
 
-        # Trajectoires physiques en arrière-plan — CI aléatoires fixes
-        ranges = self._cfg.get("ranges", {})
-        r_lo, r_hi = ranges.get("r0", [0.05, self.R_MAX - 0.01])
-        v_lo, v_hi = ranges.get("v0", [0.3, 2.0])
-        rng = np.random.default_rng(42)
-        self._bg_trajs = []
-        for _ in range(N_BG_TRAJS):
-            r0_bg     = rng.uniform(r_lo, r_hi * 0.95)
-            theta0_bg = rng.uniform(0, 2 * np.pi)
-            v0_bg     = rng.uniform(v_lo, v_hi)
-            dir_bg    = rng.uniform(-180, 180)
-            vr0_bg, vth0_bg = v0_dir_to_vr_vtheta(v0_bg, dir_bg)
-            self._bg_trajs.append(compute_cone(
-                r0=r0_bg, theta0=theta0_bg, vr0=vr0_bg, vtheta0=vth0_bg,
-                **cone_kw,
-            ))
+        # Trajectoires d'entraînement en arrière-plan (depuis les chunks synthétiques)
+        self._bg_trajs = self._load_synth_train_trajs(self._n_train)
 
         # Prédiction ML
         model = self._load_model()
@@ -195,8 +276,9 @@ class MLWidget(BaseSimWidget):
             self._traj = np.zeros((1, 4))
             self._n_frames = 1
             return
-        r_min = phys.get("center_radius", 0.05)
-        self._traj     = predict_trajectory(model, init, n_steps, r_max=self.R_MAX, r_min=r_min)
+        r_min  = phys.get("center_radius", 0.03)
+        v_stop = phys.get("v_stop", 2e-3)
+        self._traj     = predict_trajectory(model, init, n_steps, r_max=self.R_MAX, r_min=r_min, v_stop=v_stop)
         self._n_frames = len(self._traj)
 
     def _draw_initial(self) -> None:
@@ -211,10 +293,12 @@ class MLWidget(BaseSimWidget):
             else:
                 curve.setData([], [])
 
-        # Vérité terrain (vert) — affichée complète dès le départ
+        # Vérité terrain (vert) — affichée complète dès le départ (effacée en mode réel)
         if self._true_traj is not None:
             t = self._true_traj
             self._true_curve.setData(t[:, 0] * np.cos(t[:, 1]), t[:, 0] * np.sin(t[:, 1]))
+        else:
+            self._true_curve.setData([], [])
 
         # Trajectoire prédite — commence vide, se révèle via _draw()
         self._traj_curve.setData([], [])
@@ -241,16 +325,29 @@ class MLWidget(BaseSimWidget):
         r_end = self._traj[-1, 0]
 
         if self._mode == "real":
-            r_max = self._cfg["tracking"]["R"]  # en mètres (traj déjà convertie)
-            stop  = "Sortie bord" if r_end >= r_max - 1e-3 else "Arrêt (vitesse nulle)"
+            # r_end et R_MAX sont en pixels (même espace que le modèle)
+            tracking = self._cfg["tracking"]
+            ppm      = tracking["px_per_meter"]
+            r_max    = self.R_MAX  # pixels
+            r_min    = tracking.get("center_radius", 0.03) * ppm
+            if r_end >= r_max - 1.0:
+                stop = "Sortie bord"
+            elif r_end <= r_min + 1.0:
+                stop = "Collision centre"
+            else:
+                stop = "Arrêt (vitesse nulle)"
             return f"Réel — {algo}\n{n} pas prédits — {stop}"
         else:
-            r_max  = self._cfg["synth"]["physics"]["R"]
-            n_max  = self._cfg["display"]["n_steps_pred"]
+            phys  = self._cfg["synth"]["physics"]
+            r_max = phys["R"]
+            r_min = phys.get("center_radius", 0.03)
+            n_max = self._cfg["display"]["n_steps_pred"]
             if n >= n_max:
                 stop = "Borne atteinte"
             elif r_end >= r_max - 1e-4:
                 stop = "Sortie bord"
+            elif r_end <= r_min + 1e-4:
+                stop = "Collision centre"
             else:
                 stop = "Arrêt (vitesse nulle)"
             return f"Synth. — {algo} [{self._active_context}]\n{n} pas prédits — {stop}"

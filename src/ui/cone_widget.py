@@ -54,8 +54,8 @@ class ConeWidget(BaseSimWidget):
         phys = cfg["physics"]
         self.R_MAX       = phys["R"]
         self._slope      = phys["depth"] / phys["R"]
-        self._ball_r     = phys.get("ball_radius",   0.01)
-        self._center_r   = phys.get("center_radius", 0.05)
+        self._ball_r     = phys.get("ball_radius",   0.005)
+        self._center_r   = phys.get("center_radius", 0.03)
         self._traj: np.ndarray | None = None
 
         # ── OpenGL ──

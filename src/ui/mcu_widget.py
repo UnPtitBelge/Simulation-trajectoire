@@ -45,7 +45,7 @@ class MCUWidget(BaseSimWidget):
         phys = self._cfg["physics"]
         self._traj = compute_mcu(
             r=p["r"], theta0=p["theta0"], omega=p["omega"],
-            n_steps=phys["n_steps"], dt=1.0 / 60,
+            n_steps=phys["n_steps"], dt=phys["dt"],
         )
         self._n_frames = len(self._traj)
 
