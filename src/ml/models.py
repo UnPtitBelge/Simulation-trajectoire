@@ -17,8 +17,6 @@ import pickle
 from pathlib import Path
 
 import numpy as np
-from sklearn.linear_model import SGDRegressor
-from sklearn.multioutput import MultiOutputRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import StandardScaler
 
@@ -52,19 +50,25 @@ def features_to_state(features: np.ndarray) -> np.ndarray:
 
 
 class LinearStepModel:
-    """Régression linéaire multi-sortie via SGDRegressor (supporte partial_fit)."""
+    """Régression linéaire multi-sortie via équations normales incrémentales (Ridge).
 
-    def __init__(self):
-        self.model = MultiOutputRegressor(
-            SGDRegressor(loss="squared_error", max_iter=1000, tol=1e-4, random_state=0)
-        )
+    Accumule XtX et Xty par chunk, puis résout W = (XtX + λI)⁻¹ Xty au moment
+    de la première prédiction. Avantage sur SGDRegressor : solution optimale exacte,
+    pas de taux d'apprentissage décroissant, pas d'oscillations en prédiction récursive.
+    """
+
+    def __init__(self, alpha: float = 1e-3):
+        self.alpha = alpha
         self.scaler_X = StandardScaler()
         self.scaler_y = StandardScaler()
         self._scaler_fitted = False
+        # +1 pour le terme de biais
+        self._XtX = np.zeros((N_FEATURES + 1, N_FEATURES + 1))
+        self._Xty = np.zeros((N_FEATURES + 1, N_FEATURES))
+        self._W: np.ndarray | None = None  # (N_FEATURES+1, N_FEATURES), résolu à la demande
 
     def partial_fit(self, X: np.ndarray, y: np.ndarray) -> None:
-        """Entraînement incrémental sur un chunk. X et y sont des features brutes.
-        Le modèle apprend les résidus Δ = y - X."""
+        """Accumule les statistiques suffisantes (XtX, Xty) pour un chunk."""
         residuals = y - X
         if not self._scaler_fitted:
             self.scaler_X.fit(X)
@@ -72,13 +76,26 @@ class LinearStepModel:
             self._scaler_fitted = True
         Xs = self.scaler_X.transform(X)
         ys = self.scaler_y.transform(residuals)
-        self.model.partial_fit(Xs, ys)
+        Xb = np.hstack([Xs, np.ones((Xs.shape[0], 1), dtype=Xs.dtype)])
+        self._XtX += Xb.T @ Xb
+        self._Xty += Xb.T @ ys
+        self._W = None  # invalide la solution précédente
+
+    def _finalize(self) -> None:
+        """Résout le système normal W = (XtX + λI)⁻¹ Xty."""
+        A = self._XtX.copy()
+        # Régularisation sur les features uniquement (pas sur le biais)
+        A[:N_FEATURES, :N_FEATURES] += self.alpha * np.eye(N_FEATURES)
+        self._W = np.linalg.solve(A, self._Xty)
 
     def predict_step(self, state: np.ndarray) -> np.ndarray:
         """Prédit l'état (r, θ, vr, vθ) suivant depuis l'état courant."""
+        if self._W is None:
+            self._finalize()
         feat = state_to_features(state).reshape(1, -1)
         feat_s = self.scaler_X.transform(feat)
-        delta_s = self.model.predict(feat_s)
+        Xb = np.hstack([feat_s, [[1.0]]])
+        delta_s = Xb @ self._W
         delta = self.scaler_y.inverse_transform(delta_s)[0]
         return _clip_state(features_to_state(feat[0] + delta))
 
