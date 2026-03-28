@@ -1,14 +1,13 @@
 """Entraînement des modèles ML sur données synthétiques.
 
-Entraîne 2 algorithmes × 3 contextes = 6 modèles.
+Entraîne 2 algorithmes × 4 contextes = 8 modèles.
+Les contextes (fractions des chunks) sont lus depuis [synth.contexts] de ml.toml.
 La RAM est libérée entre chaque modèle via gc.collect().
-Les scalers sont fittés sur le premier chunk de chaque contexte.
 
 Usage :
-    python scripts/train_models.py [--config path/to/ml.toml] [--workers N]
+    python scripts/train_models.py [--workers N]
 
-Avec --workers 6, les 6 modèles (linéaire + MLP) × (10%/50%/100%) tournent
-en parallèle dans des processus séparés.
+Avec --workers 8, les 8 modèles tournent en parallèle dans des processus séparés.
 """
 
 import argparse
@@ -104,7 +103,7 @@ def main():
         "--workers", type=int, default=1,
         help=(
             "Nombre de processus parallèles. "
-            f"Max utile = 6 (2 algos × 3 contextes). "
+            f"Max utile = 8 (2 algos × 4 contextes). "
             f"CPUs disponibles : {os.cpu_count()}."
         ),
     )
