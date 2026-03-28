@@ -284,6 +284,11 @@ def main():
         help="Afficher les statistiques de génération après la fin",
     )
     parser.add_argument(
+        "--n-trajectories", type=int, default=None,
+        help="Nombre de trajectoires à générer (écrase [synth.generation].n_trajectories). "
+             "Ignoré en mode grid (total fixé par n_r × n_theta × n_v × n_dir).",
+    )
+    parser.add_argument(
         "--mode", choices=["random", "grid"], default="random",
         help=(
             "random (défaut) : CI aléatoires, n_trajectories total. "
@@ -325,7 +330,7 @@ def main():
                  phys_cfg, gen_cfg, str(out_dir)),
             ))
     else:
-        n_total  = int(gen_cfg["n_trajectories"])
+        n_total  = args.n_trajectories if args.n_trajectories is not None else int(gen_cfg["n_trajectories"])
         n_chunks = (n_total + chunk_size - 1) // chunk_size
         child_seeds = np.random.SeedSequence(42).spawn(n_chunks)
         n_this_list = [min(chunk_size, n_total - i * chunk_size) for i in range(n_chunks)]
