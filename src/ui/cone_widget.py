@@ -10,9 +10,8 @@ from PySide6.QtWidgets import QSizePolicy
 from utils.angle import v0_dir_to_vr_vtheta
 
 from config.theme import (
-    LARGE_BALL_RADIUS, RGB_CENTER_BALL, RGB_MARKER,
+    RGB_CENTER_BALL, RGB_MARKER,
     RGB_PLOT_GRAY, RGB_PLOT_ORANGE, RGB_PLOT_PARTICLE,
-    SMALL_BALL_RADIUS,
 )
 from physics.cone import compute_cone
 from ui.base_sim_widget import BaseSimWidget
@@ -53,8 +52,10 @@ class ConeWidget(BaseSimWidget):
     def __init__(self, cfg: dict, parent=None):
         super().__init__(cfg, parent)
         phys = cfg["physics"]
-        self.R_MAX  = phys["R"]
-        self._slope = phys["depth"] / phys["R"]
+        self.R_MAX       = phys["R"]
+        self._slope      = phys["depth"] / phys["R"]
+        self._ball_r     = phys.get("ball_radius",   0.01)
+        self._center_r   = phys.get("center_radius", 0.05)
         self._traj: np.ndarray | None = None
 
         # ── OpenGL ──
@@ -74,7 +75,7 @@ class ConeWidget(BaseSimWidget):
         self._gl.addItem(grid)
 
         self._particle = gl.GLScatterPlotItem(
-            pos=np.zeros((1, 3)), size=SMALL_BALL_RADIUS * 2,
+            pos=np.zeros((1, 3)), size=self._ball_r * 2,
             color=RGB_PLOT_PARTICLE, pxMode=False,
         )
         self._gl.addItem(self._particle)
@@ -85,9 +86,9 @@ class ConeWidget(BaseSimWidget):
         self._gl.addItem(self._trail)
 
         # Centre de la bille = surface au sommet + un rayon (bille posée sur la surface)
-        center_z = -self._slope * self.R_MAX + LARGE_BALL_RADIUS
+        center_z = -self._slope * self.R_MAX + self._center_r
         self._center = gl.GLScatterPlotItem(
-            pos=np.array([[0, 0, center_z]]), size=LARGE_BALL_RADIUS * 2,
+            pos=np.array([[0, 0, center_z]]), size=self._center_r * 2,
             color=RGB_CENTER_BALL, pxMode=False,
         )
         self._gl.addItem(self._center)
@@ -140,7 +141,7 @@ class ConeWidget(BaseSimWidget):
         x, y, z = self._xyz(r, theta)
         item = gl.GLScatterPlotItem(
             pos=np.array([[x, y, z]]),
-            size=SMALL_BALL_RADIUS * 2.5,
+            size=self._ball_r * 2.5,
             color=RGB_MARKER, pxMode=False,
         )
         self._marker_items.append(item)

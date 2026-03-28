@@ -10,9 +10,8 @@ from PySide6.QtWidgets import QSizePolicy
 from utils.angle import v0_dir_to_vr_vtheta
 
 from config.theme import (
-    LARGE_BALL_RADIUS, RGB_CENTER_BALL, RGB_MARKER,
+    RGB_CENTER_BALL, RGB_MARKER,
     RGB_PLOT_GRAY, RGB_PLOT_ORANGE, RGB_PLOT_PARTICLE,
-    SMALL_BALL_RADIUS,
 )
 from physics.membrane import compute_membrane
 from ui.base_sim_widget import BaseSimWidget
@@ -53,10 +52,12 @@ class MembraneWidget(BaseSimWidget):
     def __init__(self, cfg: dict, parent=None):
         super().__init__(cfg, parent)
         phys = cfg["physics"]
-        self.R_MAX  = phys["R"]
-        self._k     = phys["k"]
-        self._r_min = phys["r_min"]
-        self._R     = phys["R"]
+        self.R_MAX     = phys["R"]
+        self._k        = phys["k"]
+        self._r_min    = phys["r_min"]
+        self._R        = phys["R"]
+        self._ball_r   = phys.get("ball_radius",   0.01)
+        self._center_r = phys.get("center_radius", 0.05)
         self._traj: np.ndarray | None = None
 
         self._gl: gl.GLViewWidget = gl.GLViewWidget()
@@ -75,7 +76,7 @@ class MembraneWidget(BaseSimWidget):
         self._gl.addItem(grid)
 
         self._particle = gl.GLScatterPlotItem(
-            pos=np.zeros((1, 3)), size=SMALL_BALL_RADIUS * 2,
+            pos=np.zeros((1, 3)), size=self._ball_r * 2,
             color=RGB_PLOT_PARTICLE, pxMode=False,
         )
         self._gl.addItem(self._particle)
@@ -86,9 +87,9 @@ class MembraneWidget(BaseSimWidget):
         self._gl.addItem(self._trail)
 
         # Centre de la bille = surface au bord intérieur + un rayon (bille posée sur la surface)
-        center_z = self._k * math.log(self._r_min / self._R) + LARGE_BALL_RADIUS
+        center_z = self._k * math.log(self._r_min / self._R) + self._center_r
         self._center = gl.GLScatterPlotItem(
-            pos=np.array([[0, 0, center_z]]), size=LARGE_BALL_RADIUS * 2,
+            pos=np.array([[0, 0, center_z]]), size=self._center_r * 2,
             color=RGB_CENTER_BALL, pxMode=False,
         )
         self._gl.addItem(self._center)
@@ -145,7 +146,7 @@ class MembraneWidget(BaseSimWidget):
         z = self._surface_z(r)
         item = gl.GLScatterPlotItem(
             pos=np.array([[x, y, z]]),
-            size=SMALL_BALL_RADIUS * 2.5,
+            size=self._ball_r * 2.5,
             color=RGB_MARKER, pxMode=False,
         )
         self._marker_items.append(item)
