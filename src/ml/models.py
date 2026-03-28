@@ -7,9 +7,13 @@ plutôt que l'état absolu. Avantages :
 
 Entraînement incrémental :
   - LinearStepModel  : Ridge via équations normales (XtX / Xty) → exact, stable
-  - MLPStepModel     : MLPRegressor(warm_start=True) → fit() batch par batch
+  - MLPStepModel     : MLPRegressor(warm_start=True, max_iter=1) → 1 epoch par
+                       appel fit(), la boucle externe gère shuffle + early stopping
 
-Les scalers sont inclus dans chaque modèle (fit sur le 1er chunk).
+Scalers : calibrés sur un échantillon uniforme de tous les chunks via
+fit_shared_scalers() dans train.py, puis injectés avec inject_scalers()
+avant le premier partial_fit(). Garantit des stats de normalisation
+représentatives de l'ensemble des données, indépendamment de l'ordre des chunks.
 """
 
 import pickle
@@ -103,12 +107,31 @@ class LinearStepModel:
         self._Xty += Xb.T @ ys
         self._W = None  # invalide la solution précédente
 
+    def inject_scalers(self, scaler_X: "StandardScaler", scaler_y: "StandardScaler") -> None:
+        """Injecte des scalers pré-fittés (calculés sur l'ensemble des données).
+        Doit être appelé avant partial_fit() pour que la normalisation soit
+        représentative de la distribution globale et non du seul premier chunk."""
+        self.scaler_X = scaler_X
+        self.scaler_y = scaler_y
+        self._scaler_fitted = True
+
     def _finalize(self) -> None:
         """Résout le système normal W = (XtX + λI)⁻¹ Xty."""
         A = self._XtX.copy()
         # Régularisation sur les features uniquement (pas sur le biais)
         A[:N_FEATURES, :N_FEATURES] += self.alpha * np.eye(N_FEATURES)
         self._W = np.linalg.solve(A, self._Xty)
+
+    def val_loss(self, X: np.ndarray, y: np.ndarray) -> float:
+        """MSE en espace normalisé — finalise W si besoin (pour reporting)."""
+        if self._W is None:
+            self._finalize()
+        residuals = y - X
+        Xs = self.scaler_X.transform(X)
+        Xb = np.hstack([Xs, np.ones((Xs.shape[0], 1), dtype=Xs.dtype)])
+        pred_s = Xb @ self._W
+        ys = self.scaler_y.transform(residuals)
+        return float(np.mean((pred_s - ys) ** 2))
 
     def predict_step(self, state: np.ndarray) -> np.ndarray:
         """Prédit l'état (r, θ, vr, vθ) suivant depuis l'état courant."""
@@ -141,31 +164,44 @@ class LinearStepModel:
 
 
 class MLPStepModel:
-    """MLP multi-sortie via MLPRegressor (warm_start pour entraînement incrémental).
+    """MLP multi-sortie via MLPRegressor (Adam, warm_start, 1 epoch par appel).
 
     Apprend les résidus Δs = s_{t+1} - s_{t} (espace features).
-    Stratégie : 100 epochs par chunk, early stopping (patience=10),
-    LR adaptatif, régularisation L2 renforcée (alpha=0.001).
+    Stratégie : max_iter=1 → chaque appel à partial_fit() fait exactement
+    1 epoch sur le chunk courant ; la boucle d'entraînement externe gère
+    le shuffle des chunks entre epochs et l'early stopping sur validation.
     """
 
     def __init__(self):
         self.model = MLPRegressor(
             hidden_layer_sizes=(64, 32),   # réduit : résidus = problème plus simple
             activation="relu",
+            solver="adam",                 # Adam : adaptatif par paramètre, stable sur grands datasets
+            learning_rate_init=1e-3,       # lr Adam standard
             alpha=0.001,                   # L2 renforcé pour limiter la dérive
-            max_iter=500,                  # borne haute ; early stopping (n_iter_no_change) coupe avant
+            max_iter=1,                    # 1 epoch par appel ; la boucle externe contrôle le reste
             warm_start=True,               # conserve les poids entre chunks
             random_state=0,
-            n_iter_no_change=10,           # patience early stopping (< max_iter)
-            learning_rate="adaptive",      # réduit le LR sur plateau
         )
         self.scaler_X = StandardScaler()
         self.scaler_y = StandardScaler()
         self._scaler_fitted = False
 
+    def inject_scalers(self, scaler_X: StandardScaler, scaler_y: StandardScaler) -> None:
+        """Injecte des scalers pré-fittés (calculés sur l'ensemble des données).
+        Doit être appelé avant partial_fit() pour que la normalisation soit
+        représentative de la distribution globale et non du seul premier chunk."""
+        self.scaler_X = scaler_X
+        self.scaler_y = scaler_y
+        self._scaler_fitted = True
+
     def partial_fit(self, X: np.ndarray, y: np.ndarray) -> None:
-        """Entraîne sur un chunk en continuant depuis les poids existants.
-        Le modèle apprend les résidus Δ = y - X."""
+        """Entraîne 1 epoch sur le chunk courant en continuant depuis les poids existants.
+        Le modèle apprend les résidus Δ = y - X.
+        ConvergenceWarning supprimé : avec max_iter=1, la non-convergence est attendue."""
+        import warnings
+        from sklearn.exceptions import ConvergenceWarning
+
         residuals = y - X
         if not self._scaler_fitted:
             self.scaler_X.fit(X)
@@ -173,7 +209,17 @@ class MLPStepModel:
             self._scaler_fitted = True
         Xs = self.scaler_X.transform(X)
         ys = self.scaler_y.transform(residuals)
-        self.model.fit(Xs, ys)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", ConvergenceWarning)
+            self.model.fit(Xs, ys)
+
+    def val_loss(self, X: np.ndarray, y: np.ndarray) -> float:
+        """MSE en espace normalisé — pour l'early stopping et le reporting."""
+        residuals = y - X
+        Xs = self.scaler_X.transform(X)
+        ys = self.scaler_y.transform(residuals)
+        pred = self.model.predict(Xs)
+        return float(np.mean((pred - ys) ** 2))
 
     def predict_step(self, state: np.ndarray) -> np.ndarray:
         if not hasattr(self, "scaler_X") or not getattr(self, "_scaler_fitted", False):

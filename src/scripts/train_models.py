@@ -55,11 +55,19 @@ def main():
     ctx_fractions = cfg["synth"]["contexts"]["fractions"]
     contexts      = dict(zip(ctx_names, ctx_fractions))
 
+    model_cfg = cfg.get("model", {})
     log.info(
         "Démarrage de l'entraînement — %d contextes × 2 modèles — %d worker(s)",
         len(contexts), args.workers,
     )
-    train_synth(data_dir, models_dir, contexts, n_workers=args.workers)
+    train_synth(
+        data_dir, models_dir, contexts,
+        n_workers=args.workers,
+        n_scaler_chunks=model_cfg.get("n_scaler_chunks", 10),
+        val_fraction=model_cfg.get("val_fraction", 0.05),
+        n_epochs=model_cfg.get("mlp_n_epochs", 5),
+        patience=model_cfg.get("mlp_patience", 2),
+    )
     log.info("Entraînement terminé. Modèles dans : %s", models_dir)
 
 

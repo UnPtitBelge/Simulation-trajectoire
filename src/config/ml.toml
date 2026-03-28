@@ -67,12 +67,14 @@ fractions = [0.10,    0.50,    1.00]
 # Les 3 dernières features capturent les produits croisés (Coriolis + couplage angulaire)
 # nécessaires pour que LinearStepModel évite les oscillations en prédiction récursive.
 [model]
-n_features           = 9
-linear_alpha         = 0.001  # régularisation Ridge (LinearStepModel)
-mlp_hidden           = [64, 32]
-mlp_alpha            = 0.001  # régularisation L2 (MLPStepModel)
-mlp_max_iter         = 500
-mlp_n_iter_no_change = 10     # patience early stopping
+n_features      = 9
+linear_alpha    = 0.001  # régularisation Ridge (LinearStepModel)
+mlp_hidden      = [64, 32]
+mlp_alpha       = 0.001  # régularisation L2 (MLPStepModel)
+mlp_n_epochs    = 5      # passes sur les chunks (shuffle à chaque epoch)
+mlp_patience    = 2      # early stopping : epochs sans amélioration avant arrêt
+n_scaler_chunks = 10     # chunks tirés uniformément pour calibrer les scalers partagés
+val_fraction    = 0.05   # fraction des chunks réservée à la validation (early stopping MLP)
 
 [ranges]
 r0            = [0.02, 0.39]
