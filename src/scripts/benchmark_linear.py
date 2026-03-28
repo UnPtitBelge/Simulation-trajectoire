@@ -2,7 +2,7 @@
 
 Génère les trajectoires à la volée (sans passer par les chunks pré-calculés),
 entraîne depuis zéro sur n trajectoires (progression géométrique : 1, 2, 4, 8, …)
-et mesure l'erreur contre la vérité terrain du simulateur physique.
+et mesure l'erreur moyennée sur un jeu de test indépendant (--n-test trajectoires).
 
 Un chunk pré-généré contient ~10 000 paires — la régression linéaire y converge
 déjà en grande partie. Ce script descend au niveau de la trajectoire individuelle
@@ -10,7 +10,7 @@ pour observer la convergence réelle depuis 1 trajectoire.
 
 Usage :
     python src/scripts/benchmark_linear.py
-    python src/scripts/benchmark_linear.py --n-trajectories 5000
+    python src/scripts/benchmark_linear.py --n-trajectories 5000 --n-test 50
     python src/scripts/benchmark_linear.py --n-contexts 25 --n-highlight 6
 """
 
@@ -117,6 +117,33 @@ def _errors(pred: np.ndarray, true: np.ndarray) -> dict:
     }
 
 
+def _mean_errors(
+    model: LinearStepModel,
+    test_cases: list[tuple[np.ndarray, np.ndarray]],
+    n_steps: int,
+    r_max: float,
+    r_min: float,
+    v_stop: float,
+) -> dict:
+    """Moyenne des métriques sur tous les cas de test.
+
+    test_cases : liste de (init_state, true_traj) simulés indépendamment.
+    """
+    all_errs = []
+    for init, true_traj in test_cases:
+        pred = predict_trajectory(model, init, n_steps, r_max=r_max, r_min=r_min, v_stop=v_stop)
+        all_errs.append(_errors(pred, true_traj))
+    return {
+        "n_pred":    float(np.mean([e["n_pred"]    for e in all_errs])),
+        "n_true":    float(np.mean([e["n_true"]    for e in all_errs])),
+        "mae_r":     float(np.mean([e["mae_r"]     for e in all_errs])),
+        "mae_theta": float(np.mean([e["mae_theta"] for e in all_errs])),
+        "mae_vr":    float(np.mean([e["mae_vr"]    for e in all_errs])),
+        "mae_vtheta":float(np.mean([e["mae_vtheta"]for e in all_errs])),
+        "mae_total": float(np.mean([e["mae_total"] for e in all_errs])),
+    }
+
+
 # ── Progression géométrique ────────────────────────────────────────────────────
 
 
@@ -133,15 +160,16 @@ def _plot(
     steps: list[int],
     errors: list[dict],
     trajs: dict[int, np.ndarray],
-    true_traj: np.ndarray,
+    ref_traj: np.ndarray,
     highlight: list[int],
     R: float,
     dt: float,
+    n_test: int,
 ) -> None:
     fig = plt.figure(figsize=(14, 10))
     fig.suptitle(
-        "Benchmark LinearStepModel — précision vs nombre de trajectoires d'entraînement\n"
-        "(progression géométrique : 1, 2, 4, 8, … trajectoires)",
+        f"Benchmark LinearStepModel — précision vs nombre de trajectoires d'entraînement\n"
+        f"(progression géométrique : 1, 2, 4, 8, … — métriques moyennées sur {n_test} trajectoires de test)",
         fontsize=12,
     )
     gs = gridspec.GridSpec(2, 2, figure=fig, hspace=0.42, wspace=0.32)
@@ -171,8 +199,8 @@ def _plot(
     # ── Longueur prédite ──────────────────────────────────────────────────
     ax_len = fig.add_subplot(gs[0, 1])
     ax_len.axhline(n_true, color="green", linestyle="--", linewidth=1.5,
-                   label=f"Vrai ({n_true} pas)")
-    ax_len.plot(n_arr, n_pred, color="steelblue", linewidth=2, label="Prédit")
+                   label=f"Vrai (moy. {n_true:.0f} pas)")
+    ax_len.plot(n_arr, n_pred, color="steelblue", linewidth=2, label="Prédit (moy.)")
     for i, n in enumerate(highlight):
         ax_len.axvline(n, color=palette[i], linestyle=":", linewidth=1, alpha=0.6)
     ax_len.set_xscale("log")
@@ -188,9 +216,9 @@ def _plot(
     ax_xy.plot(R * np.cos(ang), R * np.sin(ang),
                color="gray", linestyle="--", linewidth=1)
     ax_xy.plot(
-        true_traj[:, 0] * np.cos(true_traj[:, 1]),
-        true_traj[:, 0] * np.sin(true_traj[:, 1]),
-        color="green", linewidth=2, label="Vérité terrain", zorder=5,
+        ref_traj[:, 0] * np.cos(ref_traj[:, 1]),
+        ref_traj[:, 0] * np.sin(ref_traj[:, 1]),
+        color="green", linewidth=2, label="Vérité terrain (preset)", zorder=5,
     )
     for i, n in enumerate(highlight):
         traj = trajs.get(n)
@@ -210,8 +238,8 @@ def _plot(
 
     # ── r(t) ─────────────────────────────────────────────────────────────
     ax_r = fig.add_subplot(gs[1, 1])
-    ax_r.plot(np.arange(len(true_traj)) * dt, true_traj[:, 0],
-              color="green", linewidth=2, label="Vrai", zorder=5)
+    ax_r.plot(np.arange(len(ref_traj)) * dt, ref_traj[:, 0],
+              color="green", linewidth=2, label="Vrai (preset)", zorder=5)
     for i, n in enumerate(highlight):
         traj = trajs.get(n)
         if traj is None:
@@ -241,6 +269,10 @@ if __name__ == "__main__":
         help="Nombre de points sur la progression géométrique (défaut : 20)",
     )
     parser.add_argument(
+        "--n-test", type=int, default=20,
+        help="Trajectoires de test pour moyenner les métriques (défaut : 20)",
+    )
+    parser.add_argument(
         "--n-highlight", type=int, default=5,
         help="Trajectoires affichées sur les graphes XY/r(t) (défaut : 5)",
     )
@@ -251,56 +283,76 @@ if __name__ == "__main__":
     gen_cfg = cfg["synth"]["generation"]
     preset  = cfg["preset"]["default"]
 
+    # ── Jeu d'entraînement ────────────────────────────────────────────────
     print(f"Génération de {args.n_trajectories} trajectoires d'entraînement…")
     rng   = np.random.default_rng(42)
     pairs = _generate_trajectories(args.n_trajectories, phys, gen_cfg, rng)
     print(f"  {len(pairs)} trajectoires valides générées")
 
-    print("Calibration des scalers sur l'ensemble…")
+    print("Calibration des scalers sur l'ensemble d'entraînement…")
     scaler_X, scaler_y = _fit_scalers(pairs)
 
+    # ── Jeu de test indépendant ───────────────────────────────────────────
+    print(f"Génération de {args.n_test} trajectoires de test (seed distinct)…")
+    rng_test  = np.random.default_rng(999)
+    n_steps   = cfg["display"]["n_steps_pred"]
+    r_max     = phys["R"]
+    r_min     = phys["center_radius"]
+    v_stop    = phys["v_stop"]
+
+    test_pairs_raw = _generate_trajectories(args.n_test, phys, gen_cfg, rng_test)
+    test_inits     = []
+    test_true_trajs: list[np.ndarray] = []
+    for X, _ in test_pairs_raw:
+        # Reconstruire l'état initial depuis la première ligne de features
+        from ml.models import features_to_state
+        init_state = features_to_state(X[0]).astype(float)
+        true_traj  = compute_cone(
+            r0=float(init_state[0]), theta0=float(init_state[1]),
+            vr0=float(init_state[2]), vtheta0=float(init_state[3]),
+            R=phys["R"], depth=phys["depth"], friction=phys["friction"],
+            g=phys["g"], dt=phys["dt"], n_steps=n_steps,
+        )
+        test_inits.append(init_state)
+        test_true_trajs.append(true_traj)
+
+    test_cases = list(zip(test_inits, test_true_trajs))
+    print(f"  {len(test_cases)} cas de test prêts\n")
+
+    # ── Trajectoire de référence (preset) pour les plots XY / r(t) ───────
     vr0, vth0 = v0_dir_to_vr_vtheta(preset["v0"], preset["direction_deg"])
-    init      = np.array([preset["r0"], preset["theta0"], vr0, vth0])
-    true_traj = compute_cone(
-        r0=float(init[0]), theta0=float(init[1]),
-        vr0=float(init[2]), vtheta0=float(init[3]),
+    ref_init  = np.array([preset["r0"], preset["theta0"], vr0, vth0])
+    ref_true  = compute_cone(
+        r0=float(ref_init[0]), theta0=float(ref_init[1]),
+        vr0=float(ref_init[2]), vtheta0=float(ref_init[3]),
         R=phys["R"], depth=phys["depth"], friction=phys["friction"],
-        g=phys["g"], dt=phys["dt"],
-        n_steps=cfg["display"]["n_steps_pred"],
+        g=phys["g"], dt=phys["dt"], n_steps=n_steps,
     )
-    print(f"Vérité terrain : {len(true_traj)} pas\n")
 
     steps = _geom_steps(len(pairs), args.n_contexts)
     print(f"Étapes ({len(steps)}) : {steps}\n")
 
-    r_max  = phys["R"]
-    r_min  = phys["center_radius"]
-    v_stop = phys["v_stop"]
-
     errors: list[dict]            = []
-    trajs:  dict[int, np.ndarray] = {}
+    trajs:  dict[int, np.ndarray] = {}   # pred sur le preset (pour les plots)
 
-    print(f"{'Traj.':>8}  {'Paires':>8}  {'MAE r':>10}  {'MAE total':>10}  {'n_pred':>8}  {'temps':>7}")
-    print("─" * 65)
+    print(f"{'Traj.':>8}  {'Paires':>8}  {'MAE r':>10}  {'MAE total':>10}  {'n_pred moy':>12}  {'temps':>7}")
+    print("─" * 72)
     for n in steps:
         t0     = time.perf_counter()
         subset = pairs[:n]
         model  = _train(subset, scaler_X, scaler_y)
-        traj   = predict_trajectory(
-            model, init, cfg["display"]["n_steps_pred"],
-            r_max=r_max, r_min=r_min, v_stop=v_stop,
-        )
-        elapsed = time.perf_counter() - t0
-        errs    = _errors(traj, true_traj)
-        n_pairs = sum(len(X) for X, _ in subset)
+        errs   = _mean_errors(model, test_cases, n_steps, r_max, r_min, v_stop)
+        # Prédiction sur le preset pour visualisation
+        trajs[n] = predict_trajectory(model, ref_init, n_steps, r_max=r_max, r_min=r_min, v_stop=v_stop)
+        elapsed  = time.perf_counter() - t0
+        n_pairs  = sum(len(X) for X, _ in subset)
         errors.append(errs)
-        trajs[n] = traj
         print(
             f"{n:>8}  {n_pairs:>8,}  {errs['mae_r']:>10.5f}  {errs['mae_total']:>10.5f}"
-            f"  {errs['n_pred']:>8}  {elapsed:>6.2f}s"
+            f"  {errs['n_pred']:>12.1f}  {elapsed:>6.2f}s"
         )
 
     hi_idx    = np.unique(np.round(np.linspace(0, len(steps) - 1, args.n_highlight)).astype(int))
     highlight = [steps[int(i)] for i in hi_idx]
 
-    _plot(steps, errors, trajs, true_traj, highlight, r_max, phys["dt"])
+    _plot(steps, errors, trajs, ref_true, highlight, r_max, phys["dt"], args.n_test)
