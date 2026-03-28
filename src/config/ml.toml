@@ -56,6 +56,16 @@ v_min      = 0.3    # vitesse min (m/s) — élimine les trajectoires quasi-stat
 v_max      = 2.0    # vitesse max (m/s) — limité pour stabilité numérique
 min_steps  = 50     # trajectoires de moins de 50 pas ignorées (bille qui sort immédiatement)
 
+# Mode grille : produit cartésien (r0, θ0, v0, direction) pour une couverture systématique.
+# Total = n_r × n_theta × n_v × n_dir trajectoires.
+# Activé avec : python generate_data.py --mode grid
+[synth.grid]
+n_r     = 30   # rayons  (linspace en r² → densité uniforme en surface)
+n_theta = 36   # angles  (équirépartis sur [0, 2π[, tous les 10°)
+n_v     = 5    # vitesses (linspace sur [v_min, v_max])
+n_dir   = 12   # directions (équiréparties sur [-π, π[, tous les 30°)
+# → 30 × 36 × 5 × 12 = 64 800 trajectoires par défaut
+
 # Contextes d'entraînement (fraction des chunks utilisés)
 [synth.contexts]
 names     = ["10pct", "50pct", "100pct"]
