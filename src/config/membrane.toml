@@ -8,10 +8,10 @@ g        = 9.81    # accélération gravitationnelle (m/s²)
 dt       = 0.01    # pas de temps (s)
 n_steps  = 100000
 frame_ms = 16
-ball_radius   = 0.01  # rayon de la bille mobile (m)
+ball_radius   = 0.005  # rayon de la bille mobile (m)
 ball_mass     = 0.005 # masse de la bille mobile (kg)
 center_mass   = 1.0   # masse de la bille centrale fixe (kg) — détermine la déformation
-center_radius = 0.05  # rayon de la bille centrale fixe (m) → définit r_min
+center_radius = 0.03  # rayon de la bille centrale fixe (m) → définit r_min
 
 [ranges]
 r0            = [0.02, 0.39]
