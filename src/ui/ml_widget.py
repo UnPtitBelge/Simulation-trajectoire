@@ -49,7 +49,7 @@ class MLWidget(BaseSimWidget):
         self._mode      = mode
         self._models    = models or {}
         self._n_train   = cfg.get("display", {}).get("n_train_trajs", 20)
-        _src = Path(__file__).resolve().parents[1]  # src/ui/../../ → src/
+        _src = Path(__file__).resolve().parent.parent  # src/ui/../ → src/
         self._models_dir = _src / cfg["paths"]["models_dir"]
 
         # Sélection active
@@ -57,9 +57,10 @@ class MLWidget(BaseSimWidget):
         self._active_context = "100pct"   # ignoré en mode "real"
 
         # Données calculées par _compute()
-        self._traj:      np.ndarray | None  = None
-        self._true_traj: np.ndarray | None  = None
-        self._bg_trajs:  list[np.ndarray]   = []
+        self._traj:               np.ndarray | None  = None
+        self._true_traj:          np.ndarray | None  = None
+        self._bg_trajs:           list[np.ndarray]   = []
+        self._cached_synth_trajs: list[np.ndarray] | None = None  # cache disque (immuable)
 
         # ── pyqtgraph 2D ──
         self._pw: pg.PlotWidget = pg.PlotWidget()
@@ -128,7 +129,11 @@ class MLWidget(BaseSimWidget):
         Les chunks stockent des paires (X, y) concaténées depuis plusieurs
         trajectoires. La frontière entre deux trajectoires est détectée quand
         y[i] ≠ X[i+1] (états non-consécutifs).
+        Résultat mis en cache après le premier chargement (le disque ne change pas).
         """
+        if self._cached_synth_trajs is not None:
+            return self._cached_synth_trajs[:n]
+
         synth_dir = self._models_dir.parent / "synthetic"
         chunks = sorted(synth_dir.glob("chunk_*.npz"))
         if not chunks:
@@ -156,7 +161,9 @@ class MLWidget(BaseSimWidget):
         if not trajs:
             return []
         idxs = rng.choice(len(trajs), min(n, len(trajs)), replace=False)
-        return [trajs[int(i)] for i in idxs]
+        result = [trajs[int(i)] for i in idxs]
+        self._cached_synth_trajs = result
+        return result
 
     def _build_real_train_trajs(
         self, df, centers: dict, n: int

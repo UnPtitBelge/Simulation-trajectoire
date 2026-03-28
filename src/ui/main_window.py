@@ -11,11 +11,15 @@ Raccourcis clavier (actifs quelle que soit la fenêtre active) :
   P           — ajouter un marqueur (géré dans BaseSimWidget)
 """
 
+import logging
+
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QComboBox, QLabel, QMainWindow, QSplitter, QTabWidget, QWidget,
 )
+
+log = logging.getLogger(__name__)
 
 from ui.base_sim_widget import BaseSimWidget
 
@@ -78,7 +82,10 @@ class MainWindow(QMainWindow):
         """Assemble sim_widget + panneau de contrôle dans un QSplitter."""
         controls = ControlsPanel(cfg)
         controls.params_changed.connect(lambda p: sim_widget.setup(p))
-        sim_widget.setup(controls.current_params())
+        try:
+            sim_widget.setup(controls.current_params())
+        except Exception:
+            log.exception("Erreur au démarrage de %s", type(sim_widget).__name__)
         sim_widget.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -95,7 +102,9 @@ class MainWindow(QMainWindow):
         controls = ControlsPanel(cfg)
 
         algo_combo = QComboBox()
+        algo_combo.blockSignals(True)
         algo_combo.addItems(["linear", "mlp"])
+        algo_combo.blockSignals(False)
         algo_combo.currentTextChanged.connect(ml_widget.set_algo)
         algo_combo.currentTextChanged.connect(
             lambda _: ml_widget.setup(controls.current_params())
@@ -106,9 +115,11 @@ class MainWindow(QMainWindow):
         if ml_widget._mode == "synth":
             ctx_names = cfg.get("synth", {}).get("contexts", {}).get("names", ["100pct"])
             ctx_combo = QComboBox()
+            ctx_combo.blockSignals(True)
             ctx_combo.addItems(ctx_names)
-            # Synchroniser _active_context avec le 1er item AVANT de connecter,
-            # car addItems() a déjà déclenché currentTextChanged avant la connexion.
+            ctx_combo.blockSignals(False)
+            # Synchroniser _active_context avec le 1er item (addItems ne déclenche
+            # pas le signal grâce à blockSignals, on l'appelle donc explicitement).
             ml_widget.set_context(ctx_names[0])
             ctx_combo.currentTextChanged.connect(ml_widget.set_context)
             ctx_combo.currentTextChanged.connect(
