@@ -22,10 +22,11 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import numpy as np
 import pandas as pd
-import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+
+from config.loader import load_config
 
 from ml.models import LinearStepModel, MLPStepModel, state_to_features
 from ml.predict import predict_trajectory
@@ -247,8 +248,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    with open(ROOT / "config" / "ml.toml", "rb") as f:
-        cfg = tomllib.load(f)
+    cfg = load_config("ml")
 
     tracking = cfg["tracking"]
     csv_path = ROOT / cfg["paths"]["tracking_data"]

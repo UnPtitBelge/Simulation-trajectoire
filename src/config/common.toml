@@ -1,0 +1,49 @@
+# Valeurs partagées par tous les simulateurs.
+# Chargé en premier via config/loader.py ; les configs individuelles
+# surchargent ou complètent ce qui leur est propre.
+#
+# Stratégie de fusion (depth=1) :
+#   - tables de premier niveau (ex. [physics]) : merge clé par clé
+#     → l'override AJOUTE ou ÉCRASE des clés, les clés absentes restent
+#   - tables de second niveau (ex. [preset.default]) : remplacement entier
+#     → si mcu.toml définit [preset], ses sub-tables remplacent celles de common
+
+[physics]
+R             = 0.4      # rayon extérieur du cône/membrane (m)
+g             = 9.81     # accélération gravitationnelle (m/s²)
+friction      = 0.02     # coefficient de Coulomb μ (sans unité, bille glissante)
+dt            = 0.01     # pas de temps (s)
+n_steps       = 100_000  # nombre max de pas par trajectoire
+frame_ms      = 16       # intervalle d'animation (ms) ≈ 60 fps
+ball_radius   = 0.005    # rayon de la bille mobile (m)
+ball_mass     = 0.005    # masse de la bille mobile (kg)
+center_mass   = 1.0      # masse de la bille centrale fixe (kg)
+center_radius = 0.03     # rayon de la bille centrale fixe (m) → r_min
+
+# Plages de contrôles UI — partagées par cône, membrane et ML
+# (mcu.toml les remplace entièrement, car ses paramètres sont différents)
+[ranges]
+r0            = [0.02, 0.39]
+theta0        = [0.0,  6.28]
+v0            = [0.0,  2.0]
+direction_deg = [-180.0, 180.0]  # 0°=tangentiel CCW, 90°=radial sortant
+
+# Presets partagés entre cône, membrane et ML
+# (mcu.toml les remplace entièrement)
+[preset.default]
+r0            = 0.36
+theta0        = 0.0
+v0            = 0.99
+direction_deg = -5
+
+[preset.1]
+r0            = 0.20
+theta0        = 1.57
+v0            = 1.5
+direction_deg = 45.0
+
+[preset.2]
+r0            = 0.10
+theta0        = 3.14
+v0            = 2.0
+direction_deg = -90.0

@@ -9,19 +9,14 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from config.loader import load_config
 from physics.cone import compute_cone
 from physics.membrane import compute_membrane
 from utils.angle import v0_dir_to_vr_vtheta
-
-
-def load_config(name: str) -> dict:
-    with open(ROOT / "config" / f"{name}.toml", "rb") as f:
-        return tomllib.load(f)
 
 
 def print_stats(name: str, traj: np.ndarray, dt: float, n_max: int) -> None:

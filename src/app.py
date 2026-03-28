@@ -13,13 +13,14 @@ import logging
 import sys
 from pathlib import Path
 
-import tomllib
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
+from config.loader import load_config
 from config.theme import STYLESHEET
+from ml.models import LinearStepModel, MLPStepModel, N_FEATURES
 from ml.train import train_real
 from ui.main_window import MainWindow
 
@@ -27,18 +28,14 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)-8s %(message)s")
 log = logging.getLogger(__name__)
 
 def _load_configs() -> dict:
-    """Charge les 4 fichiers TOML de config."""
-    config_dir = ROOT / "config"
-    configs = {}
-    for name in ("mcu", "cone", "membrane", "ml"):
-        with open(config_dir / f"{name}.toml", "rb") as f:
-            configs[name] = tomllib.load(f)
-    return configs
+    """Charge les 4 configs TOML fusionnées avec common.toml."""
+    return {name: load_config(name) for name in ("mcu", "cone", "membrane", "ml")}
 
 
-def _check_prerequisites(cfg: dict) -> list[str]:
-    """Retourne la liste des fichiers manquants."""
-    missing = []
+def _check_prerequisites(cfg: dict) -> tuple[list[str], list[str]]:
+    """Retourne (manquants, incompatibles) — fichiers absents ou avec N_FEATURES obsolète."""
+    missing:      list[str] = []
+    incompatible: list[str] = []
 
     tracking = ROOT / cfg["ml"]["paths"]["tracking_data"]
     if not tracking.exists():
@@ -51,24 +48,36 @@ def _check_prerequisites(cfg: dict) -> list[str]:
             p = models_dir / f"synth_{algo}_{ctx}.pkl"
             if not p.exists():
                 missing.append(str(p))
+                continue
+            try:
+                m = (LinearStepModel if algo == "linear" else MLPStepModel).load(p)
+                n = getattr(m.scaler_X, "n_features_in_", None)
+                if n is not None and n != N_FEATURES:
+                    incompatible.append(f"{p.name}  ({n} features → attendu {N_FEATURES})")
+            except Exception as exc:
+                incompatible.append(f"{p.name}  (erreur chargement : {exc})")
 
-    return missing
+    return missing, incompatible
 
 
 def main():
     configs = _load_configs()
-    missing = _check_prerequisites(configs)
+    missing, incompatible = _check_prerequisites(configs)
 
-    if missing:
+    if missing or incompatible:
         app = QApplication(sys.argv)
-        msg = "\n".join(missing)
-        QMessageBox.critical(
-            None,
-            "Fichiers manquants",
-            f"Les fichiers suivants sont requis avant de lancer l'application :\n\n{msg}\n\n"
-            "Générez les données : python src/scripts/generate_data.py\n"
-            "Entraînez les modèles : python src/scripts/train_models.py",
+        body = ""
+        if missing:
+            body += "Fichiers manquants :\n" + "\n".join(f"  {f}" for f in missing) + "\n\n"
+        if incompatible:
+            body += "Modèles incompatibles (N_FEATURES obsolète) :\n"
+            body += "\n".join(f"  {f}" for f in incompatible) + "\n\n"
+        body += (
+            "Pour régénérer :\n"
+            "  python src/scripts/generate_data.py\n"
+            "  python src/scripts/train_models.py"
         )
+        QMessageBox.critical(None, "Prérequis manquants", body)
         sys.exit(1)
 
     app = QApplication(sys.argv)

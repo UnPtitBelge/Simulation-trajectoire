@@ -9,11 +9,11 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from config.loader import load_config
 from ml.models import LinearStepModel, MLPStepModel
 from ml.predict import predict_trajectory
 from utils.angle import v0_dir_to_vr_vtheta
@@ -24,11 +24,6 @@ CONTEXTS = ["10pct", "50pct", "100pct"]
 
 CONTEXT_COLORS = {"10pct": "steelblue", "50pct": "darkorange", "100pct": "seagreen"}
 ALGO_LABELS    = {"linear": "Régression linéaire", "mlp": "MLP"}
-
-
-def load_config() -> dict:
-    with open(ROOT / "config" / "ml.toml", "rb") as f:
-        return tomllib.load(f)
 
 
 def load_model(models_dir: Path, algo: str, context: str):
@@ -140,7 +135,7 @@ def plot_results(
 
 
 if __name__ == "__main__":
-    cfg        = load_config()
+    cfg        = load_config("ml")
     phys       = cfg["synth"]["physics"]
     dt         = phys["dt"]
     n_steps    = cfg["display"]["n_steps_pred"]

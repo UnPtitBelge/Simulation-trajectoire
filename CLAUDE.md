@@ -134,6 +134,14 @@ Paramètres dans `[synth.generation]` de `ml.toml` : `v_min`, `v_max`, `min_step
 
 `train_synth(n_workers=N)` et `generate_data.py --workers N` utilisent `ProcessPoolExecutor`. Les fonctions workers (`_train_lr_context`, `_train_mlp_context`, `_generate_one_chunk`) sont définies au niveau module (requis pour pickling multiprocessing). Seeds reproductibles via `np.random.SeedSequence`.
 
+## Commits
+
+Après chaque modification (fichier ou ensemble de fichiers liés), créer un commit décrivant précisément ce qui a changé et pourquoi. Un commit par tâche logique — ne pas regrouper des changements sans rapport. Message en français, style impératif court (ex. "Ajoute common.toml pour centraliser la config partagée").
+
+## Maintenance des README
+
+Après toute modification d'un fichier, vérifier si un `README.md` existe dans le même répertoire. Si c'est le cas, lire ce README et déterminer si la modification apportée nécessite une mise à jour de sa documentation (nouvelle fonctionnalité, changement d'interface, modification des paramètres, changement de comportement). Mettre à jour le README si nécessaire.
+
 ## Fichiers clés à lire en priorité
 
 | Objectif | Fichier |

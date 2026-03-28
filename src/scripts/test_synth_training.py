@@ -17,11 +17,11 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import numpy as np
-import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from config.loader import load_config
 from ml.models import LinearStepModel, MLPStepModel, state_to_features
 from ml.predict import predict_trajectory
 from physics.cone import compute_cone
@@ -212,8 +212,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    with open(ROOT / "config" / "ml.toml", "rb") as f:
-        cfg = tomllib.load(f)
+    cfg = load_config("ml")
 
     phys         = cfg["synth"]["physics"]
     dt           = phys["dt"]

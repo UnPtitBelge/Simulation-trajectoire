@@ -1,5 +1,7 @@
-[physics]
-frame_ms = 16   # intervalle d'animation en ms (utilisé par BaseSimWidget)
+# Spécifique au pipeline ML — les valeurs partagées viennent de common.toml.
+# [synth.physics] reproduit intentionnellement les constantes du cône : ce sont
+# les paramètres utilisés pour générer les données d'entraînement.
+# Ils doivent rester synchronisés avec cone.toml (depth notamment).
 
 [paths]
 tracking_data = "data/tracking_data.csv"
@@ -15,12 +17,18 @@ models_dir     = "data/models"
 # puis calculer : px_per_meter = rayon_pixels / 0.4
 # Exemple : si le bord du cône est à 540 px du centre → 540 / 0.4 = 1350
 [tracking]
-center_x      = 960      # centre de la frame 1920×1080
-center_y      = 540
-px_per_meter  = 1350.0   # à affiner : rayon_pixels_du_bord / 0.4 m
-R             = 0.4      # rayon physique du cône (m) — même que cone.toml
-center_radius = 0.03     # rayon de la bille centrale (m) → r_min pour la prédiction
-n_passes      = 3        # nombre de passes d'entraînement sur les données réelles
+center_x       = 960      # centre de la frame 1920×1080
+center_y       = 540
+px_per_meter   = 1350.0   # à affiner : rayon_pixels_du_bord / 0.4 m
+R              = 0.4      # rayon physique du cône (m) — même que cone.toml
+center_radius  = 0.03     # rayon de la bille centrale (m) → r_min pour la prédiction
+n_passes       = 3        # nombre de passes d'entraînement sur les données réelles
+fps            = 30       # fréquence d'acquisition de la caméra (Hz)
+roi_margin     = 120      # demi-largeur de la fenêtre ROI pour la détection (px)
+n_trail_frames = 20       # nombre de positions conservées pour le tracé de trajectoire
+real_width     = 172      # largeur réelle (unités arbitraires) — paramètre PositionsAnalytics
+video_width    = 960      # largeur vidéo (px) utilisée lors de l'enregistrement
+v_stop         = 0.002    # seuil vitesse arrêt (m/s) — converti en unités modèle dans _compute_real
 
 # Paramètres physiques utilisés pour la génération synthétique
 # Doit correspondre à cone.toml pour cohérence avec les données réelles
@@ -31,13 +39,15 @@ friction      = 0.02
 g             = 9.81
 dt            = 0.01
 n_steps       = 100_000  # pas max par trajectoire d'entraînement (arrêt anticipé si |v|→0 ou r≥R)
-center_radius = 0.03   # rayon de la bille centrale (m) → r_min pour la prédiction
+center_radius = 0.03     # rayon de la bille centrale (m) → r_min pour la prédiction
+v_stop        = 0.002    # seuil de vitesse (m/s) sous lequel la bille est considérée arrêtée
 
 # Borne max pour la prédiction ML et l'animation.
 # Indépendant de n_steps : les 3 conditions d'arrêt (r≥R, |v|→0, n_steps_pred)
 # s'appliquent, donc la trajectoire affichée sera bien plus courte en pratique.
 [display]
-n_steps_pred = 10_000  # 100 s à dt=0.01 — largement suffisant pour toute trajectoire
+n_steps_pred  = 10_000  # 100 s à dt=0.01 — largement suffisant pour toute trajectoire
+n_train_trajs = 20      # nombre de trajectoires d'entraînement affichées en arrière-plan
 
 [synth.generation]
 n_trajectories = 1_000_000
@@ -50,6 +60,19 @@ min_steps  = 50     # trajectoires de moins de 50 pas ignorées (bille qui sort 
 [synth.contexts]
 names     = ["10pct", "50pct", "100pct"]
 fractions = [0.10,    0.50,    1.00]
+
+# Hyperparamètres des modèles ML.
+# Changer ces valeurs nécessite de régénérer les modèles (train_models.py).
+# N_FEATURES = 9 : (r, cosθ, sinθ, vr, vθ, vθ²/r, vr·vθ/r, sinθ·vθ/r, cosθ·vθ/r)
+# Les 3 dernières features capturent les produits croisés (Coriolis + couplage angulaire)
+# nécessaires pour que LinearStepModel évite les oscillations en prédiction récursive.
+[model]
+n_features           = 9
+linear_alpha         = 0.001  # régularisation Ridge (LinearStepModel)
+mlp_hidden           = [64, 32]
+mlp_alpha            = 0.001  # régularisation L2 (MLPStepModel)
+mlp_max_iter         = 500
+mlp_n_iter_no_change = 10     # patience early stopping
 
 [ranges]
 r0            = [0.02, 0.39]
