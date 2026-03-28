@@ -9,6 +9,9 @@ import numpy as np
 from ml.models import LinearStepModel, MLPStepModel
 
 
+_V_STOP = 2e-3  # seuil vitesse (m/s) — aligné sur g_friction×dt ≈ 0.002 m/s du simulateur
+
+
 def predict_trajectory(
     model: "LinearStepModel | MLPStepModel",
     init_state: np.ndarray,
@@ -18,7 +21,10 @@ def predict_trajectory(
     """Prédit n_steps états successifs depuis init_state = (r, θ, vr, vθ).
 
     Retourne array (≤ n_steps, 4) en coordonnées polaires (r, θ, vr, vθ).
-    S'arrête tôt si r >= r_max (bille sortie du bord), comme compute_cone.
+    Conditions d'arrêt anticipé (miroir de compute_cone) :
+      1. r >= r_max  — bille sortie du bord
+      2. |v| < _V_STOP — bille arrêtée (frottement)
+      3. n_steps atteint
     Le calcul est purement numpy, sans interaction Qt.
     """
     traj = np.empty((n_steps, 4))
@@ -27,6 +33,8 @@ def predict_trajectory(
     for i in range(n_steps):
         traj[i] = state
         if r_max is not None and state[0] >= r_max:
+            return traj[:i + 1]
+        if np.sqrt(state[2] ** 2 + state[3] ** 2) < _V_STOP:
             return traj[:i + 1]
         state = model.predict_step(state)
 

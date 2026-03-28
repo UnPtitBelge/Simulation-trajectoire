@@ -21,8 +21,14 @@ python src/scripts/train_models.py [--workers N]   # max utile : --workers 6
 # Tester les simulations physiques
 python src/scripts/test_simulations.py
 
-# Tester les modèles ML (nécessite les .pkl dans data/models/)
-python src/scripts/test_ml_models.py [--preset default|1|2]
+# Tester les modèles ML pré-entraînés (nécessite les .pkl dans data/models/)
+python src/scripts/test_ml_models.py
+
+# Tester l'entraînement + prédiction sur données synthétiques
+python src/scripts/test_synth_training.py [--chunks N]
+
+# Tester l'entraînement + prédiction sur données de tracking réelles
+python src/scripts/test_real_training.py [--test-id N] [--passes N]
 
 # Qualité du code
 black src/
@@ -61,6 +67,19 @@ MLWidget._compute()
   → affichage 2D pyqtgraph
 ```
 
+#### Apprentissage résiduel (résidus)
+
+Les deux modèles (`LinearStepModel`, `MLPStepModel`) apprennent **les résidus** `Δ = feat(s_{t+1}) - feat(s_t)` plutôt que l'état absolu `s_{t+1}`. `predict_step` ajoute le delta prédit aux features courantes puis reconvertit en état polaire.
+
+#### Données réelles — unités pixels
+
+Le pipeline réel (`train_real`, `MLWidget._compute_real`, `test_real_training.py`) travaille **entièrement en pixels/unité-temps** centrés sur le centre du cône (`tracking.center_x/y`). Pas de conversion px→m : toutes les expériences étant enregistrées de la même façon, l'espace pixel est cohérent. `predict_trajectory` est appelé avec `r_max=None` (les données peuvent dépasser R à cause d'une calibration approchée).
+
+#### Nombre de pas — deux paramètres distincts
+
+- `synth.physics.n_steps = 100 000` : génération des chunks synthétiques
+- `display.n_steps_pred = 10 000` : borne de prédiction/affichage dans l'UI et les scripts de test
+
 ### Pattern BaseSimWidget (toutes les simulations)
 
 Tous les widgets de simulation héritent de `ui/base_sim_widget.py`. Le cycle de vie est :
@@ -87,6 +106,8 @@ Les modèles ML encodent `θ` comme `(cos θ, sin θ)` pour éviter les disconti
 
 Convention `v0_dir_to_vr_vtheta` : 0° = tangentiel CCW, 90° = radial sortant.
 
+Les contrôles UI et les presets utilisent `v0` (norme, m/s) + `direction_deg` (angle). La conversion vers `(vr, vθ)` se fait à l'entrée de chaque `_compute()`.
+
 ### 3D vs 2D
 
 - **MCU / ML** : `pyqtgraph.PlotWidget` (2D)
@@ -104,5 +125,5 @@ Convention `v0_dir_to_vr_vtheta` : 0° = tangentiel CCW, 90° = radial sortant.
 | Ajouter une simulation | `src/ui/base_sim_widget.py` |
 | Modifier les paramètres UI | `src/config/*.toml` |
 | Modifier la physique | `src/physics/cone.py` ou `membrane.py` |
-| Modifier le ML | `src/ml/models.py` + `train.py` |
+| Modifier le ML | `src/ml/models.py` + `train.py` + `predict.py` |
 | Thème / couleurs | `src/config/theme.py` |

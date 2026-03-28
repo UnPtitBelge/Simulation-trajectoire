@@ -1,5 +1,7 @@
 """Vue MCU — mouvement circulaire uniforme en 2D (pyqtgraph)."""
 
+import math
+
 import numpy as np
 import pyqtgraph as pg
 
@@ -50,12 +52,12 @@ class MCUWidget(BaseSimWidget):
     def _draw_initial(self) -> None:
         if self._traj is None:
             return
-        self._orbit_curve.setData(self._traj[:, 0], self._traj[:, 1])
         self._draw(0)
 
     def _draw(self, frame: int) -> None:
         if self._traj is None:
             return
+        self._orbit_curve.setData(self._traj[:frame + 1, 0], self._traj[:frame + 1, 1])
         x, y = self._traj[frame]
         self._particle_item.setData([x], [y])
 

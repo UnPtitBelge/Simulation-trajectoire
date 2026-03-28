@@ -112,20 +112,19 @@ class ConeWidget(BaseSimWidget):
     def _draw_initial(self) -> None:
         if self._traj is None:
             return
-        # Pré-calcul du chemin 3D pour le trail
-        r, theta = self._traj[:, 0], self._traj[:, 1]
-        x = r * np.cos(theta)
-        y = r * np.sin(theta)
-        z = -self._slope * (self.R_MAX - r)
-        self._trail.setData(pos=np.column_stack([x, y, z]).astype(np.float32))
         self._draw(0)
 
     def _draw(self, frame: int) -> None:
         if self._traj is None:
             return
-        r, theta = self._traj[frame, 0], self._traj[frame, 1]
-        x, y, z  = self._xyz(r, theta)
-        self._particle.setData(pos=np.array([[x, y, z]]))
+        r, theta = self._traj[:frame + 1, 0], self._traj[:frame + 1, 1]
+        x = r * np.cos(theta)
+        y = r * np.sin(theta)
+        z = -self._slope * (self.R_MAX - r)
+        self._trail.setData(pos=np.column_stack([x, y, z]).astype(np.float32))
+        r0, th0 = self._traj[frame, 0], self._traj[frame, 1]
+        xp, yp, zp = self._xyz(r0, th0)
+        self._particle.setData(pos=np.array([[xp, yp, zp]]))
 
     # ── Marqueurs ─────────────────────────────────────────────────────────────
 

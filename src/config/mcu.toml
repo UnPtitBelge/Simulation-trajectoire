@@ -14,11 +14,11 @@ theta0 = 0.0
 omega  = 4.0
 
 [preset.1]
-r      = 0.0
+r      = 0.10
 theta0 = 0.0
-omega  = 0.0
+omega  = 10.0   # rapide, petit rayon
 
 [preset.2]
-r      = 0.0
+r      = 0.35
 theta0 = 0.0
-omega  = 0.0
+omega  = 1.5    # lent, grand rayon

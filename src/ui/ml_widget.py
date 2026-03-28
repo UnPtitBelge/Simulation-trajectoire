@@ -5,8 +5,11 @@ Utilisée pour les deux modes :
   - mode="synth" : modèles pré-entraînés sur données synthétiques,
                    sélectionnables par contexte (10%/50%/100%) et algo.
 
-Affichage : trajectoire prédite (x, y) en coordonnées cartésiennes,
-vue de dessus — même repère visuel que la physique polaire.
+Couches affichées (de bas en haut) :
+  1. Trajectoires physiques aléatoires en fond (gris semi-transparent)
+  2. Trajectoire de référence physique / vérité terrain (vert)
+  3. Trajectoire prédite par le modèle ML (bleu)
+  4. Bille animée suivant la prédiction (rouge)
 """
 
 from pathlib import Path
@@ -14,10 +17,17 @@ from pathlib import Path
 import numpy as np
 import pyqtgraph as pg
 
-from config.theme import CLR_ML_PRED, RGB_MARKER
+from config.theme import (
+    CLR_ML_BALL, CLR_ML_PRED, CLR_ML_TRUE,
+    RGBA_ML_TRAIN_TRAJ, RGB_MARKER,
+)
 from ml.models import LinearStepModel, MLPStepModel
 from ml.predict import predict_trajectory
+from physics.cone import compute_cone
 from ui.base_sim_widget import BaseSimWidget
+from utils.angle import v0_dir_to_vr_vtheta
+
+N_BG_TRAJS = 8  # nombre de trajectoires physiques en arrière-plan
 
 
 class MLWidget(BaseSimWidget):
@@ -31,13 +41,17 @@ class MLWidget(BaseSimWidget):
         super().__init__(cfg, parent)
         self.R_MAX   = cfg["tracking"]["R"]
         self._mode   = mode
-        self._models = models or {}  # pour mode "real"
+        self._models = models or {}
         self._models_dir = Path(cfg["paths"]["models_dir"])
 
         # Sélection active
         self._active_algo    = "linear"
         self._active_context = "100pct"   # ignoré en mode "real"
-        self._traj: np.ndarray | None = None
+
+        # Données calculées par _compute()
+        self._traj:      np.ndarray | None  = None
+        self._true_traj: np.ndarray | None  = None
+        self._bg_trajs:  list[np.ndarray]   = []
 
         # ── pyqtgraph 2D ──
         self._pw: pg.PlotWidget = pg.PlotWidget()
@@ -55,13 +69,26 @@ class MLWidget(BaseSimWidget):
             pen=pg.mkPen(color="#555555", width=1, style=pg.QtCore.Qt.PenStyle.DashLine),
         )
 
+        # Couche 1 — trajectoires physiques en fond (gris semi-transparent)
+        bg_pen = pg.mkPen(color=RGBA_ML_TRAIN_TRAJ, width=1)
+        self._bg_curves = [self._pw.plot(pen=bg_pen) for _ in range(N_BG_TRAJS)]
+
+        # Couche 2 — vérité terrain / trajectoire physique (vert)
+        self._true_curve = self._pw.plot(
+            pen=pg.mkPen(color=CLR_ML_TRUE, width=2),
+        )
+
+        # Couche 3 — trajectoire prédite par le ML (bleu)
         self._traj_curve = self._pw.plot(
             pen=pg.mkPen(color=CLR_ML_PRED, width=2),
         )
+
+        # Couche 4 — bille animée (rouge)
         self._particle_item = self._pw.plot(
             pen=None, symbol="o", symbolSize=10,
-            symbolBrush=CLR_ML_PRED, symbolPen="w",
+            symbolBrush=CLR_ML_BALL, symbolPen="w",
         )
+
         self._markers_items: list[pg.PlotDataItem] = []
         self._init_plot(self._pw)
 
@@ -88,10 +115,76 @@ class MLWidget(BaseSimWidget):
     # ── Simulation ────────────────────────────────────────────────────────────
 
     def _compute(self) -> None:
-        p     = self._params
-        phys  = self._cfg.get("synth", {}).get("physics", {})
-        n_steps = phys.get("n_steps", 200)
-        init  = np.array([p["r0"], p["theta0"], p["vr0"], p["vtheta0"]])
+        p       = self._params
+        n_steps = self._cfg.get("display", {}).get("n_steps_pred", 10_000)
+
+        if self._mode == "real":
+            self._compute_real(p, n_steps)
+        else:
+            self._compute_synth(p, n_steps)
+
+    def _compute_real(self, p: dict, n_steps: int) -> None:
+        """Mode réel : modèles entraînés en unités pixels/unité-temps du tracking."""
+        tracking = self._cfg["tracking"]
+        ppm      = tracking["px_per_meter"]
+
+        # Init depuis les contrôles (mètres) → pixels
+        vr0_px, vth0_px = v0_dir_to_vr_vtheta(p["v0"] * ppm, p["direction_deg"])
+        init    = np.array([p["r0"] * ppm, p["theta0"], vr0_px, vth0_px])
+        r_max_px = tracking["R"] * ppm
+
+        # Pas de vérité terrain physique ni de bg_trajs en mode réel
+        self._true_traj = None
+        self._bg_trajs  = []
+
+        model = self._load_model()
+        if model is None:
+            self._traj = np.zeros((1, 4))
+            self._n_frames = 1
+            return
+        self._traj     = predict_trajectory(model, init, n_steps, r_max=r_max_px)
+        self._n_frames = len(self._traj)
+
+    def _compute_synth(self, p: dict, n_steps: int) -> None:
+        """Mode synthétique : modèles entraînés en mètres, vérité terrain via compute_cone."""
+        phys = self._cfg.get("synth", {}).get("physics", {})
+
+        vr0, vtheta0 = v0_dir_to_vr_vtheta(p["v0"], p["direction_deg"])
+        init = np.array([p["r0"], p["theta0"], vr0, vtheta0])
+
+        cone_kw = dict(
+            R=phys.get("R", self.R_MAX),
+            depth=phys.get("depth", 0.09),
+            friction=phys.get("friction", 0.02),
+            g=phys.get("g", 9.81),
+            dt=phys.get("dt", 0.01),
+            n_steps=n_steps,
+        )
+
+        # Vérité terrain — simulateur physique
+        self._true_traj = compute_cone(
+            r0=p["r0"], theta0=p["theta0"], vr0=vr0, vtheta0=vtheta0,
+            **cone_kw,
+        )
+
+        # Trajectoires physiques en arrière-plan — CI aléatoires fixes
+        ranges = self._cfg.get("ranges", {})
+        r_lo, r_hi = ranges.get("r0", [0.05, self.R_MAX - 0.01])
+        v_lo, v_hi = ranges.get("v0", [0.3, 2.0])
+        rng = np.random.default_rng(42)
+        self._bg_trajs = []
+        for _ in range(N_BG_TRAJS):
+            r0_bg     = rng.uniform(r_lo, r_hi * 0.95)
+            theta0_bg = rng.uniform(0, 2 * np.pi)
+            v0_bg     = rng.uniform(v_lo, v_hi)
+            dir_bg    = rng.uniform(-180, 180)
+            vr0_bg, vth0_bg = v0_dir_to_vr_vtheta(v0_bg, dir_bg)
+            self._bg_trajs.append(compute_cone(
+                r0=r0_bg, theta0=theta0_bg, vr0=vr0_bg, vtheta0=vth0_bg,
+                **cone_kw,
+            ))
+
+        # Prédiction ML
         model = self._load_model()
         if model is None:
             self._traj = np.zeros((1, 4))
@@ -103,15 +196,30 @@ class MLWidget(BaseSimWidget):
     def _draw_initial(self) -> None:
         if self._traj is None:
             return
-        r, theta = self._traj[:, 0], self._traj[:, 1]
-        x = r * np.cos(theta)
-        y = r * np.sin(theta)
-        self._traj_curve.setData(x, y)
+
+        # Trajectoires d'entraînement en fond
+        for i, curve in enumerate(self._bg_curves):
+            if i < len(self._bg_trajs):
+                t = self._bg_trajs[i]
+                curve.setData(t[:, 0] * np.cos(t[:, 1]), t[:, 0] * np.sin(t[:, 1]))
+            else:
+                curve.setData([], [])
+
+        # Vérité terrain (vert) — affichée complète dès le départ
+        if self._true_traj is not None:
+            t = self._true_traj
+            self._true_curve.setData(t[:, 0] * np.cos(t[:, 1]), t[:, 0] * np.sin(t[:, 1]))
+
+        # Trajectoire prédite — commence vide, se révèle via _draw()
+        self._traj_curve.setData([], [])
+
         self._draw(0)
 
     def _draw(self, frame: int) -> None:
         if self._traj is None:
             return
+        t = self._traj[:frame + 1]
+        self._traj_curve.setData(t[:, 0] * np.cos(t[:, 1]), t[:, 0] * np.sin(t[:, 1]))
         r, theta = self._traj[frame, 0], self._traj[frame, 1]
         self._particle_item.setData([r * np.cos(theta)], [r * np.sin(theta)])
 

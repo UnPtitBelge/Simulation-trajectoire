@@ -24,13 +24,13 @@ v0            = 0.99   # vitesse initiale (m/s)
 direction_deg = -5    # 0° = purement tangentiel
 
 [preset.1]
-r0            = 0.36
-theta0        = 0.0
-v0            = 0.0
-direction_deg = 0.0
+r0            = 0.20
+theta0        = 1.57
+v0            = 1.5
+direction_deg = 45.0   # mi-tangentiel, mi-radial sortant
 
 [preset.2]
-r0            = 0.36
-theta0        = 0.0
-v0            = 0.0
-direction_deg = 0.0
+r0            = 0.10
+theta0        = 3.14
+v0            = 2.0
+direction_deg = -90.0  # radial entrant (bille lancée vers le centre)

@@ -2,10 +2,8 @@
 
 Usage :
     python src/scripts/test_ml_models.py
-    python src/scripts/test_ml_models.py --preset 1
 """
 
-import argparse
 import sys
 from pathlib import Path
 
@@ -18,6 +16,7 @@ sys.path.insert(0, str(ROOT))
 
 from ml.models import LinearStepModel, MLPStepModel
 from ml.predict import predict_trajectory
+from utils.angle import v0_dir_to_vr_vtheta
 
 
 ALGOS    = ["linear", "mlp"]
@@ -43,7 +42,7 @@ def load_model(models_dir: Path, algo: str, context: str):
 
 
 def print_stats(
-    algo: str, context: str, traj: np.ndarray, dt: float, n_max: int
+    algo: str, context: str, traj: np.ndarray, dt: float, n_max: int, R: float
 ) -> None:
     r      = traj[:, 0]
     vr     = traj[:, 2]
@@ -51,7 +50,12 @@ def print_stats(
     speed  = np.sqrt(vr**2 + vtheta**2)
 
     n_used = len(traj)
-    early  = " (sortie bord)" if n_used < n_max else " (borne atteinte)"
+    if n_used >= n_max:
+        early = " (borne atteinte)"
+    elif r[-1] >= R - 1e-6:
+        early = " (sortie bord)"
+    else:
+        early = " (bille arrêtée)"   # |v| < seuil
 
     print(f"\n{'─' * 48}")
     print(f"  {ALGO_LABELS[algo]:28s}  [{context}]")
@@ -136,28 +140,20 @@ def plot_results(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--preset", default="default",
-        help="Nom du preset dans ml.toml (default, 1, 2, …)"
-    )
-    args = parser.parse_args()
-
     cfg        = load_config()
     phys       = cfg["synth"]["physics"]
     dt         = phys["dt"]
-    n_steps    = phys["n_steps"]
+    n_steps    = cfg["display"]["n_steps_pred"]
     R          = cfg["tracking"]["R"]
     models_dir = ROOT / cfg["paths"]["models_dir"]
-    preset     = cfg["preset"][args.preset]
+    preset     = cfg["preset"]["default"]
 
-    init_state = np.array([
-        preset["r0"], preset["theta0"],
-        preset["vr0"], preset["vtheta0"],
-    ])
+    vr0, vtheta0 = v0_dir_to_vr_vtheta(preset["v0"], preset["direction_deg"])
+    init_state = np.array([preset["r0"], preset["theta0"], vr0, vtheta0])
 
     print(f"\nConditions initiales : r0={preset['r0']} m  θ0={preset['theta0']} rad"
-          f"  vr0={preset['vr0']} m/s  vθ0={preset['vtheta0']} m/s")
+          f"  v0={preset['v0']} m/s  dir={preset['direction_deg']}°"
+          f"  → vr0={vr0:.4f} m/s  vθ0={vtheta0:.4f} m/s")
 
     trajs: dict = {}
     missing: list[str] = []
@@ -170,7 +166,7 @@ if __name__ == "__main__":
                 continue
             traj = predict_trajectory(model, init_state, n_steps, r_max=R)
             trajs[(algo, context)] = traj
-            print_stats(algo, context, traj, dt, n_steps)
+            print_stats(algo, context, traj, dt, n_steps, R)
 
     if missing:
         print(f"\n⚠  Modèles introuvables dans {models_dir} :")
@@ -180,4 +176,4 @@ if __name__ == "__main__":
 
     if trajs:
         print()
-        plot_results(trajs, R, dt, args.preset)
+        plot_results(trajs, R, dt, "default")

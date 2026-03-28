@@ -32,9 +32,12 @@ RGB_PLOT_GRAY     = (0.878, 0.878, 0.878, 0.4)
 RGB_CENTER_BALL   = (0.91,  0.26,  0.21,  1.0)
 RGB_MARKER        = (0.18,  0.82,  0.28,  1.0)
 
-CLR_ML_TRUE        = CLR_SUCCESS
-CLR_ML_PRED        = CLR_PRIMARY
+CLR_ML_TRUE        = CLR_SUCCESS     # trajectoire cible (vert)
+CLR_ML_PRED        = CLR_PRIMARY     # trajectoire prédite (bleu)
+CLR_ML_BALL        = CLR_DANGER      # bille animée (rouge)
 CLR_ML_OBS_BRUSH   = CLR_PLOT_ORANGE
+CLR_ML_TRAIN_TRAJ  = "#6B7280"       # trajectoires d'entraînement fond (gris)
+RGBA_ML_TRAIN_TRAJ = (107, 114, 128, 80)  # même, semi-transparent, pour pyqtgraph
 
 CLR_WHITE       = "#FFFFFF"
 CLR_WHITE_HOVER = "rgba(255,255,255,0.15)"

@@ -142,25 +142,29 @@ def train_synth(
 
 
 def _iter_real_pairs(csv_path: Path, tracking_cfg: dict):
-    """Génère (X_feat, y_feat) expérience par expérience sans tout charger en RAM."""
+    """Génère (X_feat, y_feat) expérience par expérience sans tout charger en RAM.
+
+    Coordonnées en pixels (centrées sur le centre du cône) — pas de conversion
+    en mètres. Toutes les expériences étant enregistrées de la même façon, les
+    modèles apprennent directement dans l'espace pixel/unité-temps du tracking.
+    """
     df = pd.read_csv(csv_path, sep=";", skipinitialspace=True)
     df.columns = df.columns.str.strip()
 
-    cx  = tracking_cfg["center_x"]
-    cy  = tracking_cfg["center_y"]
-    ppm = tracking_cfg["px_per_meter"]
+    cx = tracking_cfg["center_x"]
+    cy = tracking_cfg["center_y"]
 
     for _, group in df.groupby("expID"):
         group = group.sort_values("temps")
-        xm  = (group["x"].values - cx) / ppm
-        ym  = (group["y"].values - cy) / ppm
-        vxm = group["speedX"].values / ppm
-        vym = group["speedY"].values / ppm
+        xc = group["x"].values    - cx   # pixels centrés
+        yc = group["y"].values    - cy
+        vx = group["speedX"].values       # px / unité-temps (cohérent entre expériences)
+        vy = group["speedY"].values
 
-        r      = np.sqrt(xm**2 + ym**2)
-        theta  = np.arctan2(ym, xm)
-        vr     = (xm * vxm + ym * vym) / np.maximum(r, 1e-6)
-        vtheta = (xm * vym - ym * vxm) / np.maximum(r, 1e-6)
+        r      = np.sqrt(xc**2 + yc**2)
+        theta  = np.arctan2(yc, xc)
+        vr     = (xc * vx + yc * vy) / np.maximum(r, 1e-6)
+        vtheta = (xc * vy - yc * vx) / np.maximum(r, 1e-6)
 
         states = np.column_stack([r, theta, vr, vtheta]).astype(np.float32)
         if len(states) < 2:

@@ -77,7 +77,8 @@ def main():
     # Entraînement rapide sur les données réelles (en mémoire)
     tracking_path = ROOT / configs["ml"]["paths"]["tracking_data"]
     log.info("Entraînement des modèles réels depuis %s ...", tracking_path)
-    lr_real, mlp_real = train_real(tracking_path, configs["ml"]["tracking"])
+    n_passes = configs["ml"]["tracking"].get("n_passes", 3)
+    lr_real, mlp_real = train_real(tracking_path, configs["ml"]["tracking"], n_passes=n_passes)
     log.info("Modèles réels prêts.")
 
     real_models = {"linear": lr_real, "mlp": mlp_real}

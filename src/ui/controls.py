@@ -83,6 +83,13 @@ class ControlsPanel(QWidget):
     def current_params(self) -> dict:
         return {param: spin.value() for param, spin in self._spinboxes.items()}
 
+    def cycle_preset(self, delta: int) -> None:
+        """Sélectionne le preset suivant (+1) ou précédent (-1) en boucle."""
+        n = self._combo.count()
+        if n == 0:
+            return
+        self._combo.setCurrentIndex((self._combo.currentIndex() + delta) % n)
+
     def add_extra_widget(self, label: str, widget: QWidget) -> None:
         """Ajoute un widget supplémentaire en bas du panneau (ex. sélecteur contexte ML)."""
         box = QGroupBox(label)

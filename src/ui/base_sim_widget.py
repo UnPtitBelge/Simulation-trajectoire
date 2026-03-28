@@ -39,6 +39,7 @@ class _Worker(QObject):
 class BaseSimWidget(QWidget):
     compute_done  = Signal()
     frame_updated = Signal(int)
+    error_occurred = Signal(str)
 
     # Sous-classes doivent définir R_MAX pour le popup marqueur
     R_MAX: float = 1.0
@@ -141,6 +142,7 @@ class BaseSimWidget(QWidget):
     @Slot(str)
     def _on_failed(self, msg: str) -> None:
         log.error("%s._compute() : %s", type(self).__name__, msg)
+        self.error_occurred.emit(msg)
 
     @Slot()
     def _cleanup_thread(self) -> None:

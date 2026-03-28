@@ -114,21 +114,20 @@ class MembraneWidget(BaseSimWidget):
     def _draw_initial(self) -> None:
         if self._traj is None:
             return
-        r, theta = self._traj[:, 0], self._traj[:, 1]
-        x = r * np.cos(theta)
-        y = r * np.sin(theta)
-        z = self._k * np.log(np.maximum(r, self._r_min) / self._R)
-        self._trail.setData(pos=np.column_stack([x, y, z]).astype(np.float32))
         self._draw(0)
 
     def _draw(self, frame: int) -> None:
         if self._traj is None:
             return
-        r, theta = self._traj[frame, 0], self._traj[frame, 1]
-        x = r * math.cos(theta)
-        y = r * math.sin(theta)
-        z = self._surface_z(r)
-        self._particle.setData(pos=np.array([[x, y, z]]))
+        r, theta = self._traj[:frame + 1, 0], self._traj[:frame + 1, 1]
+        x = r * np.cos(theta)
+        y = r * np.sin(theta)
+        z = self._k * np.log(np.maximum(r, self._r_min) / self._R)
+        self._trail.setData(pos=np.column_stack([x, y, z]).astype(np.float32))
+        r0, th0 = self._traj[frame, 0], self._traj[frame, 1]
+        self._particle.setData(pos=np.array([[
+            r0 * math.cos(th0), r0 * math.sin(th0), self._surface_z(r0),
+        ]]))
 
     # ── Marqueurs ─────────────────────────────────────────────────────────────
 

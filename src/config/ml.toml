@@ -26,10 +26,16 @@ n_passes     = 3        # nombre de passes d'entraînement sur les données rée
 [synth.physics]
 R        = 0.4
 depth    = 0.09
-friction = 0.05
+friction = 0.02
 g        = 9.81
 dt       = 0.01
-n_steps  = 200     # pas par trajectoire (court pour rester léger)
+n_steps  = 100_000  # pas max par trajectoire d'entraînement (arrêt anticipé si |v|→0 ou r≥R)
+
+# Borne max pour la prédiction ML et l'animation.
+# Indépendant de n_steps : les 3 conditions d'arrêt (r≥R, |v|→0, n_steps_pred)
+# s'appliquent, donc la trajectoire affichée sera bien plus courte en pratique.
+[display]
+n_steps_pred = 10_000  # 100 s à dt=0.01 — largement suffisant pour toute trajectoire
 
 [synth.generation]
 n_trajectories = 1_000_000
@@ -42,25 +48,25 @@ names     = ["10pct", "50pct", "100pct"]
 fractions = [0.10,    0.50,    1.00]
 
 [ranges]
-r0      = [0.02, 0.39]
-theta0  = [0.0,  6.28]
-vr0     = [-2.0, 2.0]
-vtheta0 = [-6.0, 6.0]
+r0            = [0.02, 0.39]
+theta0        = [0.0,  6.28]
+v0            = [0.0,  2.0]
+direction_deg = [-180.0, 180.0]  # 0°=tangentiel, 90°=radial sortant
 
 [preset.default]
-r0      = 0.30
-theta0  = 0.0
-vr0     = 0.0
-vtheta0 = 1.5
+r0            = 0.36
+theta0        = 0.0
+v0            = 0.99
+direction_deg = -5    # 0° = purement tangentiel
 
 [preset.1]
-r0      = 0.0
-theta0  = 0.0
-vr0     = 0.0
-vtheta0 = 0.0
+r0            = 0.20
+theta0        = 1.57
+v0            = 1.5
+direction_deg = 45.0   # mi-tangentiel, mi-radial sortant
 
 [preset.2]
-r0      = 0.0
-theta0  = 0.0
-vr0     = 0.0
-vtheta0 = 0.0
+r0            = 0.10
+theta0        = 3.14
+v0            = 2.0
+direction_deg = -90.0  # radial entrant (bille lancée vers le centre)
