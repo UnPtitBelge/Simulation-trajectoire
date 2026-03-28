@@ -77,9 +77,4 @@ mlp_patience    = 2      # early stopping : epochs sans amélioration avant arr�
 n_scaler_chunks = 10     # chunks tirés uniformément pour calibrer les scalers partagés
 val_fraction    = 0.05   # fraction des chunks réservée à la validation (early stopping MLP)
 
-[ranges]
-r0            = [0.02, 0.39]
-theta0        = [0.0,  6.28]
-v0            = [0.0,  2.0]
-direction_deg = [-180.0, 180.0]  # 0°=tangentiel, 90°=radial sortant
-# Les presets sont hérités de common.toml (identiques)
+# [ranges] et [preset.*] → hérités de common.toml
