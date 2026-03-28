@@ -84,12 +84,11 @@ def compute_membrane(
 
         if r >= R:
             return traj[:i + 1]
-        elif r < r_min:
-            r = r_min
-            vr = max(vr, 0.0)
+        elif r <= r_min:
+            return traj[:i + 1]  # collision avec la bille centrale
 
         speed_after = np.sqrt(vr ** 2 + vtheta ** 2)
-        if speed_after == 0.0 or (speed_after < g_friction * dt and (abs(a_gravity) <= g_friction or r <= r_min)):
+        if speed_after == 0.0 or (speed_after < g_friction * dt and abs(a_gravity) <= g_friction):
             return traj[:i + 1]
 
     return traj

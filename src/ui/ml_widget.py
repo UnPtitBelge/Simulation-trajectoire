@@ -224,6 +224,33 @@ class MLWidget(BaseSimWidget):
         r, theta = self._traj[frame, 0], self._traj[frame, 1]
         self._particle_item.setData([r * np.cos(theta)], [r * np.sin(theta)])
 
+    # ── Status ────────────────────────────────────────────────────────────────
+
+    def get_status(self) -> str:
+        """Résumé lisible de l'état courant (modèle, résultat, raison d'arrêt)."""
+        if self._traj is None:
+            return "Aucune trajectoire calculée."
+
+        n     = len(self._traj)
+        algo  = {"linear": "Linéaire", "mlp": "MLP"}.get(self._active_algo, self._active_algo)
+        r_end = self._traj[-1, 0]
+
+        if self._mode == "real":
+            ppm   = self._cfg["tracking"]["px_per_meter"]
+            r_max = self._cfg["tracking"]["R"] * ppm
+            stop  = "Sortie bord" if r_end >= r_max - 1.0 else "Arrêt (vitesse nulle)"
+            return f"Réel — {algo}\n{n} pas prédits — {stop}"
+        else:
+            r_max  = self._cfg["synth"]["physics"]["R"]
+            n_max  = self._cfg["display"]["n_steps_pred"]
+            if n >= n_max:
+                stop = "Borne atteinte"
+            elif r_end >= r_max - 1e-4:
+                stop = "Sortie bord"
+            else:
+                stop = "Arrêt (vitesse nulle)"
+            return f"Synth. — {algo} [{self._active_context}]\n{n} pas prédits — {stop}"
+
     # ── Marqueurs ─────────────────────────────────────────────────────────────
 
     def _add_marker(self, r: float, theta: float) -> None:

@@ -85,7 +85,9 @@ class MembraneWidget(BaseSimWidget):
         )
         self._gl.addItem(self._trail)
 
-        center_z = self._k * math.log(self._r_min / self._R)
+        # Le sommet de la bille centrale doit affleurer le bord intérieur
+        # de la membrane (z = k·ln(r_min/R)), donc le centre est un rayon plus bas.
+        center_z = self._k * math.log(self._r_min / self._R) - LARGE_BALL_RADIUS
         self._center = gl.GLScatterPlotItem(
             pos=np.array([[0, 0, center_z]]), size=LARGE_BALL_RADIUS * 2,
             color=RGB_CENTER_BALL, pxMode=False,

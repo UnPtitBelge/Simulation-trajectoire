@@ -13,7 +13,9 @@ Raccourcis clavier (actifs quelle que soit la fenêtre active) :
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeySequence, QShortcut
-from PySide6.QtWidgets import QComboBox, QMainWindow, QSplitter, QTabWidget, QWidget
+from PySide6.QtWidgets import (
+    QComboBox, QLabel, QMainWindow, QSplitter, QTabWidget, QWidget,
+)
 
 from ui.base_sim_widget import BaseSimWidget
 
@@ -110,6 +112,11 @@ class MainWindow(QMainWindow):
                 lambda _: ml_widget.setup(controls.current_params())
             )
             controls.add_extra_widget("Contexte  (Ctrl+1/2/3)", ctx_combo)
+
+        status_label = QLabel("–")
+        status_label.setWordWrap(True)
+        controls.add_extra_widget("État", status_label)
+        ml_widget.compute_done.connect(lambda: status_label.setText(ml_widget.get_status()))
 
         controls.params_changed.connect(lambda p: ml_widget.setup(p))
         ml_widget.setup(controls.current_params())

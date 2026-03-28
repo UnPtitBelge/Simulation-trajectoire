@@ -3,10 +3,16 @@
 Toutes les vues de simulation héritent de BaseSimWidget.
 
 Cycle de vie :
-  setup(params) → lance _compute() dans un QThread
-                → quand terminé : _draw_initial() puis démarre le timer
+  setup(params) → incrémente _gen, lance _compute() dans un QThread
+                → quand terminé : _on_done_checked() vérifie le gen avant de dessiner
   timer.timeout → _draw(frame)
   touche P      → MarkerPopup → _add_marker(r, theta)
+
+Sécurité thread :
+  Chaque appel setup() incrémente un compteur de génération (_gen).
+  Les callbacks _on_done / _on_failed capturent la génération via lambda.
+  Les résultats d'un ancien thread sont ignorés si la génération ne correspond plus.
+  thread.finished → thread.deleteLater  (pas de _cleanup_thread qui écrase la ref)
 """
 
 import logging
@@ -25,33 +31,36 @@ class _Worker(QObject):
 
     def __init__(self, widget: "BaseSimWidget"):
         super().__init__()
-        self._widget = widget
+        self._widget   = widget
+        self.cancelled = False
 
     @Slot()
     def run(self) -> None:
         try:
             self._widget._compute()
-            self.finished.emit()
+            if not self.cancelled:
+                self.finished.emit()
         except Exception as exc:
-            self.failed.emit(str(exc))
+            if not self.cancelled:
+                self.failed.emit(str(exc))
 
 
 class BaseSimWidget(QWidget):
-    compute_done  = Signal()
-    frame_updated = Signal(int)
+    compute_done   = Signal()
+    frame_updated  = Signal(int)
     error_occurred = Signal(str)
 
-    # Sous-classes doivent définir R_MAX pour le popup marqueur
     R_MAX: float = 1.0
 
     def __init__(self, cfg: dict, parent=None):
         super().__init__(parent)
         self._cfg      = cfg
         self._params   = {}
-        self._markers: list[tuple[float, float]] = []  # (r, theta)
+        self._markers: list[tuple[float, float]] = []
         self._frame    = 0
         self._n_frames = 0
         self._ready    = False
+        self._gen      = 0   # compteur de génération anti-stale
 
         self._timer = QTimer()
         self._timer.setInterval(cfg.get("physics", {}).get("frame_ms", 16))
@@ -65,24 +74,21 @@ class BaseSimWidget(QWidget):
         self._layout = main_layout
 
     def _init_plot(self, plot_widget: QWidget) -> None:
-        """Appelé par la sous-classe pour enregistrer et insérer le widget de rendu."""
         self._layout.addWidget(plot_widget)
 
     # ── Interface abstraite ───────────────────────────────────────────────────
 
     def _compute(self) -> None:
-        """Calcul de la trajectoire dans le thread worker. PAS d'appels Qt."""
         raise NotImplementedError
 
     def _draw_initial(self) -> None:
-        """Affichage de la frame 0 dans le thread principal."""
+        pass
 
     def _draw(self, frame: int) -> None:
-        """Mise à jour de l'affichage pour la frame donnée (thread principal)."""
         raise NotImplementedError
 
     def _add_marker(self, r: float, theta: float) -> None:
-        """Rendu d'un marqueur dans la scène. Appelé après stockage."""
+        pass
 
     # ── API publique ──────────────────────────────────────────────────────────
 
@@ -92,19 +98,25 @@ class BaseSimWidget(QWidget):
         self._params = params
         self._frame  = 0
         self._ready  = False
+        self._gen   += 1
+        gen = self._gen
 
-        self._thread = QThread()
-        self._worker = _Worker(self)
-        self._worker.moveToThread(self._thread)
+        thread = QThread()
+        worker = _Worker(self)
+        worker.moveToThread(thread)
 
-        self._thread.started.connect(self._worker.run)
-        self._worker.finished.connect(self._on_done)
-        self._worker.failed.connect(self._on_failed)
-        self._worker.finished.connect(self._thread.quit)
-        self._worker.failed.connect(self._thread.quit)
-        self._thread.finished.connect(self._cleanup_thread)
+        thread.started.connect(worker.run)
+        worker.finished.connect(lambda: self._on_done(gen))
+        worker.failed.connect(lambda msg: self._on_failed(gen, msg))
+        worker.finished.connect(thread.quit)
+        worker.failed.connect(thread.quit)
+        # deleteLater : l'objet C++ reste vivant jusqu'à la fin du thread,
+        # indépendamment de la durée de vie du wrapper Python.
+        thread.finished.connect(thread.deleteLater)
 
-        self._thread.start()
+        self._thread = thread
+        self._worker = worker
+        thread.start()
 
     def start(self) -> None:
         if self._ready:
@@ -138,23 +150,20 @@ class BaseSimWidget(QWidget):
 
     # ── Slots internes ────────────────────────────────────────────────────────
 
-    @Slot()
-    def _on_done(self) -> None:
+    def _on_done(self, gen: int) -> None:
+        if gen != self._gen:
+            return  # résultat périmé — un nouveau setup() a déjà été lancé
         self._ready = True
         self._frame = 0
         self._draw_initial()
         self.compute_done.emit()
         self._timer.start()
 
-    @Slot(str)
-    def _on_failed(self, msg: str) -> None:
+    def _on_failed(self, gen: int, msg: str) -> None:
+        if gen != self._gen:
+            return
         log.error("%s._compute() : %s", type(self).__name__, msg)
         self.error_occurred.emit(msg)
-
-    @Slot()
-    def _cleanup_thread(self) -> None:
-        self._thread = None
-        self._worker = None
 
     @Slot(float, float)
     def _on_marker_added(self, r: float, theta: float) -> None:
@@ -173,6 +182,10 @@ class BaseSimWidget(QWidget):
 
     def _stop(self) -> None:
         self._timer.stop()
+        if self._worker:
+            self._worker.cancelled = True
         if self._thread and self._thread.isRunning():
             self._thread.quit()
             self._thread.wait()
+        self._thread = None
+        self._worker = None
