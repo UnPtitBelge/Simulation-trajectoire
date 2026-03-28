@@ -1,6 +1,5 @@
 # Spécifique à la membrane — les valeurs partagées viennent de common.toml.
 
 [physics]
-r_min = 0.05   # rayon intérieur (m) — évite la singularité ln(r/R) → -∞
-               # Doit être ≥ center_radius pour éviter la collision
 k     = 0.035  # k = (center_mass·g)/(2πT), paramètre de courbure (m)
+# r_min = center_radius → hérité de common.toml [physics]

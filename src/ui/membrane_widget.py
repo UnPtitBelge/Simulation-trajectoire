@@ -54,10 +54,10 @@ class MembraneWidget(BaseSimWidget):
         phys = cfg["physics"]
         self.R_MAX     = phys["R"]
         self._k        = phys["k"]
-        self._r_min    = phys["r_min"]
+        self._r_min    = phys["center_radius"]
         self._R        = phys["R"]
-        self._ball_r   = phys.get("ball_radius",   0.005)
-        self._center_r = phys.get("center_radius", 0.03)
+        self._ball_r   = phys["ball_radius"]
+        self._center_r = phys["center_radius"]
         self._traj: np.ndarray | None = None
 
         self._gl: gl.GLViewWidget = gl.GLViewWidget()
@@ -108,7 +108,7 @@ class MembraneWidget(BaseSimWidget):
         vr0, vtheta0 = v0_dir_to_vr_vtheta(p["v0"], p["direction_deg"])
         self._traj = compute_membrane(
             r0=p["r0"], theta0=p["theta0"], vr0=vr0, vtheta0=vtheta0,
-            R=phys["R"], k=phys["k"], r_min=phys["r_min"],
+            R=phys["R"], k=phys["k"], r_min=phys["center_radius"],
             friction=phys["friction"], g=phys["g"],
             dt=phys["dt"], n_steps=phys["n_steps"],
         )

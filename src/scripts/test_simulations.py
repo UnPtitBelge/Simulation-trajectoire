@@ -69,7 +69,7 @@ def run_membrane(cfg: dict) -> np.ndarray:
     vr0, vtheta0 = v0_dir_to_vr_vtheta(preset["v0"], preset["direction_deg"])
     return compute_membrane(
         r0=preset["r0"], theta0=preset["theta0"], vr0=vr0, vtheta0=vtheta0,
-        R=phys["R"], k=phys["k"], r_min=phys["r_min"],
+        R=phys["R"], k=phys["k"], r_min=phys["center_radius"],
         friction=phys["friction"], g=phys["g"],
         dt=phys["dt"], n_steps=phys["n_steps"],
         ball_radius=phys["ball_radius"], ball_mass=phys["ball_mass"],
@@ -136,7 +136,7 @@ if __name__ == "__main__":
     print_stats("MEMBRANE", traj_membrane, membrane_cfg["physics"]["dt"],
                 membrane_cfg["physics"]["n_steps"],
                 R=membrane_cfg["physics"]["R"],
-                r_min=membrane_cfg["physics"]["r_min"])
+                r_min=membrane_cfg["physics"]["center_radius"])
     print()
 
     plot_trajectories(traj_cone, cone_cfg, traj_membrane, membrane_cfg)
