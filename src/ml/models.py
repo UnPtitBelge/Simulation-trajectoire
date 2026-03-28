@@ -1,13 +1,12 @@
 """Wrappers pour les modèles de prédiction de pas (step models).
 
-Les deux modèles apprennent les résidus Δs = s_{t+1} - s_{t} (en espace
-features) plutôt que l'état absolu. Avantages :
+Les deux modèles apprennent les résidus Δs = feat(s_{t+1}) - feat(s_t)
+plutôt que l'état absolu. Avantages :
   - Les deltas sont ~100× plus petits (dt = 0.01 s), plus faciles à apprendre.
-  - La relation Δr ≈ dt·vr est quasi-linéaire → SGD la capture parfaitement.
   - Les erreurs de prédiction s'accumulent moins vite sur de longues séquences.
 
 Entraînement incrémental :
-  - LinearStepModel  : MultiOutputRegressor(SGDRegressor) → partial_fit()
+  - LinearStepModel  : Ridge via équations normales (XtX / Xty) → exact, stable
   - MLPStepModel     : MLPRegressor(warm_start=True) → fit() batch par batch
 
 Les scalers sont inclus dans chaque modèle (fit sur le 1er chunk).
@@ -21,23 +20,46 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import StandardScaler
 
 
-N_FEATURES = 5  # (r, cos θ, sin θ, vr, vθ)
-_R_MIN = 0.05   # rayon minimal physique (centre du cône)
+N_FEATURES = 9  # (r, cosθ, sinθ, vr, vθ, vθ²/r, vr·vθ/r, sinθ·vθ/r, cosθ·vθ/r)
 
 
 def _clip_state(state: np.ndarray) -> np.ndarray:
-    """Clippe r à [_R_MIN, +inf) et reflète vr si nécessaire."""
-    if state[0] < _R_MIN:
+    """Empêche r < 0 (non physique). La butée au r_min physique est gérée
+    par predict_trajectory, pas ici — sinon _clip_state bloque la condition
+    d'arrêt en maintenant r > r_min en permanence."""
+    if state[0] < 0.0:
         state = state.copy()
-        state[0] = _R_MIN
-        state[2] = max(state[2], 0.0)  # vr ≥ 0 au bord intérieur
+        state[0] = 0.0
+        state[2] = max(state[2], 0.0)
     return state
 
 
 def state_to_features(state: np.ndarray) -> np.ndarray:
-    """(r, θ, vr, vθ) → (r, cos θ, sin θ, vr, vθ). Fonctionne sur batches."""
+    """(r, θ, vr, vθ) → 9 features. Fonctionne sur batches.
+
+    Les 3 features supplémentaires sont les produits croisés manquants pour la LR :
+
+      vθ²/r     — terme centrifuge dans Δvr
+      vr·vθ/r   — terme de Coriolis dans Δvθ  (= −Δvθ/dt sans friction)
+      sinθ·vθ/r — couplage angulaire dans Δcosθ (= −Δcosθ/dt)
+      cosθ·vθ/r — couplage angulaire dans Δsinθ (=  Δsinθ/dt)
+
+    Sans ces produits, la LR ne peut qu'approximer ces termes à partir de features
+    séparées, ce qui crée une boucle de rétroaction oscillante en prédiction récursive.
+
+    features_to_state ignore les features 5-8 (quantités dérivées recomputées).
+    """
     r, theta, vr, vtheta = state[..., 0], state[..., 1], state[..., 2], state[..., 3]
-    return np.stack([r, np.cos(theta), np.sin(theta), vr, vtheta], axis=-1)
+    r_safe = np.maximum(r, 1e-6)
+    centrifugal   = vtheta ** 2 / r_safe
+    coriolis      = vr * vtheta  / r_safe
+    dcos_coeff    = np.sin(theta) * vtheta / r_safe
+    dsin_coeff    = np.cos(theta) * vtheta / r_safe
+    return np.stack(
+        [r, np.cos(theta), np.sin(theta), vr, vtheta,
+         centrifugal, coriolis, dcos_coeff, dsin_coeff],
+        axis=-1,
+    )
 
 
 def features_to_state(features: np.ndarray) -> np.ndarray:

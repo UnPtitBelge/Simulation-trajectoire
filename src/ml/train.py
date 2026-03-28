@@ -188,18 +188,13 @@ def compute_exp_centers(df: pd.DataFrame, tracking_cfg: dict) -> dict:
     }
 
 
-def _iter_real_pairs(csv_path: Path, tracking_cfg: dict):
-    """Génère (X_feat, y_feat) expérience par expérience sans tout charger en RAM.
+def _iter_real_pairs(df: pd.DataFrame, centers: dict):
+    """Génère (X_feat, y_feat) expérience par expérience depuis un DataFrame déjà chargé.
 
     Coordonnées en pixels centrées sur le centre propre à chaque expérience
     (correction de l'offset caméra via compute_exp_centers).
     Les vitesses (speedX, speedY) sont invariantes à la translation.
     """
-    df = pd.read_csv(csv_path, sep=";", skipinitialspace=True)
-    df.columns = df.columns.str.strip()
-
-    centers = compute_exp_centers(df, tracking_cfg)
-
     for exp_id, group in df.groupby("expID"):
         group = group.sort_values("temps")
         cx, cy = centers[exp_id]
@@ -222,15 +217,19 @@ def _iter_real_pairs(csv_path: Path, tracking_cfg: dict):
 def train_real(csv_path: Path, tracking_cfg: dict, n_passes: int = 3) -> tuple:
     """Charge le CSV de tracking, entraîne LR + MLP, retourne (lr_model, mlp_model).
 
-    Entraîne les deux modèles dans le même pass (une seule lecture du CSV par pass).
+    Le CSV et les centres sont calculés une seule fois puis réutilisés à chaque pass.
     Les modèles sont retournés en mémoire (pas sauvegardés sur disque).
     """
     lr_model  = LinearStepModel()
     mlp_model = MLPStepModel()
 
+    df = pd.read_csv(csv_path, sep=";", skipinitialspace=True)
+    df.columns = df.columns.str.strip()
+    centers = compute_exp_centers(df, tracking_cfg)
+
     for pass_idx in range(n_passes):
         log.info("Entraînement réel — pass %d/%d", pass_idx + 1, n_passes)
-        for X_feat, y_feat in _iter_real_pairs(csv_path, tracking_cfg):
+        for X_feat, y_feat in _iter_real_pairs(df, centers):
             lr_model.partial_fit(X_feat, y_feat)
             mlp_model.partial_fit(X_feat, y_feat)
         gc.collect()
