@@ -380,7 +380,7 @@ def _iter_real_pairs(
         yield state_to_features(states[:-1]), state_to_features(states[1:])
 
 
-def train_real(csv_path: Path, tracking_cfg: dict, n_passes: int = 3) -> tuple:
+def train_real(csv_path: Path, tracking_cfg: dict, n_passes: int = 3, physics_cfg: dict | None = None) -> tuple:
     """Charge le CSV de tracking, entraîne LR + MLP, retourne (lr_model, mlp_model).
 
     Pipeline :
@@ -394,7 +394,8 @@ def train_real(csv_path: Path, tracking_cfg: dict, n_passes: int = 3) -> tuple:
     df = pd.read_csv(csv_path, sep=";", skipinitialspace=True)
     df.columns = df.columns.str.strip()
     centers  = compute_exp_centers(df, tracking_cfg)
-    r_min_px = tracking_cfg.get("center_radius", 0.03) * tracking_cfg.get("px_per_meter", 1350.0)
+    phys     = physics_cfg if physics_cfg is not None else tracking_cfg
+    r_min_px = phys.get("center_radius", 0.03) * tracking_cfg.get("px_per_meter", 1350.0)
     exp_ids  = sorted(df["expID"].unique().tolist())
 
     # ── Pré-passe : calibrage des scalers sur toutes les expériences ──────────

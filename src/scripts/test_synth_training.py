@@ -270,7 +270,7 @@ if __name__ == "__main__":
 
     cfg = load_config("ml")
 
-    phys         = cfg["synth"]["physics"]
+    phys         = {**cfg["physics"], **cfg["synth"]["physics"]}
     dt           = phys["dt"]
     n_steps_pred = cfg["display"]["n_steps_pred"]  # borne affichage/prédiction
     R            = phys["R"]

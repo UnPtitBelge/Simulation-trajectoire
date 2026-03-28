@@ -139,10 +139,10 @@ def plot_results(
 
 if __name__ == "__main__":
     cfg        = load_config("ml")
-    phys       = cfg["synth"]["physics"]
+    phys       = {**cfg["physics"], **cfg["synth"]["physics"]}
     dt         = phys["dt"]
     n_steps    = cfg["display"]["n_steps_pred"]
-    R          = cfg["tracking"]["R"]
+    R          = cfg["physics"]["R"]
     models_dir = ROOT / cfg["paths"]["models_dir"]
     preset     = cfg["preset"]["default"]
 
@@ -159,8 +159,8 @@ if __name__ == "__main__":
     trajs: dict = {}
     missing: list[str] = []
 
-    r_min  = phys.get("center_radius", 0.03)
-    v_stop = phys.get("v_stop", 0.002)
+    r_min  = phys["center_radius"]
+    v_stop = phys["v_stop"]
 
     for algo in ALGOS:
         for context in CONTEXTS:

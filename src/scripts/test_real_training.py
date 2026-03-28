@@ -292,7 +292,7 @@ if __name__ == "__main__":
     tracking = cfg["tracking"]
     csv_path = ROOT / cfg["paths"]["tracking_data"]
     cx, cy   = tracking["center_x"], tracking["center_y"]
-    R_px     = tracking["R"] * tracking["px_per_meter"]
+    R_px     = cfg["physics"]["R"] * tracking["px_per_meter"]
 
     print("\nChargement des données de tracking (unités pixels, correction offset caméra)...")
     experiments = load_experiments(csv_path, tracking)
@@ -319,9 +319,9 @@ if __name__ == "__main__":
     lr_model, mlp_model = train_on_experiments(experiments, test_id, args.passes)
 
     # Seuils en unités pixel : r_min_px, v_stop_px
-    r_min_px   = tracking["center_radius"] * tracking["px_per_meter"]
+    r_min_px   = cfg["physics"]["center_radius"] * tracking["px_per_meter"]
     vel_scale  = tracking.get("real_width", 172) / tracking.get("video_width", 960)
-    v_stop_px  = tracking["v_stop"] * tracking["px_per_meter"] * vel_scale
+    v_stop_px  = cfg["physics"]["v_stop"] * tracking["px_per_meter"] * vel_scale
 
     # r_max=None : le tracking peut dépasser R (calibration approx.)
     n_steps = len(test_states)

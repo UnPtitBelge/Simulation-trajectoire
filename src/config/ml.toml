@@ -1,7 +1,6 @@
 # Spécifique au pipeline ML — les valeurs partagées viennent de common.toml.
-# [synth.physics] reproduit intentionnellement les constantes du cône : ce sont
-# les paramètres utilisés pour générer les données d'entraînement.
-# Ils doivent rester synchronisés avec cone.toml (depth notamment).
+# [synth.physics] ne contient que depth (spécifique au cône) ; R, g, friction,
+# dt, n_steps, center_radius et v_stop sont hérités de common.toml [physics].
 
 [paths]
 tracking_data = "data/tracking_data.csv"
@@ -20,27 +19,19 @@ models_dir     = "data/models"
 center_x       = 960      # centre de la frame 1920×1080
 center_y       = 540
 px_per_meter   = 1350.0   # à affiner : rayon_pixels_du_bord / 0.4 m
-R              = 0.4      # rayon physique du cône (m) — même que cone.toml
-center_radius  = 0.03     # rayon de la bille centrale (m) → r_min pour la prédiction
 n_passes       = 3        # nombre de passes d'entraînement sur les données réelles
 fps            = 30       # fréquence d'acquisition de la caméra (Hz)
 roi_margin     = 120      # demi-largeur de la fenêtre ROI pour la détection (px)
 n_trail_frames = 20       # nombre de positions conservées pour le tracé de trajectoire
 real_width     = 172      # largeur réelle (unités arbitraires) — paramètre PositionsAnalytics
 video_width    = 960      # largeur vidéo (px) utilisée lors de l'enregistrement
-v_stop         = 0.002    # seuil vitesse arrêt (m/s) — converti en unités modèle dans _compute_real
+# R, center_radius, v_stop → common.toml [physics]
 
-# Paramètres physiques utilisés pour la génération synthétique
-# Doit correspondre à cone.toml pour cohérence avec les données réelles
+# Paramètres physiques utilisés pour la génération synthétique.
+# Seul depth est spécifique au cône ML ; les autres (R, g, friction, dt,
+# n_steps, center_radius, v_stop) sont hérités de common.toml [physics].
 [synth.physics]
-R             = 0.4
 depth         = 0.09
-friction      = 0.02
-g             = 9.81
-dt            = 0.01
-n_steps       = 100_000  # pas max par trajectoire d'entraînement (arrêt anticipé si |v|→0 ou r≥R)
-center_radius = 0.03     # rayon de la bille centrale (m) → r_min pour la prédiction
-v_stop        = 0.002    # seuil de vitesse (m/s) sous lequel la bille est considérée arrêtée
 
 # Borne max pour la prédiction ML et l'animation.
 # Indépendant de n_steps : les 3 conditions d'arrêt (r≥R, |v|→0, n_steps_pred)
@@ -91,21 +82,4 @@ r0            = [0.02, 0.39]
 theta0        = [0.0,  6.28]
 v0            = [0.0,  2.0]
 direction_deg = [-180.0, 180.0]  # 0°=tangentiel, 90°=radial sortant
-
-[preset.default]
-r0            = 0.36
-theta0        = 0.0
-v0            = 0.99
-direction_deg = -5    # 0° = purement tangentiel
-
-[preset.1]
-r0            = 0.20
-theta0        = 1.57
-v0            = 1.5
-direction_deg = 45.0   # mi-tangentiel, mi-radial sortant
-
-[preset.2]
-r0            = 0.10
-theta0        = 3.14
-v0            = 2.0
-direction_deg = -90.0  # radial entrant (bille lancée vers le centre)
+# Les presets sont hérités de common.toml (identiques)

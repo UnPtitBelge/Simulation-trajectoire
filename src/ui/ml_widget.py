@@ -43,9 +43,9 @@ class MLWidget(BaseSimWidget):
         # Mode réel : coordonnées en pixels (comme les données d'entraînement)
         # Mode synth : coordonnées en mètres
         if mode == "real":
-            self.R_MAX = cfg["tracking"]["R"] * cfg["tracking"]["px_per_meter"]
+            self.R_MAX = cfg["physics"]["R"] * cfg["tracking"]["px_per_meter"]
         else:
-            self.R_MAX = cfg["tracking"]["R"]
+            self.R_MAX = cfg["physics"]["R"]
         self._mode      = mode
         self._models    = models or {}
         self._n_train   = cfg.get("display", {}).get("n_train_trajs", 20)
@@ -237,8 +237,8 @@ class MLWidget(BaseSimWidget):
         v0_scaled   = p["v0"] * ppm * vel_scale
         vr0, vth0   = v0_dir_to_vr_vtheta(v0_scaled, p["direction_deg"])
         init        = np.array([r0_px, p["theta0"], vr0, vth0])
-        r_min_px    = tracking.get("center_radius", 0.03) * ppm
-        v_stop_real = tracking.get("v_stop", 0.002) * ppm * vel_scale
+        r_min_px    = self._cfg["physics"]["center_radius"] * ppm
+        v_stop_real = self._cfg["physics"]["v_stop"] * ppm * vel_scale
 
         model = self._load_model()
         if model is None:
@@ -253,7 +253,7 @@ class MLWidget(BaseSimWidget):
 
     def _compute_synth(self, p: dict, n_steps: int) -> None:
         """Mode synthétique : modèles entraînés en mètres, vérité terrain via compute_cone."""
-        phys = self._cfg.get("synth", {}).get("physics", {})
+        phys = {**self._cfg["physics"], **self._cfg.get("synth", {}).get("physics", {})}
 
         vr0, vtheta0 = v0_dir_to_vr_vtheta(p["v0"], p["direction_deg"])
         init = np.array([p["r0"], p["theta0"], vr0, vtheta0])
@@ -336,7 +336,7 @@ class MLWidget(BaseSimWidget):
             tracking = self._cfg["tracking"]
             ppm      = tracking["px_per_meter"]
             r_max    = self.R_MAX  # pixels
-            r_min    = tracking.get("center_radius", 0.03) * ppm
+            r_min    = self._cfg["physics"]["center_radius"] * ppm
             if r_end >= r_max - 1.0:
                 stop = "Sortie bord"
             elif r_end <= r_min + 1.0:
@@ -345,9 +345,9 @@ class MLWidget(BaseSimWidget):
                 stop = "Arrêt (vitesse nulle)"
             return f"Réel — {algo}\n{n} pas prédits — {stop}"
         else:
-            phys  = self._cfg["synth"]["physics"]
+            phys  = {**self._cfg["physics"], **self._cfg["synth"]["physics"]}
             r_max = phys["R"]
-            r_min = phys.get("center_radius", 0.03)
+            r_min = phys["center_radius"]
             n_max = self._cfg["display"]["n_steps_pred"]
             if n >= n_max:
                 stop = "Borne atteinte"
