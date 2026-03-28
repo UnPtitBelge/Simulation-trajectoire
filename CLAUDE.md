@@ -90,6 +90,13 @@ Tous les widgets de simulation héritent de `ui/base_sim_widget.py`. Le cycle de
 
 Les sous-classes implémentent : `_compute()`, `_draw_initial()`, `_draw(frame)`, `_add_marker(r, theta)`.
 
+#### Sécurité thread (BaseSimWidget)
+
+- `_Worker.finished = Signal(int)` et `failed = Signal(int, str)` portent le numéro de génération (`gen`).
+- Connexion directe aux méthodes `self._on_done` / `self._on_failed` (méthodes d'un `QWidget` dans le thread principal) → Qt choisit automatiquement une **Queued Connection** → callbacks exécutés dans le thread Qt, jamais dans le thread worker.
+- Ne pas utiliser de lambdas pour ces connexions : une lambda n'est pas un `QObject`, Qt ne peut pas déterminer son thread et utilise Direct Connection → `_timer.start()` depuis le mauvais thread.
+- `_stop()` protège `isRunning()` par `try/except RuntimeError` : `thread.deleteLater` peut supprimer l'objet C++ avant que Python n'ait nettoyé la référence `self._thread`.
+
 ### Config → UI (pipeline contrôles)
 
 `ControlsPanel` (`ui/controls.py`) est **entièrement généré depuis le TOML** :
@@ -112,6 +119,16 @@ Les contrôles UI et les presets utilisent `v0` (norme, m/s) + `direction_deg` (
 
 - **MCU / ML** : `pyqtgraph.PlotWidget` (2D)
 - **Cône / Membrane** : `pyqtgraph.opengl.GLViewWidget` (3D) — mesh généré par `_cone_surface_mesh()` / `_membrane_surface_mesh()` à l'init
+
+### Distribution des conditions initiales synthétiques
+
+`generate_data.py::_sample_initial_conditions` échantillonne :
+- `r0` : `R * sqrt(U[r_frac², 1])` → densité uniforme en surface (aire ∝ r²)
+- `theta0` : `U[0, 2π]`
+- Vitesse : **anneau uniforme** — `v0 ~ U(v_min, v_max)`, `direction ~ U(-π, π)` → `vr = v0·sin(dir)`, `vtheta = v0·cos(dir)`. Évite le biais des diagonales du carré `(vr, vtheta) ∈ [-v_max, v_max]²`.
+- Trajectoires de moins de `min_steps` pas filtrées (bille sortant immédiatement — peu informatives).
+
+Paramètres dans `[synth.generation]` de `ml.toml` : `v_min`, `v_max`, `min_steps`.
 
 ### Entraînement parallèle
 
