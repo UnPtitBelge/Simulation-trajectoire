@@ -178,15 +178,16 @@ class MainWindow(QMainWindow):
     # ── Raccourcis clavier ────────────────────────────────────────────────────
 
     def _setup_shortcuts(self) -> None:
-        QShortcut(QKeySequence("["),        self, self._prev_preset)
-        QShortcut(QKeySequence("]"),        self, self._next_preset)
-        QShortcut(QKeySequence("Space"),    self, self._toggle_play)
-        QShortcut(QKeySequence("R"),        self, self._reset_sim)
-        QShortcut(QKeySequence("L"),        self, self._algo_linear)
-        QShortcut(QKeySequence("M"),        self, self._algo_mlp)
-        QShortcut(QKeySequence("Ctrl+1"),   self, lambda: self._set_context(0))
-        QShortcut(QKeySequence("Ctrl+2"),   self, lambda: self._set_context(1))
-        QShortcut(QKeySequence("Ctrl+3"),   self, lambda: self._set_context(2))
+        ctx = Qt.ShortcutContext.ApplicationShortcut  # actif même si un widget enfant a le focus
+        QShortcut(QKeySequence("["),        self, self._prev_preset,           context=ctx)
+        QShortcut(QKeySequence("]"),        self, self._next_preset,           context=ctx)
+        QShortcut(QKeySequence("Space"),    self, self._toggle_play,           context=ctx)
+        QShortcut(QKeySequence("R"),        self, self._reset_sim,             context=ctx)
+        QShortcut(QKeySequence("L"),        self, self._algo_linear,           context=ctx)
+        QShortcut(QKeySequence("M"),        self, self._algo_mlp,              context=ctx)
+        QShortcut(QKeySequence("Ctrl+1"),   self, lambda: self._set_context(0), context=ctx)
+        QShortcut(QKeySequence("Ctrl+2"),   self, lambda: self._set_context(1), context=ctx)
+        QShortcut(QKeySequence("Ctrl+3"),   self, lambda: self._set_context(2), context=ctx)
 
     # ── Feedback erreurs ──────────────────────────────────────────────────────
 

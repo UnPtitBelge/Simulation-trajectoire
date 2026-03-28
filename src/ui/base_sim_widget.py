@@ -163,7 +163,7 @@ class BaseSimWidget(QWidget):
         self._frame = 0
         self._draw_initial()
         self.compute_done.emit()
-        self._timer.start()
+        # Pas d'auto-start : l'utilisateur démarre l'animation via Espace
 
     @Slot(int, str)
     def _on_failed(self, gen: int, msg: str) -> None:

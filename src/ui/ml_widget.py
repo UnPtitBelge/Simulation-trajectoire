@@ -143,7 +143,10 @@ class MLWidget(BaseSimWidget):
             self._traj = np.zeros((1, 4))
             self._n_frames = 1
             return
-        self._traj     = predict_trajectory(model, init, n_steps, r_max=r_max_px)
+        traj_px = predict_trajectory(model, init, n_steps, r_max=r_max_px)
+        # Convertir r de pixels → mètres pour l'affichage (le plot est en mètres)
+        self._traj = traj_px.copy()
+        self._traj[:, 0] /= ppm
         self._n_frames = len(self._traj)
 
     def _compute_synth(self, p: dict, n_steps: int) -> None:
@@ -236,9 +239,8 @@ class MLWidget(BaseSimWidget):
         r_end = self._traj[-1, 0]
 
         if self._mode == "real":
-            ppm   = self._cfg["tracking"]["px_per_meter"]
-            r_max = self._cfg["tracking"]["R"] * ppm
-            stop  = "Sortie bord" if r_end >= r_max - 1.0 else "Arrêt (vitesse nulle)"
+            r_max = self._cfg["tracking"]["R"]  # en mètres (traj déjà convertie)
+            stop  = "Sortie bord" if r_end >= r_max - 1e-3 else "Arrêt (vitesse nulle)"
             return f"Réel — {algo}\n{n} pas prédits — {stop}"
         else:
             r_max  = self._cfg["synth"]["physics"]["R"]
