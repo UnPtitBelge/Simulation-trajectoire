@@ -117,6 +117,8 @@ class LinearStepModel:
                 "Modèle .pkl généré avec l'ancienne implémentation SGD — "
                 "relancer scripts/train_models.py"
             )
+        if not hasattr(self, "scaler_X") or not getattr(self, "_scaler_fitted", False):
+            raise RuntimeError("Modèle non entraîné — appeler partial_fit() d'abord")
         if not hasattr(self, "_W") or self._W is None:
             self._finalize()
         feat = state_to_features(state).reshape(1, -1)
@@ -124,6 +126,8 @@ class LinearStepModel:
         Xb = np.hstack([feat_s, [[1.0]]])
         delta_s = Xb @ self._W
         delta = self.scaler_y.inverse_transform(delta_s)[0]
+        if np.isnan(delta).any() or np.isinf(delta).any():
+            raise RuntimeError(f"Prédiction instable (NaN/Inf dans delta) à state={state}")
         return _clip_state(features_to_state(feat[0] + delta))
 
     def save(self, path: Path) -> None:
@@ -172,10 +176,14 @@ class MLPStepModel:
         self.model.fit(Xs, ys)
 
     def predict_step(self, state: np.ndarray) -> np.ndarray:
+        if not hasattr(self, "scaler_X") or not getattr(self, "_scaler_fitted", False):
+            raise RuntimeError("Modèle non entraîné — appeler partial_fit() d'abord")
         feat = state_to_features(state).reshape(1, -1)
         feat_s = self.scaler_X.transform(feat)
         delta_s = self.model.predict(feat_s)
         delta = self.scaler_y.inverse_transform(delta_s)[0]
+        if np.isnan(delta).any() or np.isinf(delta).any():
+            raise RuntimeError(f"Prédiction instable (NaN/Inf dans delta) à state={state}")
         return _clip_state(features_to_state(feat[0] + delta))
 
     def save(self, path: Path) -> None:

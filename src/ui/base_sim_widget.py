@@ -193,7 +193,8 @@ class BaseSimWidget(QWidget):
             try:
                 if self._thread.isRunning():
                     self._thread.quit()
-                    self._thread.wait()
+                    if not self._thread.wait(5000):
+                        self._thread.terminate()
             except RuntimeError:
                 pass  # C++ object already deleted via deleteLater
         self._thread = None

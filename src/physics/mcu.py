@@ -6,7 +6,6 @@ y(t) = r · sin(θ₀ + ω·t)
 """
 
 import numpy as np
-from utils.angle import deg_to_rad
 
 
 def compute_mcu(
