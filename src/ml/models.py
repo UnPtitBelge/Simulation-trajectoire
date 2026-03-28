@@ -90,7 +90,12 @@ class LinearStepModel:
 
     def predict_step(self, state: np.ndarray) -> np.ndarray:
         """Prédit l'état (r, θ, vr, vθ) suivant depuis l'état courant."""
-        if self._W is None:
+        if not hasattr(self, "_XtX"):
+            raise RuntimeError(
+                "Modèle .pkl généré avec l'ancienne implémentation SGD — "
+                "relancer scripts/train_models.py"
+            )
+        if not hasattr(self, "_W") or self._W is None:
             self._finalize()
         feat = state_to_features(state).reshape(1, -1)
         feat_s = self.scaler_X.transform(feat)

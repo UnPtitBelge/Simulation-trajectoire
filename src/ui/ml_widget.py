@@ -143,7 +143,8 @@ class MLWidget(BaseSimWidget):
             self._traj = np.zeros((1, 4))
             self._n_frames = 1
             return
-        traj_px = predict_trajectory(model, init, n_steps, r_max=r_max_px)
+        r_min_px = tracking.get("center_radius", 0.05) * ppm
+        traj_px = predict_trajectory(model, init, n_steps, r_max=r_max_px, r_min=r_min_px)
         # Convertir r de pixels → mètres pour l'affichage (le plot est en mètres)
         self._traj = traj_px.copy()
         self._traj[:, 0] /= ppm
@@ -194,7 +195,8 @@ class MLWidget(BaseSimWidget):
             self._traj = np.zeros((1, 4))
             self._n_frames = 1
             return
-        self._traj     = predict_trajectory(model, init, n_steps, r_max=self.R_MAX)
+        r_min = phys.get("center_radius", 0.05)
+        self._traj     = predict_trajectory(model, init, n_steps, r_max=self.R_MAX, r_min=r_min)
         self._n_frames = len(self._traj)
 
     def _draw_initial(self) -> None:
