@@ -34,7 +34,7 @@ python src/app.py
 | Cône | Euler semi-implicite sur surface conique | 3D OpenGL |
 | Membrane | Verlet sur surface de Laplace | 3D OpenGL |
 | ML — Réel | Régression linéaire + MLP entraînés sur CSV de tracking | 2D pyqtgraph |
-| ML — Synthétique | Mêmes modèles, 3 contextes (10 % / 50 % / 100 % des données) | 2D pyqtgraph |
+| ML — Synthétique | Mêmes modèles, 4 contextes (1 % / 10 % / 50 % / 100 % des données) | 2D pyqtgraph |
 
 ## Raccourcis clavier
 
@@ -46,7 +46,7 @@ python src/app.py
 | `P` | Poser un marqueur de référence (r, θ) | Tous les onglets |
 | `L` | Sélectionner le modèle Linéaire | ML uniquement |
 | `M` | Sélectionner le modèle MLP | ML uniquement |
-| `Ctrl+1/2/3` | Contexte 10 % / 50 % / 100 % | ML — Synthétique uniquement |
+| `Ctrl+1/2/3/4` | Contexte 1 % / 10 % / 50 % / 100 % | ML — Synthétique uniquement |
 
 ## Structure
 

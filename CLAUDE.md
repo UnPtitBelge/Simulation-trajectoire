@@ -15,8 +15,14 @@ python src/app.py
 # Générer les données synthétiques (prérequis au lancement)
 python src/scripts/generate_data.py [--workers N]
 
-# Entraîner les 6 modèles synthétiques (prérequis au lancement)
-python src/scripts/train_models.py [--workers N]   # max utile : --workers 6
+# Entraîner les 8 modèles synthétiques (prérequis au lancement)
+python src/scripts/train_models.py [--workers N]   # max utile : --workers 8
+
+# Mesurer la convergence LinearStepModel vs nombre de trajectoires
+python src/scripts/benchmark_linear.py [--n-trajectories N] [--n-test N] [--n-contexts N]
+
+# Mesurer la convergence MLPStepModel vs nombre de chunks
+python src/scripts/benchmark_mlp.py [--max-chunks N] [--epochs N] [--n-contexts N]
 
 # Tester les simulations physiques
 python src/scripts/test_simulations.py
@@ -42,7 +48,7 @@ Le répertoire de travail Python est `src/` — tous les imports internes sont r
 
 `app.py` vérifie au démarrage la présence de :
 - `src/data/tracking_data.csv` (données caméra réelles)
-- `src/data/models/synth_{linear,mlp}_{10pct,50pct,100pct}.pkl` (6 modèles)
+- `src/data/models/synth_{linear,mlp}_{1pct,10pct,50pct,100pct}.pkl` (8 modèles)
 
 Sans ces fichiers, une `QMessageBox` bloque le démarrage.
 
@@ -56,7 +62,7 @@ generate_data.py
   → data/synthetic/chunk_NNNNN.npz  (X: état_t, y: état_{t+1})
 
 train_models.py
-  → ml/train.py::train_synth()  (6 modèles × 3 contextes × 2 algos)
+  → ml/train.py::train_synth()  (8 modèles × 4 contextes × 2 algos)
   → data/models/synth_{algo}_{context}.pkl
 
 app.py (au démarrage)

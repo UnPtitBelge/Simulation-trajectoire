@@ -7,7 +7,7 @@ Raccourcis clavier (actifs quelle que soit la fenêtre active) :
   [ / ]       — preset précédent / suivant (onglet actif)
   L           — algorithme Linéaire  (onglets ML uniquement)
   M           — algorithme MLP       (onglets ML uniquement)
-  Ctrl+1/2/3  — contexte d'entraînement (onglet ML — Synthétique uniquement)
+  Ctrl+1–4    — contexte d'entraînement (onglet ML — Synthétique uniquement)
   P           — ajouter un marqueur (géré dans BaseSimWidget)
 """
 
@@ -125,7 +125,7 @@ class MainWindow(QMainWindow):
             ctx_combo.currentTextChanged.connect(
                 lambda _: ml_widget.setup(controls.current_params())
             )
-            controls.add_extra_widget("Contexte  (Ctrl+1/2/3)", ctx_combo)
+            controls.add_extra_widget("Contexte  (Ctrl+1–4)", ctx_combo)
 
         status_label = QLabel("–")
         status_label.setWordWrap(True)
@@ -215,6 +215,7 @@ class MainWindow(QMainWindow):
             lambda: self._set_context(0),
             lambda: self._set_context(1),
             lambda: self._set_context(2),
+            lambda: self._set_context(3),
         ]):
             sc = QShortcut(QKeySequence(f"Ctrl+{i + 1}"), self)
             sc.setContext(ctx)
