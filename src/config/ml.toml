@@ -40,7 +40,9 @@ n_steps_pred = 10_000  # 100 s à dt=0.01 — largement suffisant pour toute tra
 [synth.generation]
 n_trajectories = 1_000_000
 chunk_size     = 10_000
-v_max          = 2.0    # vitesse max pour les CI (m/s) — limité pour stabilité
+v_min      = 0.3    # vitesse min (m/s) — élimine les trajectoires quasi-statiques
+v_max      = 2.0    # vitesse max (m/s) — limité pour stabilité numérique
+min_steps  = 50     # trajectoires de moins de 50 pas ignorées (bille qui sort immédiatement)
 
 # Contextes d'entraînement (fraction des chunks utilisés)
 [synth.contexts]

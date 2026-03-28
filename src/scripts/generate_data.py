@@ -29,20 +29,30 @@ _CENTER_RADIUS = 0.05  # rayon minimal (centre du cône, identique à cone.py)
 
 
 def _sample_initial_conditions(n: int, cfg: dict, rng: np.random.Generator):
-    """Tire n CI plausibles uniformément sur la surface du cône."""
-    R = cfg["R"]
-    v_max = cfg.get("v_max", 3.0)
+    """Tire n CI plausibles uniformément sur la surface du cône.
+
+    Vitesse : anneau uniforme (v0 ∈ [v_min, v_max], direction ∈ [-π, π]).
+    Cela évite le biais des diagonales du carré (vr, vtheta) ∈ [-v_max, v_max]²
+    et garantit que toutes les directions sont équiprobables.
+    """
+    R     = cfg["R"]
+    v_min = cfg.get("v_min", 0.3)
+    v_max = cfg.get("v_max", 2.0)
 
     # densité uniforme sur surface ; clippé à [_CENTER_RADIUS, R) pour éviter r0=0
     r_frac = (_CENTER_RADIUS / R) ** 2
-    r0 = R * np.sqrt(rng.uniform(r_frac, 1.0, n))
-    theta0  = rng.uniform(0.0, 2 * np.pi, n)
-    vr0     = rng.uniform(-v_max, v_max, n)
-    vtheta0 = rng.uniform(-v_max, v_max, n)
+    r0     = R * np.sqrt(rng.uniform(r_frac, 1.0, n))
+    theta0 = rng.uniform(0.0, 2 * np.pi, n)
+
+    # Vitesse : norme uniforme sur [v_min, v_max], direction uniforme sur [-π, π]
+    v0        = rng.uniform(v_min, v_max, n)
+    direction = rng.uniform(-np.pi, np.pi, n)
+    vr0     = v0 * np.sin(direction)   # même convention que v0_dir_to_vr_vtheta
+    vtheta0 = v0 * np.cos(direction)
     return r0, theta0, vr0, vtheta0
 
 
-def _simulate_chunk(r0, theta0, vr0, vtheta0, phys_cfg: dict):
+def _simulate_chunk(r0, theta0, vr0, vtheta0, phys_cfg: dict, gen_cfg: dict):
     """Simule un batch de trajectoires, retourne les paires (état_t, état_{t+1}).
 
     Les trajectoires peuvent être plus courtes que n_steps si la bille sort du
@@ -54,6 +64,8 @@ def _simulate_chunk(r0, theta0, vr0, vtheta0, phys_cfg: dict):
     friction = phys_cfg["friction"]
     g        = phys_cfg["g"]
     dt       = phys_cfg["dt"]
+
+    min_steps = gen_cfg.get("min_steps", 50)
 
     X_parts: list[np.ndarray] = []
     y_parts: list[np.ndarray] = []
@@ -71,7 +83,7 @@ def _simulate_chunk(r0, theta0, vr0, vtheta0, phys_cfg: dict):
             dt=dt,
             n_steps=n_steps,
         )
-        if len(traj) >= 2:
+        if len(traj) >= max(2, min_steps):
             X_parts.append(traj[:-1].astype(np.float32))
             y_parts.append(traj[1:].astype(np.float32))
 
@@ -94,7 +106,7 @@ def _generate_one_chunk(
     """
     rng = np.random.default_rng(seed)
     r0, theta0, vr0, vtheta0 = _sample_initial_conditions(n_this, gen_cfg | phys_cfg, rng)
-    X, y = _simulate_chunk(r0, theta0, vr0, vtheta0, phys_cfg)
+    X, y = _simulate_chunk(r0, theta0, vr0, vtheta0, phys_cfg, gen_cfg)
     out_path = Path(out_dir) / f"chunk_{chunk_idx:05d}.npz"
     np.savez_compressed(out_path, X=X, y=y)
     del r0, theta0, vr0, vtheta0
