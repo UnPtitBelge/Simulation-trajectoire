@@ -59,8 +59,8 @@ n_dir   = 12   # directions (équiréparties sur [-π, π[, tous les 30°)
 
 # Contextes d'entraînement (fraction des chunks utilisés)
 [synth.contexts]
-names     = ["10pct", "50pct", "100pct"]
-fractions = [0.10,    0.50,    1.00]
+names     = ["1pct", "10pct", "50pct", "100pct"]
+fractions = [0.01,   0.10,   0.50,    1.00]
 
 # Hyperparamètres des modèles ML.
 # Changer ces valeurs nécessite de régénérer les modèles (train_models.py).
