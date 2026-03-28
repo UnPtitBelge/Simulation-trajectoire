@@ -89,11 +89,14 @@ def _sample_initial_conditions_grid(cfg: dict):
     return r0_flat, th0_flat, vr0, vtheta0
 
 
-def _simulate_chunk(r0, theta0, vr0, vtheta0, phys_cfg: dict, gen_cfg: dict):
-    """Simule un batch de trajectoires, retourne les paires (état_t, état_{t+1}).
+def _simulate_chunk(
+    r0, theta0, vr0, vtheta0, phys_cfg: dict, gen_cfg: dict
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Simule un batch de trajectoires, retourne (X, y, lengths_kept).
 
-    Les trajectoires peuvent être plus courtes que n_steps si la bille sort du
-    cône (early exit dans compute_cone). Les listes absorbent cette variabilité.
+    X, y          : paires (état_t, état_{t+1}) concaténées.
+    lengths_kept  : longueur (en pas) de chaque trajectoire gardée.
+    Les trajectoires plus courtes que min_steps sont ignorées.
     """
     n_steps  = phys_cfg["n_steps"]
     R        = phys_cfg["R"]
@@ -106,6 +109,7 @@ def _simulate_chunk(r0, theta0, vr0, vtheta0, phys_cfg: dict, gen_cfg: dict):
 
     X_parts: list[np.ndarray] = []
     y_parts: list[np.ndarray] = []
+    lengths: list[int] = []
 
     for i in range(len(r0)):
         traj = compute_cone(
@@ -123,10 +127,12 @@ def _simulate_chunk(r0, theta0, vr0, vtheta0, phys_cfg: dict, gen_cfg: dict):
         if len(traj) >= max(2, min_steps):
             X_parts.append(traj[:-1].astype(np.float32))
             y_parts.append(traj[1:].astype(np.float32))
+            lengths.append(len(traj))
 
     if not X_parts:
-        return np.empty((0, 4), np.float32), np.empty((0, 4), np.float32)
-    return np.vstack(X_parts), np.vstack(y_parts)
+        empty = np.empty((0, 4), np.float32)
+        return empty, empty, np.array([], dtype=np.int32)
+    return np.vstack(X_parts), np.vstack(y_parts), np.array(lengths, dtype=np.int32)
 
 
 def _generate_one_chunk(
@@ -136,21 +142,22 @@ def _generate_one_chunk(
     gen_cfg: dict,
     seed: np.random.SeedSequence,
     out_dir: str,
-) -> tuple[int, int]:
-    """Worker random : génère et sauvegarde un chunk. Retourne (chunk_idx, n_pairs).
+) -> tuple[int, int, int, int, np.ndarray]:
+    """Worker random : génère et sauvegarde un chunk.
 
+    Retourne (chunk_idx, n_pairs, n_simulated, n_kept, lengths).
     Doit être défini au niveau module pour être picklable par multiprocessing.
     """
     rng = np.random.default_rng(seed)
     overlap = set(gen_cfg) & set(phys_cfg)
     assert not overlap, f"Clés communes entre gen_cfg et phys_cfg : {overlap!r}"
     r0, theta0, vr0, vtheta0 = _sample_initial_conditions(n_this, {**gen_cfg, **phys_cfg}, rng)
-    X, y = _simulate_chunk(r0, theta0, vr0, vtheta0, phys_cfg, gen_cfg)
+    X, y, lengths = _simulate_chunk(r0, theta0, vr0, vtheta0, phys_cfg, gen_cfg)
     out_path = Path(out_dir) / f"chunk_{chunk_idx:05d}.npz"
     np.savez_compressed(out_path, X=X, y=y)
     del r0, theta0, vr0, vtheta0
     gc.collect()
-    return chunk_idx, len(X)
+    return chunk_idx, len(X), n_this, len(lengths), lengths
 
 
 def _generate_grid_chunk(
@@ -162,40 +169,107 @@ def _generate_grid_chunk(
     phys_cfg: dict,
     gen_cfg: dict,
     out_dir: str,
-) -> tuple[int, int]:
+) -> tuple[int, int, int, int, np.ndarray]:
     """Worker grille : simule une tranche de CI déterministes et sauvegarde le chunk.
 
+    Retourne (chunk_idx, n_pairs, n_simulated, n_kept, lengths).
     Doit être défini au niveau module pour être picklable par multiprocessing.
     Les CI sont précalculées dans le processus principal et passées directement —
     pas de seed, le résultat est entièrement déterministe.
     """
-    X, y = _simulate_chunk(r0, theta0, vr0, vtheta0, phys_cfg, gen_cfg)
+    n_this = len(r0)
+    X, y, lengths = _simulate_chunk(r0, theta0, vr0, vtheta0, phys_cfg, gen_cfg)
     out_path = Path(out_dir) / f"chunk_{chunk_idx:05d}.npz"
     np.savez_compressed(out_path, X=X, y=y)
     del r0, theta0, vr0, vtheta0
     gc.collect()
-    return chunk_idx, len(X)
+    return chunk_idx, len(X), n_this, len(lengths), lengths
 
 
-def _run_chunks(chunks_args, workers: int, n_chunks: int) -> None:
-    """Exécute les workers (random ou grille) séquentiellement ou en parallèle."""
+def _run_chunks(
+    chunks_args, workers: int, n_chunks: int
+) -> tuple[int, int, int, np.ndarray]:
+    """Exécute les workers et retourne (total_pairs, total_simulated, total_kept, all_lengths)."""
+    total_pairs     = 0
+    total_simulated = 0
+    total_kept      = 0
+    all_lengths: list[np.ndarray] = []
+
+    def _report(idx, n_pairs, n_simulated, n_kept, completed=None):
+        pct = 100 * n_kept / n_simulated if n_simulated > 0 else 0.0
+        tag = f"[{idx + 1:>4}/{n_chunks}]" if completed is None else f"[{completed:>4}/{n_chunks}]"
+        print(
+            f"  {tag} chunk_{idx:05d}.npz  "
+            f"{n_pairs:>9,} paires  |  "
+            f"{n_kept:,}/{n_simulated:,} traj. gardées ({pct:.0f}%)"
+        )
+
     if workers == 1:
         for fn, args in chunks_args:
-            idx, n_pairs = fn(*args)
+            idx, n_pairs, n_simulated, n_kept, lengths = fn(*args)
+            total_pairs     += n_pairs
+            total_simulated += n_simulated
+            total_kept      += n_kept
+            all_lengths.append(lengths)
             if (idx + 1) % 10 == 0 or idx == n_chunks - 1:
-                print(f"  [{idx + 1:>4}/{n_chunks}] chunk_{idx:05d}.npz  ({n_pairs:,} paires)")
+                _report(idx, n_pairs, n_simulated, n_kept)
     else:
         with ProcessPoolExecutor(max_workers=workers) as executor:
             futures = {executor.submit(fn, *args): None for fn, args in chunks_args}
             completed = 0
             for future in as_completed(futures):
-                chunk_idx, n_pairs = future.result()
+                idx, n_pairs, n_simulated, n_kept, lengths = future.result()
+                total_pairs     += n_pairs
+                total_simulated += n_simulated
+                total_kept      += n_kept
+                all_lengths.append(lengths)
                 completed += 1
                 if completed % 10 == 0 or completed == n_chunks:
-                    print(
-                        f"  [{completed:>4}/{n_chunks}] chunk_{chunk_idx:05d}.npz"
-                        f"  ({n_pairs:,} paires)"
-                    )
+                    _report(idx, n_pairs, n_simulated, n_kept, completed)
+
+    lens_arr = np.concatenate(all_lengths) if all_lengths else np.array([], dtype=np.int32)
+    return total_pairs, total_simulated, total_kept, lens_arr
+
+
+def _plot_generation_stats(all_lengths: np.ndarray, n_kept: int, n_simulated: int) -> None:
+    """Affiche 2 plots : histogramme des longueurs et distribution cumulée."""
+    import matplotlib.pyplot as plt
+
+    fig, (ax_hist, ax_cdf) = plt.subplots(1, 2, figsize=(12, 5))
+    fig.suptitle(
+        f"Statistiques de génération — {n_kept:,} trajectoires gardées / {n_simulated:,} simulées "
+        f"({100 * n_kept / n_simulated:.1f}%)",
+        fontsize=12,
+    )
+
+    # Histogramme
+    ax_hist.hist(all_lengths, bins=60, color="steelblue", edgecolor="white", linewidth=0.4)
+    ax_hist.axvline(float(np.median(all_lengths)), color="tomato",
+                    linestyle="--", linewidth=1.5, label=f"Médiane = {np.median(all_lengths):.0f}")
+    ax_hist.axvline(float(np.mean(all_lengths)), color="orange",
+                    linestyle=":",  linewidth=1.5, label=f"Moyenne = {np.mean(all_lengths):.0f}")
+    ax_hist.set_title("Distribution des longueurs de trajectoire")
+    ax_hist.set_xlabel("Longueur (pas)")
+    ax_hist.set_ylabel("Nombre de trajectoires")
+    ax_hist.legend(fontsize=9)
+    ax_hist.grid(True, alpha=0.25)
+
+    # CDF
+    sorted_lens = np.sort(all_lengths)
+    cdf = np.arange(1, len(sorted_lens) + 1) / len(sorted_lens)
+    ax_cdf.plot(sorted_lens, cdf, color="steelblue", linewidth=1.5)
+    for pct in [25, 50, 75, 95]:
+        val = float(np.percentile(all_lengths, pct))
+        ax_cdf.axvline(val, linestyle="--", linewidth=0.8, alpha=0.7,
+                       label=f"p{pct} = {val:.0f}")
+    ax_cdf.set_title("Fonction de répartition (CDF)")
+    ax_cdf.set_xlabel("Longueur (pas)")
+    ax_cdf.set_ylabel("Fraction cumulée")
+    ax_cdf.legend(fontsize=8)
+    ax_cdf.grid(True, alpha=0.25)
+
+    plt.tight_layout()
+    plt.show()
 
 
 def main():
@@ -204,6 +278,10 @@ def main():
     parser.add_argument(
         "--workers", type=int, default=max(1, (os.cpu_count() or 2) - 1),
         help="Nombre de processus parallèles (défaut : nb_CPU - 1)",
+    )
+    parser.add_argument(
+        "--plot", action="store_true",
+        help="Afficher les statistiques de génération après la fin",
     )
     parser.add_argument(
         "--mode", choices=["random", "grid"], default="random",
@@ -261,8 +339,30 @@ def main():
             for i in range(n_chunks)
         ]
 
-    _run_chunks(chunks_args, args.workers, n_chunks)
+    total_pairs, total_simulated, total_kept, all_lengths = _run_chunks(
+        chunks_args, args.workers, n_chunks
+    )
+
+    # ── Résumé final ──────────────────────────────────────────────────────────
+    pct_kept = 100 * total_kept / total_simulated if total_simulated > 0 else 0.0
+    pct_filt = 100 - pct_kept
+    print(f"\n{'═' * 58}")
+    print(f"  Trajectoires simulées    : {total_simulated:>12,}")
+    print(f"  Trajectoires gardées     : {total_kept:>12,}  ({pct_kept:.1f}%)")
+    print(f"  Trajectoires filtrées    : {total_simulated - total_kept:>12,}  ({pct_filt:.1f}%)")
+    print(f"  Paires d'entraînement    : {total_pairs:>12,}")
+    if len(all_lengths) > 0:
+        print(f"  Longueur trajectoires    : "
+              f"moy={np.mean(all_lengths):.0f}  "
+              f"méd={np.median(all_lengths):.0f}  "
+              f"p5={np.percentile(all_lengths, 5):.0f}  "
+              f"p95={np.percentile(all_lengths, 95):.0f}  "
+              f"max={all_lengths.max()}")
+    print(f"{'═' * 58}")
     print(f"\nTerminé. Données écrites dans : {out_dir}")
+
+    if args.plot and len(all_lengths) > 0:
+        _plot_generation_stats(all_lengths, total_kept, total_simulated)
 
 
 if __name__ == "__main__":

@@ -97,8 +97,8 @@ def _train_lr_context(
     context_name: str,
     scaler_X: StandardScaler,
     scaler_y: StandardScaler,
-) -> str:
-    """Entraîne LinearStepModel sur les chunks donnés. Retourne le nom du fichier sauvegardé.
+) -> tuple[str, dict]:
+    """Entraîne LinearStepModel sur les chunks donnés. Retourne (nom_fichier, {"val_mse": float}).
 
     1 seule passe : les équations normales sont exactes, répéter les mêmes
     données biaise la régularisation sans améliorer la solution.
@@ -119,14 +119,15 @@ def _train_lr_context(
         if (i + 1) % 10 == 0:
             _log.info("  LR [%s] — chunk %d/%d", context_name, i + 1, len(chunk_paths))
 
+    val_mse = float("nan")
     if val_paths:
-        val = _compute_val_loss(lr_model, val_paths)
-        _log.info("  LR [%s] — val MSE = %.6f (solution exacte)", context_name, val)
+        val_mse = _compute_val_loss(lr_model, val_paths)
+        _log.info("  LR [%s] — val MSE = %.6f (solution exacte)", context_name, val_mse)
 
     name = f"synth_linear_{context_name}.pkl"
     lr_model.save(models_dir / name)
     _log.info("  LinearStepModel [%s] sauvegardé", context_name)
-    return name
+    return name, {"val_mse": val_mse}
 
 
 def _train_mlp_context(
@@ -138,8 +139,8 @@ def _train_mlp_context(
     scaler_y: StandardScaler,
     n_epochs: int = 5,
     patience: int = 2,
-) -> str:
-    """Entraîne MLPStepModel avec shuffle + early stopping. Retourne le nom du fichier sauvegardé.
+) -> tuple[str, dict]:
+    """Entraîne MLPStepModel avec shuffle + early stopping. Retourne (nom_fichier, stats).
 
     Boucle d'entraînement :
       - Chaque epoch : shuffle de l'ordre des chunks → 1 appel partial_fit() par chunk
@@ -162,6 +163,8 @@ def _train_mlp_context(
     best_val = float("inf")
     n_bad = 0
     saved = False
+    val_history: list[float] = []
+    stopped_epoch = n_epochs
 
     for epoch in range(n_epochs):
         order = rng.permutation(len(chunk_paths))
@@ -176,6 +179,7 @@ def _train_mlp_context(
             continue  # pas d'early stopping sans validation, on complète toutes les epochs
 
         val = _compute_val_loss(model, val_paths)
+        val_history.append(val)
         _log.info("  MLP [%s] — val MSE = %.6f", context_name, val)
         if val < best_val - 1e-7:
             best_val = val
@@ -185,7 +189,8 @@ def _train_mlp_context(
         else:
             n_bad += 1
             if n_bad >= patience:
-                _log.info("  MLP [%s] — early stopping à l'epoch %d", context_name, epoch + 1)
+                stopped_epoch = epoch + 1
+                _log.info("  MLP [%s] — early stopping à l'epoch %d", context_name, stopped_epoch)
                 break
 
     if not saved:
@@ -195,7 +200,12 @@ def _train_mlp_context(
         "  MLPStepModel [%s] sauvegardé (best val MSE = %.6f)",
         context_name, best_val,
     )
-    return path.name
+    return path.name, {
+        "val_history":   val_history,
+        "best_val":      best_val if val_history else float("nan"),
+        "stopped_epoch": stopped_epoch,
+        "n_epochs":      n_epochs,
+    }
 
 
 # ── API publique ───────────────────────────────────────────────────────────────
@@ -210,7 +220,7 @@ def train_synth(
     val_fraction: float = 0.05,
     n_epochs: int = 5,
     patience: int = 2,
-) -> None:
+) -> dict[str, dict]:
     """Entraîne 2 × len(contexts) modèles sur les données synthétiques.
 
     contexts       = {"10pct": 0.10, "50pct": 0.50, "100pct": 1.00}
@@ -255,11 +265,13 @@ def train_synth(
         labels.append(f"mlp_{name}")
 
     log.info("%d modèles à entraîner, %d worker(s)", len(tasks), n_workers)
+    summary: dict[str, dict] = {}
 
     if n_workers == 1:
         for (fn, *args), label in zip(tasks, labels):
             log.info("▶ %s", label)
-            fn(*args)
+            _name, stats = fn(*args)
+            summary[label] = stats
     else:
         with ProcessPoolExecutor(max_workers=n_workers) as executor:
             futures = {
@@ -269,11 +281,14 @@ def train_synth(
             for future in as_completed(futures):
                 label = futures[future]
                 try:
-                    saved = future.result()
-                    log.info("✓ %s", saved)
+                    _name, stats = future.result()
+                    summary[label] = stats
+                    log.info("✓ %s", label)
                 except Exception as exc:
                     log.error("✗ Erreur [%s] : %s", label, exc)
                     raise
+
+    return summary
 
 
 def compute_exp_centers(df: pd.DataFrame, tracking_cfg: dict) -> dict:
