@@ -60,8 +60,20 @@ def _check_prerequisites(cfg: dict) -> tuple[list[str], list[str]]:
     return missing, incompatible
 
 
+def _check_config_consistency(configs: dict) -> None:
+    """Vérifie que les constantes partagées entre configs sont cohérentes."""
+    cone_depth = configs["cone"]["physics"]["depth"]
+    ml_depth   = configs["ml"]["synth"]["physics"]["depth"]
+    assert cone_depth == ml_depth, (
+        f"Incohérence de config : cone.toml physics.depth={cone_depth} "
+        f"≠ ml.toml synth.physics.depth={ml_depth} — "
+        "les modèles ML seraient entraînés sur un cône différent de celui simulé"
+    )
+
+
 def main():
     configs = _load_configs()
+    _check_config_consistency(configs)
     missing, incompatible = _check_prerequisites(configs)
 
     if missing or incompatible:
@@ -86,7 +98,7 @@ def main():
     # Entraînement rapide sur les données réelles (en mémoire)
     tracking_path = ROOT / configs["ml"]["paths"]["tracking_data"]
     log.info("Entraînement des modèles réels depuis %s ...", tracking_path)
-    n_passes = configs["ml"]["tracking"].get("n_passes", 3)
+    n_passes = configs["ml"]["tracking"]["n_passes"]
     lr_real, mlp_real = train_real(tracking_path, configs["ml"]["tracking"], n_passes=n_passes)
     log.info("Modèles réels prêts.")
 
