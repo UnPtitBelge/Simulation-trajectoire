@@ -247,6 +247,7 @@ trajectoires de test** tirées avec `seed=999` (indépendant du train `seed=42`)
 | `--n-contexts N` | 20 | Points sur la progression géométrique |
 | `--n-test N` | 20 | Trajectoires de test pour moyenner les métriques |
 | `--n-highlight N` | 5 | Trajectoires affichées sur les plots XY / r(t) |
+| `--workers N` | 1 | Processus parallèles (max utile : `--n-contexts`) |
 
 ### Sorties (figure 2×2)
 
@@ -272,8 +273,9 @@ Contrairement au benchmark linéaire, il utilise les **chunks pré-calculés**
 À chaque étape `n` :
 1. Un MLP vierge est entraîné depuis zéro sur les `n` premiers chunks.
 2. `--epochs` passes avec shuffle des chunks à chaque epoch.
-3. La trajectoire est prédite depuis le preset par défaut et comparée à la
-   vérité terrain du simulateur physique.
+3. Les métriques sont **moyennées sur `--n-test` trajectoires de test indépendantes**
+   générées à la volée (seed=999, jamais vues par le modèle).
+4. La trajectoire du preset est prédite séparément pour la visualisation.
 
 **Prérequis** : chunks dans `data/synthetic/`.
 
@@ -284,7 +286,9 @@ Contrairement au benchmark linéaire, il utilise les **chunks pré-calculés**
 | `--max-chunks N` | tous | Nombre max de chunks à utiliser |
 | `--n-contexts N` | 12 | Points sur la progression géométrique |
 | `--epochs N` | 3 | Passes par contexte |
+| `--n-test N` | 20 | Trajectoires de test indépendantes pour les métriques |
 | `--n-highlight N` | 5 | Trajectoires affichées sur les plots XY / r(t) |
+| `--workers N` | 1 | Processus parallèles (max utile : `--n-contexts`) |
 
 ### Sorties (figure 2×2)
 

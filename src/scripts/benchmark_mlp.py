@@ -1,9 +1,10 @@
 """Benchmark MLPStepModel — précision vs quantité de données d'entraînement.
 
 Entraîne le modèle depuis zéro sur n chunks (progression géométrique :
-1, 2, 4, 8, …, N_total) avec n_epochs passes par contexte, prédit une
-trajectoire depuis le preset par défaut et mesure l'erreur contre la
-vérité terrain du simulateur physique.
+1, 2, 4, 8, …, N_total) avec n_epochs passes par contexte, mesure l'erreur
+sur un jeu de test **indépendant des chunks d'entraînement** (trajectoires
+fraîches générées avec seed=999), et trace une trajectoire de référence
+(preset par défaut) pour la visualisation.
 
 Note : chaque contexte réentraîne le MLP de zéro. Le temps de calcul
 croît avec le nombre de chunks × epochs — réduire --n-contexts ou
@@ -12,10 +13,12 @@ croît avec le nombre de chunks × epochs — réduire --n-contexts ou
 Usage :
     python src/scripts/benchmark_mlp.py
     python src/scripts/benchmark_mlp.py --max-chunks 50 --epochs 2
-    python src/scripts/benchmark_mlp.py --n-contexts 10 --n-highlight 4
+    python src/scripts/benchmark_mlp.py --n-contexts 10 --n-test 30
+    python src/scripts/benchmark_mlp.py --n-highlight 4 --workers 4
 """
 
 import argparse
+import concurrent.futures as cf
 import sys
 import time
 import warnings
@@ -34,6 +37,7 @@ from ml.models import MLPStepModel, state_to_features
 from ml.predict import predict_trajectory
 from ml.train import fit_shared_scalers
 from physics.cone import compute_cone
+from scripts.generate_data import _sample_initial_conditions
 from utils.angle import v0_dir_to_vr_vtheta
 
 warnings.filterwarnings("ignore", category=ConvergenceWarning)
@@ -65,6 +69,40 @@ def _train(chunk_paths: list[Path], scaler_X, scaler_y, n_epochs: int) -> MLPSte
     return model
 
 
+# ── Jeu de test indépendant ────────────────────────────────────────────────────
+
+
+def _generate_test_cases(
+    n: int, phys: dict, gen_cfg: dict, rng: np.random.Generator, n_steps: int
+) -> list[tuple[np.ndarray, np.ndarray]]:
+    """Génère n trajectoires de test **jamais vues** par les modèles.
+
+    Les trajectoires sont simulées à la volée (pas depuis les chunks pré-calculés)
+    avec le générateur rng fourni (seed=999, distinct du seed d'entraînement).
+
+    Retourne [(init_state, true_traj), …].
+    """
+    min_steps = gen_cfg.get("min_steps", 50)
+    merged    = {**phys, **gen_cfg}
+    cases: list[tuple[np.ndarray, np.ndarray]] = []
+    batch = max(n, 64)
+    while len(cases) < n:
+        r0, th0, vr0, vth0 = _sample_initial_conditions(batch, merged, rng)
+        for i in range(batch):
+            if len(cases) >= n:
+                break
+            traj = compute_cone(
+                r0=float(r0[i]), theta0=float(th0[i]),
+                vr0=float(vr0[i]), vtheta0=float(vth0[i]),
+                R=phys["R"], depth=phys["depth"],
+                friction=phys["friction"], g=phys["g"],
+                dt=phys["dt"], n_steps=n_steps,
+            )
+            if len(traj) >= min_steps:
+                cases.append((traj[0].astype(float), traj))
+    return cases
+
+
 # ── Métriques ──────────────────────────────────────────────────────────────────
 
 
@@ -82,6 +120,33 @@ def _errors(pred: np.ndarray, true: np.ndarray) -> dict:
     }
 
 
+def _mean_errors(
+    model: MLPStepModel,
+    test_cases: list[tuple[np.ndarray, np.ndarray]],
+    n_steps: int,
+    r_max: float,
+    r_min: float,
+    v_stop: float,
+) -> dict:
+    """Moyenne des métriques sur tous les cas de test."""
+    all_errs = [
+        _errors(
+            predict_trajectory(model, init, n_steps, r_max=r_max, r_min=r_min, v_stop=v_stop),
+            true_traj,
+        )
+        for init, true_traj in test_cases
+    ]
+    return {
+        "n_pred":     float(np.mean([e["n_pred"]     for e in all_errs])),
+        "n_true":     float(np.mean([e["n_true"]     for e in all_errs])),
+        "mae_r":      float(np.mean([e["mae_r"]      for e in all_errs])),
+        "mae_theta":  float(np.mean([e["mae_theta"]  for e in all_errs])),
+        "mae_vr":     float(np.mean([e["mae_vr"]     for e in all_errs])),
+        "mae_vtheta": float(np.mean([e["mae_vtheta"] for e in all_errs])),
+        "mae_total":  float(np.mean([e["mae_total"]  for e in all_errs])),
+    }
+
+
 # ── Progression géométrique ────────────────────────────────────────────────────
 
 
@@ -91,6 +156,58 @@ def _geom_steps(n_total: int, n_steps: int) -> list[int]:
     return sorted(set(max(1, int(round(v))) for v in raw))
 
 
+# ── Workers parallèles ─────────────────────────────────────────────────────────
+
+_shared: dict = {}
+
+
+def _init_worker(
+    all_chunks: list,
+    scaler_X,
+    scaler_y,
+    n_epochs: int,
+    test_cases: list,
+    ref_init: np.ndarray,
+    n_steps_pred: int,
+    r_max: float,
+    r_min: float,
+    v_stop: float,
+) -> None:
+    """Copie les données partagées dans chaque processus worker (une seule fois)."""
+    _shared["all_chunks"]  = all_chunks
+    _shared["scaler_X"]    = scaler_X
+    _shared["scaler_y"]    = scaler_y
+    _shared["n_epochs"]    = n_epochs
+    _shared["test_cases"]  = test_cases
+    _shared["ref_init"]    = ref_init
+    _shared["n_steps"]     = n_steps_pred
+    _shared["r_max"]       = r_max
+    _shared["r_min"]       = r_min
+    _shared["v_stop"]      = v_stop
+
+
+def _run_step(n: int) -> tuple[int, dict, np.ndarray, float]:
+    """Entraîne et évalue le MLP sur les n premiers chunks."""
+    t0    = time.perf_counter()
+    model = _train(
+        _shared["all_chunks"][:n],
+        _shared["scaler_X"],
+        _shared["scaler_y"],
+        _shared["n_epochs"],
+    )
+    # Métriques moyennées sur le jeu de test indépendant
+    errs = _mean_errors(
+        model, _shared["test_cases"],
+        _shared["n_steps"], _shared["r_max"], _shared["r_min"], _shared["v_stop"],
+    )
+    # Prédiction sur le preset uniquement pour la visualisation XY / r(t)
+    ref_traj = predict_trajectory(
+        model, _shared["ref_init"], _shared["n_steps"],
+        r_max=_shared["r_max"], r_min=_shared["r_min"], v_stop=_shared["v_stop"],
+    )
+    return n, errs, ref_traj, time.perf_counter() - t0
+
+
 # ── Visualisation ──────────────────────────────────────────────────────────────
 
 
@@ -98,16 +215,18 @@ def _plot(
     steps: list[int],
     errors: list[dict],
     trajs: dict[int, np.ndarray],
-    true_traj: np.ndarray,
+    ref_true: np.ndarray,
     highlight: list[int],
     R: float,
     dt: float,
     n_epochs: int,
+    n_test: int,
 ) -> None:
     fig = plt.figure(figsize=(14, 10))
     fig.suptitle(
         f"Benchmark MLPStepModel ({n_epochs} epoch(s)) — précision vs quantité de données\n"
-        "(progression géométrique du nombre de chunks d'entraînement)",
+        f"(métriques moyennées sur {n_test} trajectoires de test indépendantes — "
+        "progression géométrique du nombre de chunks d'entraînement)",
         fontsize=12,
     )
     gs = gridspec.GridSpec(2, 2, figure=fig, hspace=0.42, wspace=0.32)
@@ -137,8 +256,8 @@ def _plot(
     # ── Longueur prédite ──────────────────────────────────────────────────
     ax_len = fig.add_subplot(gs[0, 1])
     ax_len.axhline(n_true, color="green", linestyle="--", linewidth=1.5,
-                   label=f"Vrai ({n_true} pas)")
-    ax_len.plot(n_arr, n_pred, color="steelblue", linewidth=2, label="Prédit")
+                   label=f"Vrai (moy. {n_true:.0f} pas)")
+    ax_len.plot(n_arr, n_pred, color="steelblue", linewidth=2, label="Prédit (moy.)")
     for i, n in enumerate(highlight):
         ax_len.axvline(n, color=palette[i], linestyle=":", linewidth=1, alpha=0.6)
     ax_len.set_xscale("log")
@@ -148,15 +267,15 @@ def _plot(
     ax_len.legend(fontsize=9)
     ax_len.grid(True, alpha=0.3, which="both")
 
-    # ── Trajectoires XY ───────────────────────────────────────────────────
+    # ── Trajectoires XY (preset de référence) ────────────────────────────
     ax_xy = fig.add_subplot(gs[1, 0])
     ang = np.linspace(0, 2 * np.pi, 200)
     ax_xy.plot(R * np.cos(ang), R * np.sin(ang),
                color="gray", linestyle="--", linewidth=1)
     ax_xy.plot(
-        true_traj[:, 0] * np.cos(true_traj[:, 1]),
-        true_traj[:, 0] * np.sin(true_traj[:, 1]),
-        color="green", linewidth=2, label="Vérité terrain", zorder=5,
+        ref_true[:, 0] * np.cos(ref_true[:, 1]),
+        ref_true[:, 0] * np.sin(ref_true[:, 1]),
+        color="green", linewidth=2, label="Vérité terrain (preset)", zorder=5,
     )
     for i, n in enumerate(highlight):
         traj = trajs.get(n)
@@ -168,7 +287,7 @@ def _plot(
             color=palette[i], linewidth=1.2, alpha=0.85, label=f"{n} chunk(s)",
         )
     ax_xy.set_aspect("equal")
-    ax_xy.set_title("Trajectoire — vue de dessus")
+    ax_xy.set_title("Trajectoire — vue de dessus (preset)")
     ax_xy.set_xlabel("x (m)")
     ax_xy.set_ylabel("y (m)")
     ax_xy.legend(fontsize=8)
@@ -176,15 +295,15 @@ def _plot(
 
     # ── r(t) ─────────────────────────────────────────────────────────────
     ax_r = fig.add_subplot(gs[1, 1])
-    ax_r.plot(np.arange(len(true_traj)) * dt, true_traj[:, 0],
-              color="green", linewidth=2, label="Vrai", zorder=5)
+    ax_r.plot(np.arange(len(ref_true)) * dt, ref_true[:, 0],
+              color="green", linewidth=2, label="Vrai (preset)", zorder=5)
     for i, n in enumerate(highlight):
         traj = trajs.get(n)
         if traj is None:
             continue
         ax_r.plot(np.arange(len(traj)) * dt, traj[:, 0],
                   color=palette[i], linewidth=1.2, alpha=0.85, label=f"{n} chunk(s)")
-    ax_r.set_title("r(t)")
+    ax_r.set_title("r(t) — preset")
     ax_r.set_xlabel("t (s)")
     ax_r.set_ylabel("r (m)")
     ax_r.legend(fontsize=8)
@@ -211,13 +330,22 @@ if __name__ == "__main__":
         help="Passes d'entraînement par contexte (défaut : 3)",
     )
     parser.add_argument(
+        "--n-test", type=int, default=20,
+        help="Trajectoires de test indépendantes pour moyenner les métriques (défaut : 20)",
+    )
+    parser.add_argument(
         "--n-highlight", type=int, default=5,
         help="Trajectoires affichées sur les graphes XY/r(t) (défaut : 5)",
+    )
+    parser.add_argument(
+        "--workers", type=int, default=1,
+        help="Processus parallèles pour les étapes du benchmark (défaut : 1)",
     )
     args = parser.parse_args()
 
     cfg      = load_config("ml")
     phys     = {**cfg["physics"], **cfg["synth"]["physics"]}
+    gen_cfg  = cfg["synth"]["generation"]
     data_dir = ROOT / cfg["paths"]["synth_data_dir"]
     preset   = cfg["preset"]["default"]
 
@@ -233,46 +361,55 @@ if __name__ == "__main__":
     print("Calibration des scalers…")
     scaler_X, scaler_y = fit_shared_scalers(all_chunks, n_sample=min(20, n_total))
 
-    vr0, vth0 = v0_dir_to_vr_vtheta(preset["v0"], preset["direction_deg"])
-    init      = np.array([preset["r0"], preset["theta0"], vr0, vth0])
-    true_traj = compute_cone(
-        r0=float(init[0]), theta0=float(init[1]),
-        vr0=float(init[2]), vtheta0=float(init[3]),
-        R=phys["R"], depth=phys["depth"], friction=phys["friction"],
-        g=phys["g"], dt=phys["dt"],
-        n_steps=cfg["display"]["n_steps_pred"],
-    )
-    print(f"Vérité terrain : {len(true_traj)} pas\n")
-
-    steps = _geom_steps(n_total, args.n_contexts)
-    print(f"Étapes ({len(steps)}) : {steps}\n")
-
+    n_steps_pred = cfg["display"]["n_steps_pred"]
     r_max  = phys["R"]
     r_min  = phys["center_radius"]
     v_stop = phys["v_stop"]
 
+    # ── Jeu de test indépendant (seed distinct des chunks) ────────────────
+    print(f"Génération de {args.n_test} trajectoires de test (seed=999, indépendant des chunks)…")
+    rng_test   = np.random.default_rng(999)
+    test_cases = _generate_test_cases(args.n_test, phys, gen_cfg, rng_test, n_steps_pred)
+    print(f"  {len(test_cases)} cas de test prêts\n")
+
+    # ── Trajectoire de référence (preset) pour les plots XY / r(t) ───────
+    vr0, vth0 = v0_dir_to_vr_vtheta(preset["v0"], preset["direction_deg"])
+    ref_init  = np.array([preset["r0"], preset["theta0"], vr0, vth0])
+    ref_true  = compute_cone(
+        r0=float(ref_init[0]), theta0=float(ref_init[1]),
+        vr0=float(ref_init[2]), vtheta0=float(ref_init[3]),
+        R=phys["R"], depth=phys["depth"], friction=phys["friction"],
+        g=phys["g"], dt=phys["dt"], n_steps=n_steps_pred,
+    )
+    print(f"Référence (preset) : {len(ref_true)} pas\n")
+
+    steps = _geom_steps(n_total, args.n_contexts)
+    print(f"Étapes ({len(steps)}) : {steps}\n")
+
     errors: list[dict]            = []
     trajs:  dict[int, np.ndarray] = {}
 
-    print(f"{'Chunks':>8}  {'MAE r':>10}  {'MAE total':>10}  {'n_pred':>8}  {'n_true':>8}  {'temps':>7}")
-    print("─" * 60)
-    for n in steps:
-        t0    = time.perf_counter()
-        model = _train(all_chunks[:n], scaler_X, scaler_y, args.epochs)
-        traj  = predict_trajectory(
-            model, init, cfg["display"]["n_steps_pred"],
-            r_max=r_max, r_min=r_min, v_stop=v_stop,
-        )
-        elapsed = time.perf_counter() - t0
-        errs = _errors(traj, true_traj)
-        errors.append(errs)
-        trajs[n] = traj
-        print(
-            f"{n:>8}  {errs['mae_r']:>10.5f}  {errs['mae_total']:>10.5f}"
-            f"  {errs['n_pred']:>8}  {errs['n_true']:>8}  {elapsed:>6.2f}s"
-        )
+    n_workers = min(args.workers, len(steps))
+    initargs  = (
+        all_chunks, scaler_X, scaler_y, args.epochs,
+        test_cases, ref_init, n_steps_pred, r_max, r_min, v_stop,
+    )
+    print(f"{'Chunks':>8}  {'MAE r':>10}  {'MAE total':>10}  {'n_pred moy':>12}  {'n_true moy':>12}  {'temps':>7}")
+    print("─" * 70)
+    with cf.ProcessPoolExecutor(
+        max_workers=n_workers,
+        initializer=_init_worker,
+        initargs=initargs,
+    ) as pool:
+        for n, errs, traj, elapsed in pool.map(_run_step, steps):
+            errors.append(errs)
+            trajs[n] = traj
+            print(
+                f"{n:>8}  {errs['mae_r']:>10.5f}  {errs['mae_total']:>10.5f}"
+                f"  {errs['n_pred']:>12.1f}  {errs['n_true']:>12.1f}  {elapsed:>6.2f}s"
+            )
 
     hi_idx    = np.unique(np.round(np.linspace(0, len(steps) - 1, args.n_highlight)).astype(int))
     highlight = [steps[int(i)] for i in hi_idx]
 
-    _plot(steps, errors, trajs, true_traj, highlight, r_max, phys["dt"], args.epochs)
+    _plot(steps, errors, trajs, ref_true, highlight, r_max, phys["dt"], args.epochs, args.n_test)
