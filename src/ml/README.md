@@ -111,9 +111,9 @@ Architecture : `(64, 32)` neurones cachés, activation ReLU, régularisation L2 
 
 Les chunks `.npz` contiennent les paires `(X, y)` pré-générées par `generate_data.py`. L'entraînement charge un chunk à la fois, appelle `partial_fit()`, puis libère la RAM.
 
-**Trois contextes :** `10pct`, `50pct`, `100pct` — fraction des chunks utilisés. Permet de comparer l'effet de la quantité de données.
+**Quatre contextes :** `1pct`, `10pct`, `50pct`, `100pct` — fraction des chunks utilisés. Permet de comparer l'effet de la quantité de données.
 
-**Deux algos × trois contextes = 6 modèles** entraînés en parallèle via `ProcessPoolExecutor`.
+**Deux algos × quatre contextes = 8 modèles** entraînés en parallèle via `ProcessPoolExecutor`.
 
 ### Données réelles — `train_real()`
 
