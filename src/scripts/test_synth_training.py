@@ -10,6 +10,7 @@ Usage :
 """
 
 import argparse
+import concurrent.futures as cf
 import sys
 import warnings
 from pathlib import Path
@@ -308,9 +309,12 @@ if __name__ == "__main__":
     r_min  = phys.get("center_radius", 0.03)
     v_stop = phys.get("v_stop", 0.002)
 
-    # Prédictions
-    lr_traj  = predict_trajectory(lr_model,  init_state, n_steps_pred, r_max=R, r_min=r_min, v_stop=v_stop)
-    mlp_traj = predict_trajectory(mlp_model, init_state, n_steps_pred, r_max=R, r_min=r_min, v_stop=v_stop)
+    # Prédictions LR et MLP en parallèle
+    with cf.ProcessPoolExecutor(max_workers=2) as pool:
+        f_lr  = pool.submit(predict_trajectory, lr_model,  init_state, n_steps_pred, r_max=R, r_min=r_min, v_stop=v_stop)
+        f_mlp = pool.submit(predict_trajectory, mlp_model, init_state, n_steps_pred, r_max=R, r_min=r_min, v_stop=v_stop)
+        lr_traj  = f_lr.result()
+        mlp_traj = f_mlp.result()
 
     # Métriques
     print(f"\n{'═' * 52}")

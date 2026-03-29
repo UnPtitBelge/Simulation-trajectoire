@@ -4,6 +4,7 @@ Usage :
     python src/scripts/test_simulations.py
 """
 
+import concurrent.futures as cf
 import sys
 from pathlib import Path
 
@@ -126,8 +127,11 @@ if __name__ == "__main__":
     cone_cfg     = load_config("cone")
     membrane_cfg = load_config("membrane")
 
-    traj_cone     = run_cone(cone_cfg)
-    traj_membrane = run_membrane(membrane_cfg)
+    with cf.ProcessPoolExecutor(max_workers=2) as pool:
+        f_cone     = pool.submit(run_cone,     cone_cfg)
+        f_membrane = pool.submit(run_membrane, membrane_cfg)
+        traj_cone     = f_cone.result()
+        traj_membrane = f_membrane.result()
 
     print_stats("CÔNE",     traj_cone,     cone_cfg["physics"]["dt"],
                 cone_cfg["physics"]["n_steps"],

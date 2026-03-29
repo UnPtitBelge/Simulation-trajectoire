@@ -14,6 +14,7 @@ Usage :
 """
 
 import argparse
+import concurrent.futures as cf
 import sys
 import warnings
 from pathlib import Path
@@ -325,8 +326,11 @@ if __name__ == "__main__":
 
     # r_max=None : le tracking peut dépasser R (calibration approx.)
     n_steps = len(test_states)
-    lr_traj  = predict_trajectory(lr_model,  init_state, n_steps, r_max=None, r_min=r_min_px, v_stop=v_stop_px)
-    mlp_traj = predict_trajectory(mlp_model, init_state, n_steps, r_max=None, r_min=r_min_px, v_stop=v_stop_px)
+    with cf.ProcessPoolExecutor(max_workers=2) as pool:
+        f_lr  = pool.submit(predict_trajectory, lr_model,  init_state, n_steps, r_max=None, r_min=r_min_px, v_stop=v_stop_px)
+        f_mlp = pool.submit(predict_trajectory, mlp_model, init_state, n_steps, r_max=None, r_min=r_min_px, v_stop=v_stop_px)
+        lr_traj  = f_lr.result()
+        mlp_traj = f_mlp.result()
 
     print(f"\n{'═' * 52}")
     print(f"  Trajectoire test : {len(test_states)} pts"

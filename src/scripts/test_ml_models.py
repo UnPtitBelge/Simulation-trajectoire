@@ -4,6 +4,7 @@ Usage :
     python src/scripts/test_ml_models.py
 """
 
+import concurrent.futures as cf
 import sys
 from pathlib import Path
 
@@ -25,6 +26,16 @@ ALGO_LABELS = {"linear": "Régression linéaire", "mlp": "MLP"}
 # Palette construite dynamiquement depuis la config pour éviter un KeyError
 # si un nouveau contexte est ajouté dans ml.toml.
 _PALETTE = ["steelblue", "darkorange", "seagreen", "crimson", "mediumpurple"]
+
+
+def _load_predict(args: tuple) -> tuple[tuple[str, str], "np.ndarray | None"]:
+    """Charge un modèle et prédit une trajectoire (worker indépendant)."""
+    models_dir, algo, context, init_state, n_steps, r_max, r_min, v_stop = args
+    model = load_model(models_dir, algo, context)
+    if model is None:
+        return (algo, context), None
+    traj = predict_trajectory(model, init_state, n_steps, r_max=r_max, r_min=r_min, v_stop=v_stop)
+    return (algo, context), traj
 
 
 def load_model(models_dir: Path, algo: str, context: str):
@@ -162,15 +173,18 @@ if __name__ == "__main__":
     r_min  = phys["center_radius"]
     v_stop = phys["v_stop"]
 
-    for algo in ALGOS:
-        for context in CONTEXTS:
-            model = load_model(models_dir, algo, context)
-            if model is None:
+    combos = [
+        (models_dir, algo, context, init_state, n_steps, R, r_min, v_stop)
+        for algo in ALGOS
+        for context in CONTEXTS
+    ]
+    with cf.ProcessPoolExecutor() as pool:
+        for (algo, context), traj in pool.map(_load_predict, combos):
+            if traj is None:
                 missing.append(f"synth_{algo}_{context}.pkl")
-                continue
-            traj = predict_trajectory(model, init_state, n_steps, r_max=R, r_min=r_min, v_stop=v_stop)
-            trajs[(algo, context)] = traj
-            print_stats(algo, context, traj, dt, n_steps, R)
+            else:
+                trajs[(algo, context)] = traj
+                print_stats(algo, context, traj, dt, n_steps, R)
 
     if missing:
         print(f"\n⚠  Modèles introuvables dans {models_dir} :")

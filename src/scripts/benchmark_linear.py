@@ -38,6 +38,7 @@ Usage :
 """
 
 import argparse
+import concurrent.futures as cf
 import sys
 import time
 from pathlib import Path
@@ -176,6 +177,51 @@ def _geom_steps(n_total: int, n_steps: int) -> list[int]:
     return sorted(set(max(1, int(round(v))) for v in raw))
 
 
+# ── Workers parallèles ─────────────────────────────────────────────────────────
+
+# État partagé, injecté une seule fois par processus worker via l'initializer.
+_shared: dict = {}
+
+
+def _init_worker(
+    pairs: list,
+    scaler_X,
+    scaler_y,
+    test_cases: list,
+    n_steps: int,
+    r_max: float,
+    r_min: float,
+    v_stop: float,
+    ref_init: np.ndarray,
+) -> None:
+    """Copie les données lourdes dans le processus worker (une seule fois)."""
+    _shared["pairs"]      = pairs
+    _shared["scaler_X"]   = scaler_X
+    _shared["scaler_y"]   = scaler_y
+    _shared["test_cases"] = test_cases
+    _shared["n_steps"]    = n_steps
+    _shared["r_max"]      = r_max
+    _shared["r_min"]      = r_min
+    _shared["v_stop"]     = v_stop
+    _shared["ref_init"]   = ref_init
+
+
+def _run_step(n: int) -> tuple[int, dict, np.ndarray, float]:
+    """Entraîne et évalue le modèle sur les n premières trajectoires."""
+    t0     = time.perf_counter()
+    subset = _shared["pairs"][:n]
+    model  = _train(subset, _shared["scaler_X"], _shared["scaler_y"])
+    errs   = _mean_errors(
+        model, _shared["test_cases"],
+        _shared["n_steps"], _shared["r_max"], _shared["r_min"], _shared["v_stop"],
+    )
+    traj = predict_trajectory(
+        model, _shared["ref_init"], _shared["n_steps"],
+        r_max=_shared["r_max"], r_min=_shared["r_min"], v_stop=_shared["v_stop"],
+    )
+    return n, errs, traj, time.perf_counter() - t0
+
+
 # ── Visualisation ──────────────────────────────────────────────────────────────
 
 
@@ -299,6 +345,10 @@ if __name__ == "__main__":
         "--n-highlight", type=int, default=5,
         help="Trajectoires affichées sur les graphes XY/r(t) (défaut : 5)",
     )
+    parser.add_argument(
+        "--workers", type=int, default=1,
+        help="Processus parallèles pour les étapes du benchmark (défaut : 1)",
+    )
     args = parser.parse_args()
 
     cfg     = load_config("ml")
@@ -358,22 +408,23 @@ if __name__ == "__main__":
     errors: list[dict]            = []
     trajs:  dict[int, np.ndarray] = {}   # pred sur le preset (pour les plots)
 
+    n_workers = min(args.workers, len(steps))
+    initargs  = (pairs, scaler_X, scaler_y, test_cases, n_steps, r_max, r_min, v_stop, ref_init)
     print(f"{'Traj.':>8}  {'Paires':>8}  {'MAE r':>10}  {'MAE total':>10}  {'n_pred moy':>12}  {'temps':>7}")
     print("─" * 72)
-    for n in steps:
-        t0     = time.perf_counter()
-        subset = pairs[:n]
-        model  = _train(subset, scaler_X, scaler_y)
-        errs   = _mean_errors(model, test_cases, n_steps, r_max, r_min, v_stop)
-        # Prédiction sur le preset pour visualisation
-        trajs[n] = predict_trajectory(model, ref_init, n_steps, r_max=r_max, r_min=r_min, v_stop=v_stop)
-        elapsed  = time.perf_counter() - t0
-        n_pairs  = sum(len(X) for X, _ in subset)
-        errors.append(errs)
-        print(
-            f"{n:>8}  {n_pairs:>8,}  {errs['mae_r']:>10.5f}  {errs['mae_total']:>10.5f}"
-            f"  {errs['n_pred']:>12.1f}  {elapsed:>6.2f}s"
-        )
+    with cf.ProcessPoolExecutor(
+        max_workers=n_workers,
+        initializer=_init_worker,
+        initargs=initargs,
+    ) as pool:
+        for n, errs, traj, elapsed in pool.map(_run_step, steps):
+            n_pairs  = sum(len(X) for X, _ in pairs[:n])
+            errors.append(errs)
+            trajs[n] = traj
+            print(
+                f"{n:>8}  {n_pairs:>8,}  {errs['mae_r']:>10.5f}  {errs['mae_total']:>10.5f}"
+                f"  {errs['n_pred']:>12.1f}  {elapsed:>6.2f}s"
+            )
 
     hi_idx    = np.unique(np.round(np.linspace(0, len(steps) - 1, args.n_highlight)).astype(int))
     highlight = [steps[int(i)] for i in hi_idx]
