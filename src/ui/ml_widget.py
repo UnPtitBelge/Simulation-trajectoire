@@ -147,11 +147,9 @@ class MLWidget(BaseSimWidget):
         except Exception:
             return []
 
-        boundaries = [0]
-        for i in range(len(X) - 1):
-            if not np.array_equal(y[i], X[i + 1]):
-                boundaries.append(i + 1)
-        boundaries.append(len(X))
+        # Vectorisé : frontière où y[i] ≠ X[i+1] (états non-consécutifs)
+        breaks = np.where(np.any(y[:-1] != X[1:], axis=1))[0] + 1
+        boundaries = [0] + breaks.tolist() + [len(X)]
 
         trajs = [
             np.vstack([X[s:e], y[e - 1:e]])

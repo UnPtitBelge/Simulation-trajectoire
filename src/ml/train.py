@@ -115,9 +115,9 @@ def _train_lr_context(
         X, y = _chunk_to_pairs(path)
         lr_model.partial_fit(X, y)
         del X, y
-        gc.collect()
         if (i + 1) % 10 == 0:
             _log.info("  LR [%s] — chunk %d/%d", context_name, i + 1, len(chunk_paths))
+    gc.collect()
 
     val_mse = float("nan")
     if val_paths:
@@ -181,7 +181,7 @@ def _train_mlp_context(
         val = _compute_val_loss(model, val_paths)
         val_history.append(val)
         _log.info("  MLP [%s] — val MSE = %.6f", context_name, val)
-        if val < best_val - 1e-7:
+        if val < best_val * (1 - 1e-4):
             best_val = val
             model.save(path)
             saved = True
@@ -332,9 +332,8 @@ def compute_exp_centers(df: pd.DataFrame, tracking_cfg: dict) -> dict:
     )
 
     return {
-        eid: (cx, cy) if np.sqrt((cx - cx_ref) ** 2 + (cy - cy_ref) ** 2) <= thresh
-             else (cx_ref, cy_ref)
-        for eid, (cx, cy) in raw.items()
+        eid: raw[eid] if dists[i] <= thresh else (cx_ref, cy_ref)
+        for i, eid in enumerate(raw)
     }
 
 
@@ -398,18 +397,21 @@ def train_real(csv_path: Path, tracking_cfg: dict, n_passes: int = 3, physics_cf
     r_min_px = phys.get("center_radius", 0.03) * tracking_cfg.get("px_per_meter", 1350.0)
     exp_ids  = sorted(df["expID"].unique().tolist())
 
-    # ── Pré-passe : calibrage des scalers sur toutes les expériences ──────────
-    log.info("train_real — pré-passe scaler sur %d expériences", len(exp_ids))
-    X_parts, res_parts = [], []
-    for X_feat, y_feat in _iter_real_pairs(df, centers, r_min_px):
-        X_parts.append(X_feat)
-        res_parts.append(y_feat - X_feat)
-    if not X_parts:
+    # Matérialise toutes les paires une seule fois (une entrée par expérience).
+    # _iter_real_pairs() fait groupby + sort_values → ne pas appeler N fois.
+    log.info("train_real — chargement des paires sur %d expériences", len(exp_ids))
+    all_pairs: list[tuple[np.ndarray, np.ndarray]] = list(
+        _iter_real_pairs(df, centers, r_min_px)
+    )
+    if not all_pairs:
         raise ValueError("Aucune paire d'entraînement extraite du CSV de tracking")
-    scaler_X = StandardScaler().fit(np.vstack(X_parts))
-    scaler_y = StandardScaler().fit(np.vstack(res_parts))
-    del X_parts, res_parts
-    gc.collect()
+
+    # ── Scalers : calibrés sur la distribution globale ────────────────────────
+    X_all   = np.vstack([X for X, _     in all_pairs])
+    res_all = np.vstack([y - X for X, y in all_pairs])
+    scaler_X = StandardScaler().fit(X_all)
+    scaler_y = StandardScaler().fit(res_all)
+    del X_all, res_all
 
     lr_model  = LinearStepModel()
     mlp_model = MLPStepModel()
@@ -418,17 +420,15 @@ def train_real(csv_path: Path, tracking_cfg: dict, n_passes: int = 3, physics_cf
 
     # ── LR : 1 passe (équations normales — ordre et répétitions sans effet) ───
     log.info("train_real — LR : 1 passe")
-    for X_feat, y_feat in _iter_real_pairs(df, centers, r_min_px):
+    for X_feat, y_feat in all_pairs:
         lr_model.partial_fit(X_feat, y_feat)
-    gc.collect()
 
     # ── MLP : n_passes avec shuffle pour éviter le biais de séquence ─────────
     rng = np.random.default_rng(0)
     for pass_idx in range(n_passes):
-        order = rng.permutation(exp_ids).tolist()
+        order = rng.permutation(len(all_pairs))
         log.info("train_real — MLP pass %d/%d (ordre shufflé)", pass_idx + 1, n_passes)
-        for X_feat, y_feat in _iter_real_pairs(df, centers, r_min_px, exp_order=order):
-            mlp_model.partial_fit(X_feat, y_feat)
-        gc.collect()
+        for i in order:
+            mlp_model.partial_fit(*all_pairs[int(i)])
 
     return lr_model, mlp_model

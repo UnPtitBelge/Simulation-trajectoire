@@ -54,7 +54,7 @@ def state_to_features(state: np.ndarray) -> np.ndarray:
     features_to_state ignore les features 5-8 (quantités dérivées recomputées).
     """
     r, theta, vr, vtheta = state[..., 0], state[..., 1], state[..., 2], state[..., 3]
-    r_safe = np.maximum(r, 1e-6)
+    r_safe = np.maximum(r, 1e-3)  # 1 mm — évite overflow (vθ²/r) sans masquer la physique
     centrifugal   = vtheta ** 2 / r_safe
     coriolis      = vr * vtheta  / r_safe
     dcos_coeff    = np.sin(theta) * vtheta / r_safe
