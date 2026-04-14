@@ -2,6 +2,11 @@
 
 L'état interne est (r, θ, vr, vθ). Le modèle est appelé à chaque pas
 pour prédire l'état suivant. Pas de dépendance Qt.
+
+Fonctions exportées :
+  predict_trajectory    — prédiction seule (signature stable, appelée par l'UI)
+  predict_with_errors   — prédiction + erreur par pas vs une trajectoire de référence
+                          (pour les scripts d'analyse scientifique)
 """
 
 import numpy as np
@@ -46,3 +51,31 @@ def predict_trajectory(
             return traj[:i + 1]
 
     return traj
+
+
+def predict_with_errors(
+    model: "LinearStepModel | MLPStepModel",
+    init_state: np.ndarray,
+    reference_traj: np.ndarray,
+    **kwargs,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Prédit une trajectoire et calcule l'erreur absolue par rapport à une référence.
+
+    Paramètres
+    ----------
+    model          : modèle entraîné (LinearStepModel ou MLPStepModel)
+    init_state     : état initial (r, θ, vr, vθ)
+    reference_traj : trajectoire de référence (N, 4) — typiquement la simulation physique
+    **kwargs       : forwarded to predict_trajectory (r_max, r_min, v_stop)
+
+    Retourne
+    --------
+    traj   : trajectoire prédite (M, 4), M ≤ N
+    errors : erreurs absolues (min(M,N), 4) = |pred - ref| sur (r, θ, vr, vθ)
+             La colonne 0 (erreur sur r) est la métrique principale pour les plots.
+    """
+    n_steps = len(reference_traj)
+    traj = predict_trajectory(model, init_state, n_steps, **kwargs)
+    n = min(len(traj), n_steps)
+    errors = np.abs(traj[:n] - reference_traj[:n])
+    return traj, errors

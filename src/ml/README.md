@@ -163,6 +163,20 @@ new_feat    = feat + delta                     # état t+1 en espace features
 new_state   = features_to_state(new_feat)      # retour en (r, θ, vr, vθ)
 ```
 
+### `predict_with_errors()` — comparaison avec une référence physique
+
+Variante de `predict_trajectory` pour les scripts d'analyse scientifique :
+
+```python
+traj, errors = predict_with_errors(model, init_state, reference_traj, **kwargs)
+# errors : (min(len(traj), len(ref)), 4) = |pred − ref| sur (r, θ, vr, vθ)
+```
+
+- `reference_traj` : trajectoire physique (N, 4) calculée depuis le même état initial
+- `errors[:, 0]` : erreur absolue sur r — métrique principale pour les plots
+- Utilisé par `analyze_ml_error.py` pour quantifier l'accumulation d'erreur
+  en fonction de l'horizon de prédiction
+
 ### Paramètre `v_stop`
 
 - **Mode synthétique :** en m/s (cohérent avec les vitesses synthétiques)

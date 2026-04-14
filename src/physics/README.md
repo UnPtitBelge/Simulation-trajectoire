@@ -118,7 +118,17 @@ Identique au cône, avec `a_gravity = −g · (k/r) · inv_norm` à la place de 
 
 ---
 
-## Intégrateur commun — Euler semi-implicite
+## Intégrateurs disponibles (`cone.py`)
+
+`compute_cone` accepte un paramètre `method` pour choisir l'intégrateur :
+
+| `method` | Ordre | Évaluations f/pas | Notes |
+| --- | --- | --- | --- |
+| `"euler"` | 1 | 1 | Euler explicite — position avec ancienne vitesse. Instable à grand dt |
+| `"euler_cromer"` | 1 | 1 | Semi-implicite **(défaut)** — vitesse d'abord, position ensuite. Conservatif |
+| `"rk4"` | 4 | 4 | Runge-Kutta 4 — 4× plus coûteux, erreur en O(dt⁴) |
+
+### Euler-Cromer (semi-implicite, défaut)
 
 Les positions sont calculées avec les vitesses **déjà mises à jour** :
 
@@ -132,6 +142,25 @@ r      += dt * vr
 ```
 
 Cet ordre rend le schéma **symplectique** : il conserve une forme d'énergie modifiée proche de l'énergie physique. L'Euler explicite pur dissiperait (ou accumulerait) de l'énergie artificiellement.
+
+### RK4
+
+Quatre évaluations de `f = (dr/dt, dθ/dt, dvr/dt, dvθ/dt)` via la fonction `_derivatives()` :
+
+```text
+k1 = f(r,             θ,             vr,             vθ)
+k2 = f(r + ½dt·k1[0], θ + ½dt·k1[1], vr + ½dt·k1[2], vθ + ½dt·k1[3])
+k3 = f(r + ½dt·k2[0], ...)
+k4 = f(r +  dt·k3[0], ...)
+r  += (dt/6) · (k1[0] + 2·k2[0] + 2·k3[0] + k4[0])
+...
+```
+
+Utilisé comme trajectoire de référence dans `benchmark_integrators.py`.
+
+### Snap-to-zero
+
+Après chaque mise à jour de vitesse (tous intégrateurs) : si `|v| < g_friction·dt` et que le frottement statique tient (`|g_radial| ≤ g_friction`), on force `vr = vθ = 0` pour absorber les oscillations numériques autour de l'équilibre statique.
 
 ### Conditions d'arrêt
 
