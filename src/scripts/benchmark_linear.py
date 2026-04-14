@@ -35,6 +35,8 @@ Usage :
     python src/scripts/benchmark_linear.py
     python src/scripts/benchmark_linear.py --n-trajectories 5000 --n-test 50
     python src/scripts/benchmark_linear.py --n-contexts 25 --n-highlight 6
+    python src/scripts/benchmark_linear.py --output figures/linear.png
+    python src/scripts/benchmark_linear.py --no-plot --output results/linear.csv
 """
 
 import argparse
@@ -225,6 +227,18 @@ def _run_step(n: int) -> tuple[int, dict, np.ndarray, float]:
 # ── Visualisation ──────────────────────────────────────────────────────────────
 
 
+def _save_csv(steps: list[int], errors: list[dict], csv_path: Path) -> None:
+    """Exporte les métriques du benchmark en CSV pour les tableaux du rapport."""
+    import csv
+    csv_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(csv_path, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["n_trajectories", "mae_r", "mae_total", "n_pred", "n_true"])
+        w.writeheader()
+        for n, e in zip(steps, errors):
+            w.writerow({"n_trajectories": n, **{k: e[k] for k in ("mae_r", "mae_total", "n_pred", "n_true")}})
+    print(f"CSV sauvegardé : {csv_path}")
+
+
 def _plot(
     steps: list[int],
     errors: list[dict],
@@ -234,6 +248,7 @@ def _plot(
     R: float,
     dt: float,
     n_test: int,
+    output: Path | None = None,
 ) -> None:
     fig = plt.figure(figsize=(14, 10))
     fig.suptitle(
@@ -321,6 +336,11 @@ def _plot(
     ax_r.legend(fontsize=8)
     ax_r.grid(True, alpha=0.25)
 
+    if output is not None:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(output, dpi=150, bbox_inches="tight")
+        print(f"Figure sauvegardée : {output}")
+
     plt.show()
 
 
@@ -348,6 +368,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--workers", type=int, default=1,
         help="Processus parallèles pour les étapes du benchmark (défaut : 1)",
+    )
+    parser.add_argument(
+        "--output", type=str, default=None,
+        help="Sauvegarde la figure (.png/.pdf) ou les données (.csv)",
+    )
+    parser.add_argument(
+        "--no-plot", action="store_true",
+        help="Ne pas afficher la fenêtre graphique (mode batch)",
     )
     args = parser.parse_args()
 
@@ -428,4 +456,12 @@ if __name__ == "__main__":
     hi_idx    = np.unique(np.round(np.linspace(0, len(steps) - 1, args.n_highlight)).astype(int))
     highlight = [steps[int(i)] for i in hi_idx]
 
-    _plot(steps, errors, trajs, ref_true, highlight, r_max, phys["dt"], args.n_test)
+    output_path = Path(args.output) if args.output else None
+
+    if output_path is not None and output_path.suffix == ".csv":
+        _save_csv(steps, errors, output_path)
+    else:
+        fig_path = output_path if output_path else None
+        _plot(steps, errors, trajs, ref_true, highlight, r_max, phys["dt"], args.n_test, fig_path)
+        if args.no_plot:
+            plt.close("all")
