@@ -59,7 +59,6 @@ def run_cone(cfg: dict) -> np.ndarray:
         R=phys["R"], depth=phys["depth"],
         friction=phys["friction"], g=phys["g"],
         dt=phys["dt"], n_steps=phys["n_steps"],
-        ball_radius=phys["ball_radius"], ball_mass=phys["ball_mass"],
         center_radius=phys["center_radius"],
     )
 
@@ -73,7 +72,6 @@ def run_membrane(cfg: dict) -> np.ndarray:
         R=phys["R"], k=phys["k"], r_min=phys["center_radius"],
         friction=phys["friction"], g=phys["g"],
         dt=phys["dt"], n_steps=phys["n_steps"],
-        ball_radius=phys["ball_radius"], ball_mass=phys["ball_mass"],
         center_radius=phys["center_radius"],
     )
 

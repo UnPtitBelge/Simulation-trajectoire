@@ -25,9 +25,6 @@ def compute_membrane(
     g: float,
     dt: float,
     n_steps: int,
-    ball_radius: float = 0.005,
-    ball_mass: float = 0.005,
-    center_mass: float = 1.0,
     center_radius: float = 0.03,
 ) -> np.ndarray:
     """Retourne array (n_steps, 4) : colonnes = r, θ, vr, vθ.
@@ -84,13 +81,10 @@ def compute_membrane(
         r     += dt * vr
         theta += dt * vtheta / current_r
 
-        if r >= R:
+        if r >= R or r <= r_min:
             return traj[:i + 1]
-        elif r <= r_min:
-            return traj[:i + 1]  # collision avec la bille centrale
 
-        speed_after = np.sqrt(vr ** 2 + vtheta ** 2)
-        if speed_after == 0.0 or (speed_after < g_friction * dt and abs(a_gravity) <= g_friction):
+        if np.sqrt(vr ** 2 + vtheta ** 2) == 0.0:
             return traj[:i + 1]
 
     return traj
