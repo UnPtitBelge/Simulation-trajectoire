@@ -6,6 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Always respond in **French**. Code identifiers and technical terms stay in their original form.
 
+## Installation
+
+```bash
+pip install -e .          # dépendances runtime (Python 3.11+)
+pip install -e ".[dev]"   # + pyright, black, flake8, pytest
+```
+
 ## Commands
 
 ```bash
@@ -140,6 +147,13 @@ Paramètres dans `[synth.generation]` de `ml.toml` : `v_min`, `v_max`, `min_step
 
 `train_synth(n_workers=N)` et `generate_data.py --workers N` utilisent `ProcessPoolExecutor`. Les fonctions workers (`_train_lr_context`, `_train_mlp_context`, `_generate_one_chunk`) sont définies au niveau module (requis pour pickling multiprocessing). Seeds reproductibles via `np.random.SeedSequence`.
 
+## Écueils connus
+
+- `src/app.py` bloque le démarrage si `src/data/tracking_data.csv` ou les `.pkl` sont absents.
+- La profondeur du cône doit rester cohérente entre `config/cone.toml` et `config/ml.toml` — une divergence produit des prédictions ML incorrectes. Ce point est vérifié au démarrage.
+- Les fonctions workers multiprocessing (`_train_lr_context`, `_train_mlp_context`, `_generate_one_chunk`) doivent rester au niveau module — les lambdas et méthodes ne sont pas picklables.
+- Ne jamais connecter les signaux de fin de worker Qt avec une lambda (utiliser une méthode d'instance `QObject`) — une lambda force une Direct Connection inter-thread.
+
 ## Commits
 
 Après chaque modification (fichier ou ensemble de fichiers liés), créer un commit décrivant précisément ce qui a changé et pourquoi. Un commit par tâche logique — ne pas regrouper des changements sans rapport. Message en français, style impératif court (ex. "Ajoute common.toml pour centraliser la config partagée").
@@ -155,6 +169,7 @@ Après toute modification d'un fichier, vérifier si un `README.md` existe dans 
 | Comprendre le démarrage | `src/app.py` |
 | Ajouter une simulation | `src/ui/base_sim_widget.py` |
 | Modifier les paramètres UI | `src/config/*.toml` |
+| Comprendre le chargement/merge de config | `src/config/loader.py` |
 | Modifier la physique | `src/physics/cone.py` ou `membrane.py` |
 | Modifier le ML | `src/ml/models.py` + `train.py` + `predict.py` |
 | Thème / couleurs | `src/config/theme.py` |
