@@ -46,7 +46,7 @@ class MainWindow(QMainWindow):
         self._ctx_combos:   dict[int, QComboBox] = {}  # tab_index → QComboBox contexte
 
         for cfg_key, WidgetClass, label in [
-            ("mcu",      MCUWidget,      "MCU"),
+            ("mcu",      MCUWidget,      "MCU (analytique)"),
             ("cone",     ConeWidget,     "Cône"),
             ("membrane", MembraneWidget, "Membrane"),
         ]:
