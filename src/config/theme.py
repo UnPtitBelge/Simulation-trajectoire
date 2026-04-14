@@ -20,12 +20,9 @@ CLR_BADGE_BG        = "#3C4043"
 CLR_STATUS_TEXT     = "#9AA0A6"
 
 CLR_PLOT_BG         = "#F5F7FA"
-CLR_PLOT_CENTER     = "#6750A4"
 CLR_PLOT_PARTICLE   = "#1E88E5"
 CLR_PLOT_ORANGE     = "#FF9800"
-CLR_PLOT_LIGHT_GRAY = "#E0E0E0"
 
-RGB_PLOT_CENTER   = (0.404, 0.314, 0.647, 1.0)
 RGB_PLOT_PARTICLE = (0.12,  0.53,  0.90,  1.0)
 RGB_PLOT_ORANGE   = (1.0,   0.6,   0.0,   0.8)
 RGB_PLOT_GRAY     = (0.878, 0.878, 0.878, 0.4)
@@ -35,7 +32,6 @@ RGB_MARKER        = (0.18,  0.82,  0.28,  1.0)
 CLR_ML_TRUE        = CLR_SUCCESS     # trajectoire cible (vert)
 CLR_ML_PRED        = CLR_PRIMARY     # trajectoire prédite (bleu)
 CLR_ML_BALL        = CLR_DANGER      # bille animée (rouge)
-CLR_ML_OBS_BRUSH   = CLR_PLOT_ORANGE
 CLR_ML_TRAIN_TRAJ  = "#6B7280"       # trajectoires d'entraînement fond (gris)
 RGBA_ML_TRAIN_TRAJ = (107, 114, 128, 80)  # même, semi-transparent, pour pyqtgraph
 
@@ -51,9 +47,6 @@ FS_LG     = "18px"
 FS_XL     = "20px"
 FS_2XL    = "24px"
 FS_3XL    = "26px"
-
-SMALL_BALL_RADIUS = 0.015
-LARGE_BALL_RADIUS = 0.025
 
 STYLESHEET = f"""
 * {{ font-family: 'Google Sans','Roboto','Segoe UI',sans-serif; font-size: {FS_BASE}; }}

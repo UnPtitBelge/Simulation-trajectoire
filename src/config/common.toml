@@ -15,9 +15,7 @@ friction      = 0.02     # coefficient de Coulomb μ (sans unité, bille glissan
 dt            = 0.01     # pas de temps (s)
 n_steps       = 100_000  # nombre max de pas par trajectoire
 frame_ms      = 16       # intervalle d'animation (ms) ≈ 60 fps
-ball_radius   = 0.005    # rayon de la bille mobile (m)
-ball_mass     = 0.005    # masse de la bille mobile (kg)
-center_mass   = 1.0      # masse de la bille centrale fixe (kg)
+ball_radius   = 0.005    # rayon de la bille mobile (m) — utilisé pour l'affichage 3D
 center_radius = 0.03     # rayon de la bille centrale fixe (m) → r_min
 v_stop        = 0.002    # seuil de vitesse d'arrêt (m/s)
 
