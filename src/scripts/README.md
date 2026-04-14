@@ -248,6 +248,8 @@ trajectoires de test** tirées avec `seed=999` (indépendant du train `seed=42`)
 | `--n-test N` | 20 | Trajectoires de test pour moyenner les métriques |
 | `--n-highlight N` | 5 | Trajectoires affichées sur les plots XY / r(t) |
 | `--workers N` | 1 | Processus parallèles (max utile : `--n-contexts`) |
+| `--output PATH` | — | Sauvegarde la figure (.png/.pdf) ou les données (.csv) |
+| `--no-plot` | off | Mode batch sans fenêtre graphique |
 
 ### Sorties (figure 2×2)
 
@@ -258,6 +260,7 @@ trajectoires de test** tirées avec `seed=999` (indépendant du train `seed=42`)
 
 ```bash
 python src/scripts/benchmark_linear.py --n-trajectories 5000 --n-test 50
+python src/scripts/benchmark_linear.py --no-plot --output results/linear.csv
 ```
 
 ---
@@ -380,6 +383,8 @@ Contrairement au benchmark linéaire, il utilise les **chunks pré-calculés**
 | `--n-test N` | 20 | Trajectoires de test indépendantes pour les métriques |
 | `--n-highlight N` | 5 | Trajectoires affichées sur les plots XY / r(t) |
 | `--workers N` | 1 | Processus parallèles (max utile : `--n-contexts`) |
+| `--output PATH` | — | Sauvegarde la figure (.png/.pdf) ou les données (.csv) |
+| `--no-plot` | off | Mode batch sans fenêtre graphique |
 
 ### Sorties (figure 2×2)
 
@@ -390,4 +395,32 @@ Contrairement au benchmark linéaire, il utilise les **chunks pré-calculés**
 
 ```bash
 python src/scripts/benchmark_mlp.py --max-chunks 50 --epochs 2
+python src/scripts/benchmark_mlp.py --no-plot --output results/mlp.csv
+```
+
+---
+
+## ablation_features.py
+
+**Rôle** : justifie empiriquement le choix des 9 features ML en entraînant
+`LinearStepModel` avec quatre sous-ensembles croissants de features en entrée.
+
+Montre que retirer les produits croisés physiques (vθ²/r, vr·vθ/r, etc.)
+dégrade significativement val_loss, MAE(r) et la stabilité des trajectoires.
+
+**Prérequis** : chunks dans `data/synthetic/`.
+
+| Sous-ensemble | Features | Note |
+| --- | --- | --- |
+| A — Base | r, cosθ, sinθ, vr, vθ | 5 features |
+| B — + Centrifuge | + vθ²/r | terme dvr/dt |
+| C — + Coriolis | + vr·vθ/r | terme dvθ/dt |
+| D — Complet | + sinθ·vθ/r, cosθ·vθ/r | couplages angulaires |
+
+**Arguments** : `--n-chunks N` (défaut 10), `--n-test N` (défaut 100), `--output PATH`, `--no-plot`.
+
+```bash
+python src/scripts/ablation_features.py
+python src/scripts/ablation_features.py --n-chunks 20 --output figures/ablation.png
+python src/scripts/ablation_features.py --no-plot --output results/ablation.csv
 ```
