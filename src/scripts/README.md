@@ -262,6 +262,97 @@ python src/scripts/benchmark_linear.py --n-trajectories 5000 --n-test 50
 
 ---
 
+## compare_approaches.py
+
+**Rôle** : démonstration centrale du projet — superpose sur un seul graphique les quatre
+approches de simulation pour les mêmes conditions initiales (issues d'une expérience réelle) :
+simulation physique déterministe, ML linéaire, ML MLP, et tracking réel (référence).
+
+Toutes les courbes sont normalisées par R pour permettre la comparaison directe entre
+l'espace physique (mètres) et l'espace pixel (coordonnées caméra).
+
+**Prérequis** : `data/tracking_data.csv`.
+
+**Ce que ce script prouve** : dans quelle mesure chaque approche reproduit la réalité,
+et quel écart |r_pred − r_réel| / R persiste en fonction du temps.
+
+### Arguments
+
+| Argument | Défaut | Description |
+|----------|--------|-------------|
+| `--test-id N` | dernier expID | ID de l'expérience test |
+| `--passes N` | 3 | Passes d'entraînement ML |
+| `--output PATH` | — | Sauvegarde la figure (.png) |
+
+```bash
+python src/scripts/compare_approaches.py
+python src/scripts/compare_approaches.py --test-id 5 --output figures/compare.png
+```
+
+---
+
+## benchmark_integrators.py
+
+**Rôle** : benchmark de convergence des intégrateurs numériques — justifie le choix de
+l'Euler-Cromer pour la simulation du cône.
+
+Compare Euler explicite, Euler-Cromer et RK4 sur une grille de valeurs de `dt`
+par rapport à une trajectoire de référence (RK4, dt = 1e-4 s).
+
+**Ce que ce script prouve** :
+
+- Euler et Euler-Cromer convergent en O(dt) (ordre 1) ; RK4 en O(dt⁴) (ordre 4)
+- Euler-Cromer a une meilleure constante d'erreur que l'Euler explicite
+- Pour dt = 0.01 s (valeur par défaut), RK4 est marginalement plus précis pour un coût CPU 4× plus élevé — Euler-Cromer est le meilleur compromis
+
+**Prérequis** : aucun.
+
+### Arguments
+
+| Argument        | Défaut | Description                                       |
+|-----------------|--------|---------------------------------------------------|
+| `--output PATH` | —      | Sauvegarde la figure (.png) ou les données (.csv) |
+| `--no-plot`     | off    | Mode batch sans fenêtre graphique                 |
+
+```bash
+python src/scripts/benchmark_integrators.py
+python src/scripts/benchmark_integrators.py --output figures/integrators.png
+python src/scripts/benchmark_integrators.py --no-plot --output results/integrators.csv
+```
+
+---
+
+## analyze_ml_error.py
+
+**Rôle** : quantifie l'accumulation d'erreur ML en prédiction récursive step-by-step.
+
+Pour N conditions initiales aléatoires, compare la trajectoire prédite par chaque
+modèle ML à la trajectoire physique de référence, et trace l'erreur médiane (+ bande
+inter-quartile) en fonction de l'horizon de prédiction.
+
+**Ce que ce script prouve** : l'erreur ML n'est pas nulle et croît avec l'horizon car
+chaque pas injecte une nouvelle erreur — c'est la limite fondamentale de l'apprentissage
+par imitation sur système dynamique récursif.
+
+**Prérequis** : modèles `.pkl` dans `data/models/` (lancer `train_models.py`).
+
+### Arguments
+
+| Argument | Défaut | Description |
+|----------|--------|-------------|
+| `--n-ic N` | 200 | Nombre de conditions initiales |
+| `--horizon N` | 300 | Horizon max en pas (300 = 3 s) |
+| `--context` | `100pct` | Contexte d'entraînement des modèles |
+| `--seed N` | 42 | Graine aléatoire |
+| `--output PATH` | — | Sauvegarde la figure |
+
+```bash
+python src/scripts/analyze_ml_error.py
+python src/scripts/analyze_ml_error.py --n-ic 500 --horizon 500 --output figures/ml_error.png
+```
+
+---
+
 ## benchmark_mlp.py
 
 **Rôle** : mesure la convergence de `MLPStepModel` en fonction du nombre de chunks
