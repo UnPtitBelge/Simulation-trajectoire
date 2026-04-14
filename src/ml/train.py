@@ -30,6 +30,13 @@ from ml.models import LinearStepModel, MLPStepModel, state_to_features
 log = logging.getLogger(__name__)
 
 
+def _configure_subprocess_logging() -> logging.Logger:
+    """Configure le logging dans un processus worker (ProcessPoolExecutor).
+    Chaque worker est un processus indépendant sans logging configuré par défaut."""
+    logging.basicConfig(level=logging.INFO)
+    return logging.getLogger(__name__)
+
+
 # ── Utilitaires ───────────────────────────────────────────────────────────────
 
 
@@ -104,8 +111,7 @@ def _train_lr_context(
     données biaise la régularisation sans améliorer la solution.
     Défini au niveau module pour être picklable par ProcessPoolExecutor.
     """
-    logging.basicConfig(level=logging.INFO)
-    _log = logging.getLogger(__name__)
+    _log = _configure_subprocess_logging()
     _log.info("LR [%s] : %d chunks train, %d val", context_name, len(chunk_paths), len(val_paths))
 
     lr_model = LinearStepModel()
@@ -148,8 +154,7 @@ def _train_mlp_context(
       - Early stopping sur val_paths si disponible : sauvegarde le meilleur checkpoint.
     Défini au niveau module pour être picklable par ProcessPoolExecutor.
     """
-    logging.basicConfig(level=logging.INFO)
-    _log = logging.getLogger(__name__)
+    _log = _configure_subprocess_logging()
     _log.info(
         "MLP [%s] : %d chunks train, %d val, %d epochs max, patience=%d",
         context_name, len(chunk_paths), len(val_paths), n_epochs, patience,
@@ -241,9 +246,8 @@ def train_synth(
     # ── Scalers partagés (même pour tous les workers et tous les contextes) ──
     scaler_X, scaler_y = fit_shared_scalers(all_chunks, n_sample=n_scaler_chunks)
 
-    # ── Construction des tâches ────────────────────────────────────────────────
-    tasks:  list[tuple] = []
-    labels: list[str]   = []
+    # ── Construction des tâches : (worker_fn, args, label) ───────────────────
+    tasks: list[tuple] = []
 
     for name, fraction in contexts.items():
         n_chunks = max(1, int(n_total * fraction))
@@ -255,20 +259,22 @@ def train_synth(
             "Contexte [%s] : %d chunks train + %d val",
             name, len(train_paths), len(val_paths),
         )
-        tasks.append((_train_lr_context,
-                      train_paths, val_paths, models_dir, name, scaler_X, scaler_y))
-        labels.append(f"linear_{name}")
-
-        tasks.append((_train_mlp_context,
-                      train_paths, val_paths, models_dir, name, scaler_X, scaler_y,
-                      n_epochs, patience))
-        labels.append(f"mlp_{name}")
+        tasks.append((
+            _train_lr_context,
+            (train_paths, val_paths, models_dir, name, scaler_X, scaler_y),
+            f"linear_{name}",
+        ))
+        tasks.append((
+            _train_mlp_context,
+            (train_paths, val_paths, models_dir, name, scaler_X, scaler_y, n_epochs, patience),
+            f"mlp_{name}",
+        ))
 
     log.info("%d modèles à entraîner, %d worker(s)", len(tasks), n_workers)
     summary: dict[str, dict] = {}
 
     if n_workers == 1:
-        for (fn, *args), label in zip(tasks, labels):
+        for fn, args, label in tasks:
             log.info("▶ %s", label)
             _name, stats = fn(*args)
             summary[label] = stats
@@ -276,7 +282,7 @@ def train_synth(
         with ProcessPoolExecutor(max_workers=n_workers) as executor:
             futures = {
                 executor.submit(fn, *args): label
-                for (fn, *args), label in zip(tasks, labels)
+                for fn, args, label in tasks
             }
             for future in as_completed(futures):
                 label = futures[future]
@@ -314,8 +320,9 @@ def compute_exp_centers(df: pd.DataFrame, tracking_cfg: dict) -> dict:
         tail   = group.sort_values("temps").tail(last_n)
         raw[exp_id] = (float(tail["x"].median()), float(tail["y"].median()))
 
-    all_x = np.array([v[0] for v in raw.values()])
-    all_y = np.array([v[1] for v in raw.values()])
+    exp_ids = list(raw)  # ordre d'insertion stable (Python 3.7+)
+    all_x = np.array([raw[eid][0] for eid in exp_ids])
+    all_y = np.array([raw[eid][1] for eid in exp_ids])
     cx_ref = float(np.median(all_x))
     cy_ref = float(np.median(all_y))
 
@@ -332,8 +339,8 @@ def compute_exp_centers(df: pd.DataFrame, tracking_cfg: dict) -> dict:
     )
 
     return {
-        eid: raw[eid] if dists[i] <= thresh else (cx_ref, cy_ref)
-        for i, eid in enumerate(raw)
+        eid: raw[eid] if dist <= thresh else (cx_ref, cy_ref)
+        for eid, dist in zip(exp_ids, dists)
     }
 
 

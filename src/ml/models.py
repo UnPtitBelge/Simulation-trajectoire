@@ -17,9 +17,12 @@ représentatives de l'ensemble des données, indépendamment de l'ordre des chun
 """
 
 import pickle
+import warnings
+from abc import ABC, abstractmethod
 from pathlib import Path
 
 import numpy as np
+from sklearn.exceptions import ConvergenceWarning
 from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import StandardScaler
 
@@ -75,7 +78,79 @@ def features_to_state(features: np.ndarray) -> np.ndarray:
     return np.stack([r, theta, vr, vtheta], axis=-1)
 
 
-class LinearStepModel:
+class StepModelBase(ABC):
+    """Base commune aux deux modèles de pas (LinearStepModel, MLPStepModel).
+
+    Fournit :
+      - inject_scalers / _prepare_fit : gestion des scalers partagés
+      - predict_step                  : template method (guard + features + delta + clip)
+      - save / load                   : sérialisation pickle
+
+    Les sous-classes implémentent partial_fit, val_loss et _predict_delta_scaled.
+    """
+
+    def __init__(self) -> None:
+        self.scaler_X: StandardScaler = StandardScaler()
+        self.scaler_y: StandardScaler = StandardScaler()
+        self._scaler_fitted: bool = False
+
+    def inject_scalers(self, scaler_X: StandardScaler, scaler_y: StandardScaler) -> None:
+        """Injecte des scalers pré-fittés (calculés sur l'ensemble des données).
+        Doit être appelé avant partial_fit() pour que la normalisation soit
+        représentative de la distribution globale et non du seul premier chunk."""
+        self.scaler_X = scaler_X
+        self.scaler_y = scaler_y
+        self._scaler_fitted = True
+
+    def _prepare_fit(self, X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """Calcule les résidus, ajuste les scalers si besoin, et normalise (X, résidus).
+
+        Ajuste les scalers au premier appel si inject_scalers() n'a pas été utilisé
+        (fallback sur le premier chunk — stats moins représentatives que l'ensemble).
+        Retourne (Xs, ys) prêts pour l'algorithme propre à chaque sous-classe.
+        """
+        residuals = y - X
+        if not self._scaler_fitted:
+            self.scaler_X.fit(X)
+            self.scaler_y.fit(residuals)
+            self._scaler_fitted = True
+        return self.scaler_X.transform(X), self.scaler_y.transform(residuals)
+
+    @abstractmethod
+    def partial_fit(self, X: np.ndarray, y: np.ndarray) -> None:
+        """Entraîne incrémentalement sur un chunk (X_features, y_features)."""
+
+    @abstractmethod
+    def val_loss(self, X: np.ndarray, y: np.ndarray) -> float:
+        """MSE en espace normalisé — pour l'early stopping et le reporting."""
+
+    @abstractmethod
+    def _predict_delta_scaled(self, feat_s: np.ndarray) -> np.ndarray:
+        """Prédit le résidu normalisé depuis les features normalisées (1, N_FEATURES)."""
+
+    def predict_step(self, state: np.ndarray) -> np.ndarray:
+        """Prédit l'état (r, θ, vr, vθ) suivant depuis l'état courant."""
+        if not self._scaler_fitted:
+            raise RuntimeError("Modèle non entraîné — appeler partial_fit() d'abord")
+        feat = state_to_features(state).reshape(1, -1)
+        feat_s = self.scaler_X.transform(feat)
+        delta_s = self._predict_delta_scaled(feat_s)
+        delta = self.scaler_y.inverse_transform(delta_s)[0]
+        if np.isnan(delta).any() or np.isinf(delta).any():
+            raise RuntimeError(f"Prédiction instable (NaN/Inf dans delta) à state={state}")
+        return _clip_state(features_to_state(feat[0] + delta))
+
+    def save(self, path: Path) -> None:
+        with open(path, "wb") as f:
+            pickle.dump(self, f)
+
+    @classmethod
+    def load(cls, path: Path) -> "StepModelBase":
+        with open(path, "rb") as f:
+            return pickle.load(f)
+
+
+class LinearStepModel(StepModelBase):
     """Régression linéaire multi-sortie via équations normales incrémentales (Ridge).
 
     Accumule XtX et Xty par chunk, puis résout W = (XtX + λI)⁻¹ Xty au moment
@@ -84,10 +159,8 @@ class LinearStepModel:
     """
 
     def __init__(self, alpha: float = 1e-3):
+        super().__init__()
         self.alpha = alpha
-        self.scaler_X = StandardScaler()
-        self.scaler_y = StandardScaler()
-        self._scaler_fitted = False
         # +1 pour le terme de biais
         self._XtX = np.zeros((N_FEATURES + 1, N_FEATURES + 1))
         self._Xty = np.zeros((N_FEATURES + 1, N_FEATURES))
@@ -95,25 +168,11 @@ class LinearStepModel:
 
     def partial_fit(self, X: np.ndarray, y: np.ndarray) -> None:
         """Accumule les statistiques suffisantes (XtX, Xty) pour un chunk."""
-        residuals = y - X
-        if not self._scaler_fitted:
-            self.scaler_X.fit(X)
-            self.scaler_y.fit(residuals)
-            self._scaler_fitted = True
-        Xs = self.scaler_X.transform(X)
-        ys = self.scaler_y.transform(residuals)
+        Xs, ys = self._prepare_fit(X, y)
         Xb = np.hstack([Xs, np.ones((Xs.shape[0], 1), dtype=Xs.dtype)])
         self._XtX += Xb.T @ Xb
         self._Xty += Xb.T @ ys
         self._W = None  # invalide la solution précédente
-
-    def inject_scalers(self, scaler_X: "StandardScaler", scaler_y: "StandardScaler") -> None:
-        """Injecte des scalers pré-fittés (calculés sur l'ensemble des données).
-        Doit être appelé avant partial_fit() pour que la normalisation soit
-        représentative de la distribution globale et non du seul premier chunk."""
-        self.scaler_X = scaler_X
-        self.scaler_y = scaler_y
-        self._scaler_fitted = True
 
     def _finalize(self) -> None:
         """Résout le système normal W = (XtX + λI)⁻¹ Xty."""
@@ -133,37 +192,19 @@ class LinearStepModel:
         ys = self.scaler_y.transform(residuals)
         return float(np.mean((pred_s - ys) ** 2))
 
-    def predict_step(self, state: np.ndarray) -> np.ndarray:
-        """Prédit l'état (r, θ, vr, vθ) suivant depuis l'état courant."""
+    def _predict_delta_scaled(self, feat_s: np.ndarray) -> np.ndarray:
         if not hasattr(self, "_XtX"):
             raise RuntimeError(
                 "Modèle .pkl généré avec l'ancienne implémentation SGD — "
                 "relancer scripts/train_models.py"
             )
-        if not hasattr(self, "scaler_X") or not getattr(self, "_scaler_fitted", False):
-            raise RuntimeError("Modèle non entraîné — appeler partial_fit() d'abord")
-        if not hasattr(self, "_W") or self._W is None:
+        if self._W is None:
             self._finalize()
-        feat = state_to_features(state).reshape(1, -1)
-        feat_s = self.scaler_X.transform(feat)
         Xb = np.hstack([feat_s, [[1.0]]])
-        delta_s = Xb @ self._W
-        delta = self.scaler_y.inverse_transform(delta_s)[0]
-        if np.isnan(delta).any() or np.isinf(delta).any():
-            raise RuntimeError(f"Prédiction instable (NaN/Inf dans delta) à state={state}")
-        return _clip_state(features_to_state(feat[0] + delta))
-
-    def save(self, path: Path) -> None:
-        with open(path, "wb") as f:
-            pickle.dump(self, f)
-
-    @classmethod
-    def load(cls, path: Path) -> "LinearStepModel":
-        with open(path, "rb") as f:
-            return pickle.load(f)
+        return Xb @ self._W
 
 
-class MLPStepModel:
+class MLPStepModel(StepModelBase):
     """MLP multi-sortie via MLPRegressor (Adam, warm_start, 1 epoch par appel).
 
     Apprend les résidus Δs = s_{t+1} - s_{t} (espace features).
@@ -173,6 +214,7 @@ class MLPStepModel:
     """
 
     def __init__(self):
+        super().__init__()
         self.model = MLPRegressor(
             hidden_layer_sizes=(64, 32),   # réduit : résidus = problème plus simple
             activation="relu",
@@ -183,32 +225,11 @@ class MLPStepModel:
             warm_start=True,               # conserve les poids entre chunks
             random_state=0,
         )
-        self.scaler_X = StandardScaler()
-        self.scaler_y = StandardScaler()
-        self._scaler_fitted = False
-
-    def inject_scalers(self, scaler_X: StandardScaler, scaler_y: StandardScaler) -> None:
-        """Injecte des scalers pré-fittés (calculés sur l'ensemble des données).
-        Doit être appelé avant partial_fit() pour que la normalisation soit
-        représentative de la distribution globale et non du seul premier chunk."""
-        self.scaler_X = scaler_X
-        self.scaler_y = scaler_y
-        self._scaler_fitted = True
 
     def partial_fit(self, X: np.ndarray, y: np.ndarray) -> None:
         """Entraîne 1 epoch sur le chunk courant en continuant depuis les poids existants.
-        Le modèle apprend les résidus Δ = y - X.
         ConvergenceWarning supprimé : avec max_iter=1, la non-convergence est attendue."""
-        import warnings
-        from sklearn.exceptions import ConvergenceWarning
-
-        residuals = y - X
-        if not self._scaler_fitted:
-            self.scaler_X.fit(X)
-            self.scaler_y.fit(residuals)
-            self._scaler_fitted = True
-        Xs = self.scaler_X.transform(X)
-        ys = self.scaler_y.transform(residuals)
+        Xs, ys = self._prepare_fit(X, y)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", ConvergenceWarning)
             self.model.fit(Xs, ys)
@@ -221,22 +242,5 @@ class MLPStepModel:
         pred = self.model.predict(Xs)
         return float(np.mean((pred - ys) ** 2))
 
-    def predict_step(self, state: np.ndarray) -> np.ndarray:
-        if not hasattr(self, "scaler_X") or not getattr(self, "_scaler_fitted", False):
-            raise RuntimeError("Modèle non entraîné — appeler partial_fit() d'abord")
-        feat = state_to_features(state).reshape(1, -1)
-        feat_s = self.scaler_X.transform(feat)
-        delta_s = self.model.predict(feat_s)
-        delta = self.scaler_y.inverse_transform(delta_s)[0]
-        if np.isnan(delta).any() or np.isinf(delta).any():
-            raise RuntimeError(f"Prédiction instable (NaN/Inf dans delta) à state={state}")
-        return _clip_state(features_to_state(feat[0] + delta))
-
-    def save(self, path: Path) -> None:
-        with open(path, "wb") as f:
-            pickle.dump(self, f)
-
-    @classmethod
-    def load(cls, path: Path) -> "MLPStepModel":
-        with open(path, "rb") as f:
-            return pickle.load(f)
+    def _predict_delta_scaled(self, feat_s: np.ndarray) -> np.ndarray:
+        return self.model.predict(feat_s)
