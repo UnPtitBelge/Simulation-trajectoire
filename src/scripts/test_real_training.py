@@ -40,13 +40,16 @@ warnings.filterwarnings("ignore")
 # ── Chargement ─────────────────────────────────────────────────────────────────
 
 
-def load_experiments(csv_path: Path, tracking_cfg: dict) -> dict[int, np.ndarray]:
+def load_experiments(
+    csv_path: Path, tracking_cfg: dict
+) -> tuple[dict[int, np.ndarray], pd.DataFrame]:
     """Charge toutes les expériences en pixels centrés avec correction d'offset caméra.
 
     Utilise compute_exp_centers pour estimer le centre propre à chaque expérience
     (la bille finit toujours au même endroit physique, mais la caméra peut être décalée).
 
-    Retourne {expID: states} où states est (N, 4) = (r_px, θ, vr_px, vθ_px).
+    Retourne ({expID: states}, df) où states est (N, 4) = (r_px, θ, vr_px, vθ_px).
+    Le DataFrame est retourné pour éviter une seconde lecture du CSV (ex. get_timestamps).
     """
     df = pd.read_csv(csv_path, sep=";", skipinitialspace=True)
     df.columns = df.columns.str.strip()
@@ -72,13 +75,11 @@ def load_experiments(csv_path: Path, tracking_cfg: dict) -> dict[int, np.ndarray
         states = np.column_stack([r, theta, vr, vtheta]).astype(np.float32)
         experiments[int(exp_id)] = states
 
-    return experiments
+    return experiments, df
 
 
-def get_timestamps(csv_path: Path, exp_id: int) -> np.ndarray:
+def get_timestamps(df: pd.DataFrame, exp_id: int) -> np.ndarray:
     """Timestamps de l'expérience, normalisés à 0."""
-    df = pd.read_csv(csv_path, sep=";", skipinitialspace=True)
-    df.columns = df.columns.str.strip()
     group = df[df["expID"] == exp_id].sort_values("temps")
     t = group["temps"].values.astype(float)
     return t - t[0]
@@ -101,20 +102,18 @@ def train_on_experiments(
     train_ids = sorted(k for k in experiments if k != test_id)
     print(f"  Expériences d'entraînement : {train_ids}")
 
-    # Pré-passe : calibrer les scalers sur l'ensemble des données d'entraînement
-    print("  Pré-passe : calibration des scalers...")
-    X_parts, res_parts = [], []
-    for exp_id in train_ids:
-        states = experiments[exp_id]
-        if len(states) < 2:
-            continue
-        X = state_to_features(states[:-1])
-        y = state_to_features(states[1:])
-        X_parts.append(X)
-        res_parts.append(y - X)
+    # Calcule les paires (X_features, y_features) une seule fois pour tous les usages
+    pairs: list[tuple[np.ndarray, np.ndarray]] = [
+        (state_to_features(states[:-1]), state_to_features(states[1:]))
+        for exp_id in train_ids
+        for states in (experiments[exp_id],)
+        if len(states) >= 2
+    ]
 
-    X_all    = np.vstack(X_parts)
-    res_all  = np.vstack(res_parts)
+    # Calibration des scalers sur l'ensemble des paires d'entraînement
+    print("  Pré-passe : calibration des scalers...")
+    X_all    = np.vstack([X for X, _ in pairs])
+    res_all  = np.vstack([y - X for X, y in pairs])
     scaler_X = StandardScaler().fit(X_all)
     scaler_y = StandardScaler().fit(res_all)
 
@@ -125,26 +124,16 @@ def train_on_experiments(
 
     # LR : 1 passe (équations normales — répéter biaise la régularisation Ridge)
     print("  LR — 1 passe (solution exacte)...")
-    for exp_id in train_ids:
-        states = experiments[exp_id]
-        if len(states) < 2:
-            continue
-        X = state_to_features(states[:-1])
-        y = state_to_features(states[1:])
+    for X, y in pairs:
         lr_model.partial_fit(X, y)
 
     # MLP : n_passes passes avec shuffle
     rng = np.random.default_rng(0)
     for pass_idx in range(n_passes):
-        order = rng.permutation(train_ids).tolist()
+        order = rng.permutation(len(pairs))
         print(f"  MLP — pass {pass_idx + 1}/{n_passes} (expériences shufflées)...")
-        for exp_id in order:
-            states = experiments[int(exp_id)]
-            if len(states) < 2:
-                continue
-            X = state_to_features(states[:-1])
-            y = state_to_features(states[1:])
-            mlp_model.partial_fit(X, y)
+        for i in order:
+            mlp_model.partial_fit(*pairs[int(i)])
 
     return lr_model, mlp_model
 
@@ -292,11 +281,10 @@ if __name__ == "__main__":
 
     tracking = cfg["tracking"]
     csv_path = ROOT / cfg["paths"]["tracking_data"]
-    cx, cy   = tracking["center_x"], tracking["center_y"]
     R_px     = cfg["physics"]["R"] * tracking["px_per_meter"]
 
     print("\nChargement des données de tracking (unités pixels, correction offset caméra)...")
-    experiments = load_experiments(csv_path, tracking)
+    experiments, df = load_experiments(csv_path, tracking)
     all_ids     = sorted(experiments.keys())
     test_id     = args.test_id if args.test_id is not None else all_ids[-1]
 
@@ -305,7 +293,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     test_states = experiments[test_id]
-    timestamps  = get_timestamps(csv_path, test_id)
+    timestamps  = get_timestamps(df, test_id)
     n_train     = len(all_ids) - 1
 
     print(f"  {len(all_ids)} expériences — test : expID {test_id} "

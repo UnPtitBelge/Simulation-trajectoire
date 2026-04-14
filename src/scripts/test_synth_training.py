@@ -24,6 +24,7 @@ sys.path.insert(0, str(ROOT))
 
 from config.loader import load_config
 from ml.models import LinearStepModel, MLPStepModel, state_to_features
+from ml.train import fit_shared_scalers
 from ml.predict import predict_trajectory
 from physics.cone import compute_cone
 from utils.angle import v0_dir_to_vr_vtheta
@@ -65,8 +66,6 @@ def train_on_chunks(
     - MLP : n_epochs passes avec shuffle des chunks + val_loss après chaque epoch.
     - val_fraction : fraction de chunks réservée à la validation.
     """
-    from ml.train import fit_shared_scalers
-
     n_val       = max(0, min(int(len(chunk_paths) * val_fraction), len(chunk_paths) - 1))
     train_paths = chunk_paths[:len(chunk_paths) - n_val]
     val_paths   = chunk_paths[len(chunk_paths) - n_val:]

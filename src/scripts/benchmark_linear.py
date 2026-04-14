@@ -51,7 +51,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from config.loader import load_config
-from ml.models import LinearStepModel, state_to_features
+from ml.models import LinearStepModel, features_to_state, state_to_features
 from ml.predict import predict_trajectory
 from physics.cone import compute_cone
 from scripts.generate_data import _sample_initial_conditions
@@ -378,7 +378,6 @@ if __name__ == "__main__":
     test_true_trajs: list[np.ndarray] = []
     for X, _ in test_pairs_raw:
         # Reconstruire l'état initial depuis la première ligne de features
-        from ml.models import features_to_state
         init_state = features_to_state(X[0]).astype(float)
         true_traj  = compute_cone(
             r0=float(init_state[0]), theta0=float(init_state[1]),
