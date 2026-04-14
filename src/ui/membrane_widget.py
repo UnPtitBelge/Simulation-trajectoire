@@ -28,15 +28,16 @@ def _membrane_surface_mesh(R: float, r_min: float, k: float,
     zs = (k * np.log(r_g / R)).flatten()
     verts = np.column_stack([xs, ys, zs])
 
-    faces = []
-    for ir in range(n_r - 1):
-        for it in range(n_theta):
-            it_next = (it + 1) % n_theta
-            a = ir * n_theta + it
-            b = ir * n_theta + it_next
-            c = (ir + 1) * n_theta + it
-            d = (ir + 1) * n_theta + it_next
-            faces += [[a, b, c], [b, d, c]]
+    ir = np.repeat(np.arange(n_r - 1), n_theta)
+    it = np.tile(np.arange(n_theta), n_r - 1)
+    it_next = (it + 1) % n_theta
+    a = ir * n_theta + it
+    b = ir * n_theta + it_next
+    c = (ir + 1) * n_theta + it
+    d = (ir + 1) * n_theta + it_next
+    faces = np.empty(((n_r - 1) * n_theta * 2, 3), dtype=np.int32)
+    faces[0::2] = np.stack([a, b, c], axis=1)
+    faces[1::2] = np.stack([b, d, c], axis=1)
 
     return gl.GLMeshItem(
         vertexes=verts.astype(np.float32),
@@ -55,7 +56,6 @@ class MembraneWidget(BaseSimWidget):
         self.R_MAX     = phys["R"]
         self._k        = phys["k"]
         self._r_min    = phys["center_radius"]
-        self._R        = phys["R"]
         self._ball_r   = phys["ball_radius"]
         self._center_r = phys["center_radius"]
         self._traj: np.ndarray | None = None
@@ -87,7 +87,7 @@ class MembraneWidget(BaseSimWidget):
         self._gl.addItem(self._trail)
 
         # Centre de la bille = surface au bord intérieur + un rayon (bille posée sur la surface)
-        center_z = self._k * math.log(self._r_min / self._R) + self._center_r
+        center_z = self._k * math.log(self._r_min / self.R_MAX) + self._center_r
         self._center = gl.GLScatterPlotItem(
             pos=np.array([[0, 0, center_z]]), size=self._center_r * 2,
             color=RGB_CENTER_BALL, pxMode=False,
@@ -98,7 +98,7 @@ class MembraneWidget(BaseSimWidget):
         self._init_plot(self._gl)
 
     def _surface_z(self, r: float) -> float:
-        return self._k * math.log(max(r, self._r_min) / self._R)
+        return self._k * math.log(max(r, self._r_min) / self.R_MAX)
 
     # ── Simulation ────────────────────────────────────────────────────────────
 
@@ -131,7 +131,7 @@ class MembraneWidget(BaseSimWidget):
         r, theta = self._traj[:frame + 1, 0], self._traj[:frame + 1, 1]
         x = r * np.cos(theta)
         y = r * np.sin(theta)
-        z = self._k * np.log(np.maximum(r, self._r_min) / self._R)
+        z = self._k * np.log(np.maximum(r, self._r_min) / self.R_MAX)
         self._trail.setData(pos=np.column_stack([x, y, z]).astype(np.float32))
 
     def showEvent(self, event) -> None:

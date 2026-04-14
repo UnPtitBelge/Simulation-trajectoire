@@ -27,15 +27,16 @@ def _cone_surface_mesh(R: float, slope: float, n_r: int = 30, n_theta: int = 60)
     zs = (-slope * (R - r_g)).flatten()
     verts = np.column_stack([xs, ys, zs])
 
-    faces = []
-    for ir in range(n_r - 1):
-        for it in range(n_theta):
-            it_next = (it + 1) % n_theta
-            a = ir * n_theta + it
-            b = ir * n_theta + it_next
-            c = (ir + 1) * n_theta + it
-            d = (ir + 1) * n_theta + it_next
-            faces += [[a, b, c], [b, d, c]]
+    ir = np.repeat(np.arange(n_r - 1), n_theta)
+    it = np.tile(np.arange(n_theta), n_r - 1)
+    it_next = (it + 1) % n_theta
+    a = ir * n_theta + it
+    b = ir * n_theta + it_next
+    c = (ir + 1) * n_theta + it
+    d = (ir + 1) * n_theta + it_next
+    faces = np.empty(((n_r - 1) * n_theta * 2, 3), dtype=np.int32)
+    faces[0::2] = np.stack([a, b, c], axis=1)
+    faces[1::2] = np.stack([b, d, c], axis=1)
 
     mesh = gl.GLMeshItem(
         vertexes=verts.astype(np.float32),

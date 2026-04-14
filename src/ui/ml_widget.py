@@ -17,7 +17,9 @@ Couches affichées (de bas en haut) :
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import pyqtgraph as pg
+from PySide6.QtCore import Qt
 
 from config.theme import (
     CLR_ML_BALL, CLR_ML_PRED, CLR_ML_TRUE,
@@ -25,6 +27,7 @@ from config.theme import (
 )
 from ml.models import LinearStepModel, MLPStepModel
 from ml.predict import predict_trajectory
+from ml.train import compute_exp_centers
 from physics.cone import compute_cone
 from ui.base_sim_widget import BaseSimWidget
 from utils.angle import v0_dir_to_vr_vtheta
@@ -75,7 +78,7 @@ class MLWidget(BaseSimWidget):
         angles = np.linspace(0, 2 * np.pi, 200)
         self._pw.plot(
             self.R_MAX * np.cos(angles), self.R_MAX * np.sin(angles),
-            pen=pg.mkPen(color="#555555", width=1, style=pg.QtCore.Qt.PenStyle.DashLine),
+            pen=pg.mkPen(color="#555555", width=1, style=Qt.PenStyle.DashLine),
         )
 
         # Couche 1 — trajectoires d'entraînement en fond (gris semi-transparent)
@@ -210,9 +213,6 @@ class MLWidget(BaseSimWidget):
         Le CSV est chargé une seule fois ; compute_exp_centers fournit le centre
         de chaque expérience → même référentiel pour le display et le modèle.
         """
-        import pandas as pd
-        from ml.train import compute_exp_centers
-
         tracking  = self._cfg["tracking"]
         ppm       = tracking["px_per_meter"]
         vel_scale = tracking.get("real_width", 172) / tracking.get("video_width", 960)

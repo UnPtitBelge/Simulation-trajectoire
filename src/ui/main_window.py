@@ -19,15 +19,14 @@ from PySide6.QtWidgets import (
     QComboBox, QLabel, QMainWindow, QSplitter, QTabWidget, QWidget,
 )
 
-log = logging.getLogger(__name__)
-
 from ui.base_sim_widget import BaseSimWidget
-
 from ui.controls import ControlsPanel
 from ui.cone_widget import ConeWidget
 from ui.membrane_widget import MembraneWidget
 from ui.mcu_widget import MCUWidget
 from ui.ml_widget import MLWidget
+
+log = logging.getLogger(__name__)
 
 
 class MainWindow(QMainWindow):

@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
     QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout, QLabel,
 )
 
-from utils.angle import deg_to_rad, rad_to_deg
+from utils.angle import deg_to_rad
 
 
 class MarkerPopup(QDialog):

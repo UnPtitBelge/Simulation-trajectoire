@@ -11,7 +11,6 @@ from PySide6.QtWidgets import (
 )
 
 
-
 class ControlsPanel(QWidget):
     """Panneau latéral avec sélecteur preset et spinboxes CI.
 
