@@ -467,6 +467,104 @@ python src/scripts/collect_metrics.py --n-test 200 --output results/metrics.csv
 
 ---
 
+## train_direct_models.py
+
+**Rôle** : entraîne les 8 modèles directs CI → trajectoire sur des trajectoires synthétiques
+complètes (paradigme direct, opposé au paradigme step-by-step de `train_models.py`).
+
+**Paradigme direct** :
+- Entrée  : `(r₀, cos θ₀, sin θ₀, vr₀, vθ₀)` — 5 scalaires (conditions initiales encodées)
+- Sortie  : trajectoire aplatie `(r₀, θ₀, vr₀, vθ₀, r₁, θ₁, …)` — 4 × `target_len` scalaires
+
+**Différence avec le paradigme step-by-step** : le modèle prédit la trajectoire entière en
+une seule inférence, sans itération récursive. Avantage : pas d'accumulation d'erreur.
+Inconvénient : taille de sortie fixe, ne peut pas prédire au-delà de `target_len` pas.
+
+### Algorithmes et contextes
+
+| Contexte | Fraction des trajectoires | Modèles produits |
+|----------|--------------------------|-----------------|
+| `1pct`   | 1 %  | `direct_linear_1pct.pkl`, `direct_mlp_1pct.pkl` |
+| `10pct`  | 10 % | `direct_linear_10pct.pkl`, `direct_mlp_10pct.pkl` |
+| `50pct`  | 50 % | `direct_linear_50pct.pkl`, `direct_mlp_50pct.pkl` |
+| `100pct` | 100 %| `direct_linear_100pct.pkl`, `direct_mlp_100pct.pkl` |
+
+### Structure d'un fichier .pkl
+
+```python
+{
+    "model":       Ridge | MLPRegressor,
+    "scaler_X":    StandardScaler,   # fitté sur les CI d'entraînement
+    "target_len":  int,              # longueur de la trajectoire prédite (pas)
+    "context":     str,              # "1pct", "10pct", …
+    "model_type":  str,              # "Ridge" ou "MLP"
+    "n_train":     int,              # nombre de trajectoires d'entraînement
+    "mae_r_train": float,            # MAE sur r (train, en mètres)
+}
+```
+
+### Arguments
+
+| Argument | Défaut | Description |
+|----------|--------|-------------|
+| `--n-trajectories N` | 50 000 | Trajectoires totales pour 100pct |
+| `--max-steps N` | 1 000 | Longueur max de la trajectoire cible (10 s à dt=0.01) |
+| `--output-dir PATH` | `data/models/` | Dossier de sauvegarde |
+| `--no-save` | off | Dry-run : entraîne mais ne sauvegarde pas |
+
+```bash
+python src/scripts/train_direct_models.py
+python src/scripts/train_direct_models.py --n-trajectories 20000 --max-steps 500
+```
+
+**Prérequis** : aucun (les trajectoires sont générées à la volée).
+
+---
+
+## benchmark_direct.py
+
+**Rôle** : benchmark comparatif direct vs step-by-step sur un jeu de test synthétique commun.
+
+Évalue les 4 paradigmes × 4 contextes sur 500 trajectoires de test (seed=999, jamais
+vues pendant l'entraînement) :
+
+| Paradigme | Fichiers |
+|-----------|---------|
+| direct-Ridge | `direct_linear_{ctx}.pkl` |
+| direct-MLP   | `direct_mlp_{ctx}.pkl` |
+| step-Ridge   | `synth_linear_{ctx}.pkl` |
+| step-MLP     | `synth_mlp_{ctx}.pkl` |
+
+### Métriques
+
+- **MAE r (m)** — erreur absolue moyenne sur le rayon polaire
+- **Stabilité (%)** — fraction de trajectoires sans NaN ni divergence (r < 2R)
+
+### Sorties
+
+- `figures/benchmark_direct.png` — 2 panels : MAE r et stabilité vs contexte (échelle log)
+- `results/benchmark_direct.csv` — table complète des métriques
+
+### Arguments
+
+| Argument | Défaut | Description |
+|----------|--------|-------------|
+| `--n-test N` | 500 | Trajectoires de test |
+| `--output PATH` | `figures/benchmark_direct.png` | Figure |
+| `--csv PATH` | `results/benchmark_direct.csv` | CSV |
+| `--no-plot` | off | Mode batch |
+
+```bash
+python src/scripts/benchmark_direct.py
+python src/scripts/benchmark_direct.py --n-test 200 --no-plot
+```
+
+**Prérequis** :
+- Modèles step-by-step : `data/models/synth_*.pkl` (lancer `train_models.py`)
+- Modèles directs : `data/models/direct_*.pkl` (lancer `train_direct_models.py`)
+
+---
+
 ## ablation_features.py
 
 **Rôle** : justifie empiriquement le choix des 9 features ML en entraînant

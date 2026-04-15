@@ -37,6 +37,12 @@ python src/scripts/benchmark_physics_levels.py [--output PATH] [--no-plot]
 # Métriques consolidées des 8 modèles pré-entraînés
 python src/scripts/collect_metrics.py [--n-test N] [--output PATH]
 
+# Entraîner les 8 modèles directs CI→trajectoire (données synthétiques)
+python src/scripts/train_direct_models.py [--n-trajectories N] [--max-steps N]
+
+# Benchmark direct CI→traj vs step-by-step sur données synthétiques
+python src/scripts/benchmark_direct.py [--n-test N] [--output PATH] [--no-plot]
+
 # Tester les simulations physiques (4 niveaux + 3 intégrateurs)
 python src/scripts/test_simulations.py
 
