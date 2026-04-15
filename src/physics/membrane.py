@@ -1,16 +1,31 @@
-"""Simulation physique de la membrane — intégrateur semi-implicite Euler.
+"""Simulation physique de la membrane — trois niveaux de précision physique.
+
+Intégrateur : Euler-Cromer (semi-implicite, ordre 1).
+
+Niveaux de précision physique (combinables) :
+  Niveau 0 — Glissement (défaut) : frottement de Coulomb cinétique μ.
+             La normale N = m·g·cos(β(r)) varie avec r (pente locale).
+  Niveau 1 — Roulement pur (rolling=True) : facteur de masse effective f=5/7,
+             pas de Coulomb. La bille roule sans glisser.
+  Niveau 2 — Roulement + résistance au roulement (rolling_resistance > 0) :
+             force μ_r·m·g·cos(β(r)) — variable avec r comme la normale.
+  Niveau 3 — + Traînée aérodynamique (drag_coeff > 0) : k·|v|².
 
 Surface : z(r) = k · ln(r/R),  k = F/(2πT)
 La surface est concave (bord le plus haut, centre le plus bas).
-Bille glissante (pas de roulement).
 Coordonnées polaires : état = (r, θ, vr, vθ) où vθ = r * dθ/dt.
 
-Équations du mouvement (Newton en coordonnées polaires, bille glissante) :
+Équations du mouvement — bille glissante (Niveau 0) :
   dvr/dt = +vθ²/r  -  g·(k/r)/√(1+(k/r)²)  -  μ·g/√(1+(k/r)²)·vr/|v|
   dvθ/dt = -vr·vθ/r  -  μ·g/√(1+(k/r)²)·vθ/|v|
+
+Note : cos(β(r)) = 1/√(1+(k/r)²) varie avec r, contrairement au cône.
 """
 
 import numpy as np
+
+# Facteur de masse effective pour sphère pleine en roulement pur : f = 5/7
+_ROLLING_FACTOR = 5.0 / 7.0
 
 
 def compute_membrane(
@@ -26,16 +41,23 @@ def compute_membrane(
     dt: float,
     n_steps: int,
     center_radius: float = 0.03,
+    rolling: bool = False,
+    rolling_resistance: float = 0.0,
+    drag_coeff: float = 0.0,
 ) -> np.ndarray:
     """Retourne array (n_steps, 4) : colonnes = r, θ, vr, vθ.
 
-    Bille glissante — la masse se simplifie, les accélérations sont :
-    1. Centrifuge         : +vθ²/r
-    2. Gravité radiale    : -g·(k/r)/√(1+(k/r)²)       (vers le centre)
-    3. Frottement Coulomb : -μ·g/√(1+(k/r)²)·v/|v|     (normal variable avec r)
-    4. Coriolis (net)     : -vr·vθ/r                    (en dvθ/dt)
+    Paramètres
+    ----------
+    rolling : bool
+        True → roulement pur (f=5/7). False → glissement Coulomb.
+    rolling_resistance : float
+        Coefficient de résistance au roulement μ_r (≈ 0.001–0.005).
+        Ignoré si rolling=False. La force est μ_r·g·cos(β(r)) (variable avec r).
+    drag_coeff : float
+        Coefficient de traînée k = ρ·C_d·A/(2m) (m⁻¹). Tous modes.
 
-    r_min doit être ≥ center_radius pour éviter la collision avec la bille centrale.
+    ``r_min`` doit être ≥ center_radius pour éviter la collision centrale.
     """
     assert center_radius > 0, f"center_radius doit être > 0, reçu {center_radius}"
     assert r_min <= R, f"r_min ({r_min}) doit être ≤ R ({R})"
@@ -48,34 +70,59 @@ def compute_membrane(
 
         current_r   = max(r, r_min)
         local_slope = k / current_r
-        inv_norm    = 1.0 / np.sqrt(1.0 + local_slope ** 2)  # cos(β) = 1/√(1+(k/r)²)
+        inv_norm    = 1.0 / np.sqrt(1.0 + local_slope ** 2)  # cos(β(r))
 
-        # Gravité radiale : -g·sin(β) = -g·(k/r)/√(1+(k/r)²)
+        # Gravité radiale : -g·sin(β) = -g·(k/r)·cos(β)
         a_gravity = -g * local_slope * inv_norm
 
-        # Frottement de Coulomb : μ·N/m = μ·g·cos(β) = μ·g/√(1+(k/r)²)
-        g_friction = friction * g * inv_norm
-        speed = np.sqrt(vr ** 2 + vtheta ** 2)
+        # Forces de freinage — toutes dépendent de cos(β(r)) = inv_norm
+        g_friction              = friction          * g * inv_norm  # Coulomb (glissement)
+        rolling_resistance_force = rolling_resistance * g * inv_norm  # résistance roulement
 
-        if speed > 0:
-            friction_r     = -g_friction * vr     / speed
-            friction_theta = -g_friction * vtheta / speed
-            ar = vtheta ** 2 / current_r + a_gravity + friction_r
-            at = -vr * vtheta / current_r + friction_theta
-        elif abs(a_gravity) > g_friction:
-            # Frottement statique dépassé : la bille glisse (gravité > friction max)
-            ar = a_gravity + g_friction   # friction s'oppose au mouvement inward
-            at = 0.0
+        speed = np.sqrt(vr ** 2 + vtheta ** 2)
+        ar_cent = vtheta ** 2 / current_r + a_gravity
+        at_cor  = -vr * vtheta / current_r
+
+        if rolling:
+            if speed > 0:
+                ar = ar_cent * _ROLLING_FACTOR
+                at = at_cor  * _ROLLING_FACTOR
+                if rolling_resistance_force > 0:
+                    ar -= rolling_resistance_force * vr     / speed
+                    at -= rolling_resistance_force * vtheta / speed
+            else:
+                if abs(a_gravity) * _ROLLING_FACTOR > rolling_resistance_force:
+                    ar = a_gravity * _ROLLING_FACTOR
+                    at = 0.0
+                else:
+                    ar = at = 0.0
         else:
-            # Frottement statique tient : tan(β) ≤ μ, la bille reste immobile
-            ar = at = 0.0
+            # Glissement — frottement de Coulomb
+            if speed > 0:
+                ar = ar_cent - g_friction * vr     / speed
+                at = at_cor  - g_friction * vtheta / speed
+            elif abs(a_gravity) > g_friction:
+                ar = a_gravity + g_friction   # friction s'oppose au mouvement inward
+                at = 0.0
+            else:
+                ar = at = 0.0
+
+        # Traînée aérodynamique
+        if drag_coeff > 0.0 and speed > 0.0:
+            ar -= drag_coeff * speed * vr
+            at -= drag_coeff * speed * vtheta
 
         vr     += dt * ar
         vtheta += dt * at
 
-        # Snap-to-zero : si la vitesse est inférieure à ce que le frottement
-        # peut produire en un pas ET que le frottement statique tient, bloquer.
-        if np.sqrt(vr ** 2 + vtheta ** 2) < g_friction * dt and abs(a_gravity) <= g_friction:
+        # Snap-to-zero
+        decel_force = rolling_resistance_force if rolling else g_friction
+        gravity_ref = a_gravity
+        if rolling:
+            can_stop = abs(gravity_ref) * _ROLLING_FACTOR <= rolling_resistance_force
+        else:
+            can_stop = abs(gravity_ref) <= g_friction
+        if np.sqrt(vr ** 2 + vtheta ** 2) < decel_force * dt and can_stop:
             vr = vtheta = 0.0
 
         r     += dt * vr
