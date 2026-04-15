@@ -31,7 +31,13 @@ python src/scripts/benchmark_linear.py [--n-trajectories N] [--n-test N] [--n-co
 # Mesurer la convergence MLPStepModel vs nombre de chunks
 python src/scripts/benchmark_mlp.py [--max-chunks N] [--epochs N] [--n-contexts N]
 
-# Tester les simulations physiques
+# Comparer les 4 niveaux physiques (L0–L3) sur cône et membrane
+python src/scripts/benchmark_physics_levels.py [--output PATH] [--no-plot]
+
+# Métriques consolidées des 8 modèles pré-entraînés
+python src/scripts/collect_metrics.py [--n-test N] [--output PATH]
+
+# Tester les simulations physiques (4 niveaux + 3 intégrateurs)
 python src/scripts/test_simulations.py
 
 # Tester les modèles ML pré-entraînés (nécessite les .pkl dans data/models/)
@@ -42,6 +48,11 @@ python src/scripts/test_synth_training.py [--chunks N]
 
 # Tester l'entraînement + prédiction sur données de tracking réelles
 python src/scripts/test_real_training.py [--test-id N] [--passes N]
+
+# Suite de tests unitaires (107 tests — physique, ML, config, prédiction)
+pytest                              # tous les tests
+pytest src/tests/test_physics.py   # uniquement physique
+pytest -k "cone"                   # filtrer par nom
 
 # Qualité du code
 black src/
@@ -54,6 +65,7 @@ Le répertoire de travail Python est `src/` — tous les imports internes sont r
 ## Prérequis au lancement
 
 `app.py` vérifie au démarrage la présence de :
+
 - `src/data/tracking_data.csv` (données caméra réelles)
 - `src/data/models/synth_{linear,mlp}_{1pct,10pct,50pct,100pct}.pkl` (8 modèles)
 
@@ -63,7 +75,7 @@ Sans ces fichiers, une `QMessageBox` bloque le démarrage.
 
 ### Flux de données ML (de bout en bout)
 
-```
+```text
 generate_data.py
   → physics/cone.py (simulateur Euler semi-implicite)
   → data/synthetic/chunk_NNNNN.npz  (X: état_t, y: état_{t+1})
@@ -113,6 +125,7 @@ Les sous-classes implémentent : `_compute()`, `_draw_initial()`, `_draw(frame)`
 ### Config → UI (pipeline contrôles)
 
 `ControlsPanel` (`ui/controls.py`) est **entièrement généré depuis le TOML** :
+
 - `cfg["preset"]` → QComboBox avec les noms des presets
 - `cfg["ranges"]` → QDoubleSpinBox (min/max) pour chaque paramètre
 
@@ -136,6 +149,7 @@ Les contrôles UI et les presets utilisent `v0` (norme, m/s) + `direction_deg` (
 ### Distribution des conditions initiales synthétiques
 
 `generate_data.py::_sample_initial_conditions` échantillonne :
+
 - `r0` : `R * sqrt(U[r_frac², 1])` → densité uniforme en surface (aire ∝ r²)
 - `theta0` : `U[0, 2π]`
 - Vitesse : **anneau uniforme** — `v0 ~ U(v_min, v_max)`, `direction ~ U(-π, π)` → `vr = v0·sin(dir)`, `vtheta = v0·cos(dir)`. Évite le biais des diagonales du carré `(vr, vtheta) ∈ [-v_max, v_max]²`.
@@ -164,12 +178,12 @@ Après toute modification d'un fichier, vérifier si un `README.md` existe dans 
 
 ## Fichiers clés à lire en priorité
 
-| Objectif | Fichier |
-|---|---|
-| Comprendre le démarrage | `src/app.py` |
-| Ajouter une simulation | `src/ui/base_sim_widget.py` |
-| Modifier les paramètres UI | `src/config/*.toml` |
-| Comprendre le chargement/merge de config | `src/config/loader.py` |
-| Modifier la physique | `src/physics/cone.py` ou `membrane.py` |
-| Modifier le ML | `src/ml/models.py` + `train.py` + `predict.py` |
-| Thème / couleurs | `src/config/theme.py` |
+| Objectif                              | Fichier                                          |
+| ------------------------------------- | ------------------------------------------------ |
+| Comprendre le démarrage               | `src/app.py`                                     |
+| Ajouter une simulation                | `src/ui/base_sim_widget.py`                      |
+| Modifier les paramètres UI            | `src/config/*.toml`                              |
+| Comprendre le chargement/merge config | `src/config/loader.py`                           |
+| Modifier la physique                  | `src/physics/cone.py` ou `membrane.py`           |
+| Modifier le ML                        | `src/ml/{models,train,predict}.py`               |
+| Thème / couleurs                      | `src/config/theme.py`                            |

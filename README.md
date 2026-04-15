@@ -92,7 +92,7 @@ Les deux algorithmes apprennent les **résidus** `Δ = feat(s_{t+1}) − feat(s_
 
 ### Prérequis et pipeline
 
-```
+```text
 generate_data.py  →  train_models.py  →  app.py
 ```
 
@@ -115,8 +115,10 @@ python src/scripts/train_models.py --workers 8
 | Script | Prérequis | Ce que ça mesure |
 | --- | --- | --- |
 | `benchmark_integrators.py` | — | Ordre de convergence Euler vs Euler-Cromer vs RK4 en fonction de dt |
+| `benchmark_physics_levels.py` | — | Comparaison des 4 niveaux physiques L0–L3 (r(t), énergie, XY) |
 | `benchmark_linear.py` | — | Convergence de LinearStepModel vs nombre de trajectoires d'entraînement |
 | `benchmark_mlp.py` | chunks | Convergence de MLPStepModel vs nombre de chunks |
+| `collect_metrics.py` | modèles `.pkl` | Métriques consolidées (MAE, stabilité, longueur) pour les 8 modèles |
 | `analyze_ml_error.py` | modèles `.pkl` | Accumulation d'erreur ML vs horizon de prédiction |
 | `ablation_features.py` | chunks | Justification empirique des 9 features (sous-ensembles A→D) |
 | `compare_approaches.py` | CSV + modèles | Comparaison physique / ML / réel sur les mêmes CI |
@@ -126,9 +128,16 @@ python src/scripts/train_models.py --workers 8
 python src/scripts/benchmark_integrators.py
 python src/scripts/benchmark_integrators.py --output figures/integrators.png
 
+# Comparaison des 4 niveaux physiques (aucun prérequis)
+python src/scripts/benchmark_physics_levels.py
+python src/scripts/benchmark_physics_levels.py --output figures/physics_levels.png
+
 # Convergence linéaire (génère ses propres trajectoires à la volée)
 python src/scripts/benchmark_linear.py --n-trajectories 5000 --n-test 50
 python src/scripts/benchmark_linear.py --no-plot --output results/linear.csv
+
+# Métriques consolidées des 8 modèles (nécessite les .pkl)
+python src/scripts/collect_metrics.py --n-test 200 --output results/metrics.csv
 
 # Accumulation d'erreur ML (nécessite les .pkl)
 python src/scripts/analyze_ml_error.py --n-ic 500 --horizon 500
@@ -144,7 +153,7 @@ python src/scripts/compare_approaches.py --test-id 5 --output figures/compare.pn
 
 | Script | Prérequis | Description |
 | --- | --- | --- |
-| `test_simulations.py` | — | Valide les simulateurs physiques (cône + membrane) |
+| `test_simulations.py` | — | Valide les 4 niveaux physiques et les 3 intégrateurs (cône + membrane) |
 | `test_ml_models.py` | modèles `.pkl` | Teste les modèles pré-entraînés sur le preset par défaut |
 | `test_synth_training.py` | chunks | Cycle complet entraînement → prédiction sur données synthétiques |
 | `test_real_training.py` | CSV | Cycle complet entraînement → prédiction sur données réelles |
@@ -156,13 +165,21 @@ python src/scripts/test_synth_training.py --chunks 5
 python src/scripts/test_real_training.py --test-id 9
 ```
 
+### Tests unitaires pytest
+
+```bash
+pytest                           # 107 tests (physique, ML, config, prédiction)
+pytest src/tests/test_physics.py # uniquement les tests physiques
+pytest -k "test_cone"            # filtrer par nom
+```
+
 Tous s'exécutent depuis la racine du projet. Chaque script accepte `--help` pour la liste complète des arguments.
 
 ---
 
 ## Structure
 
-```
+```text
 src/
 ├── app.py              # Point d'entrée
 ├── config/             # TOML (common, cone, membrane, mcu, ml) + thème
