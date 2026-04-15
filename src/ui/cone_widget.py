@@ -107,6 +107,9 @@ class ConeWidget(BaseSimWidget):
             r0=p["r0"], theta0=p["theta0"], vr0=vr0, vtheta0=vtheta0,
             R=phys["R"], depth=phys["depth"], friction=phys["friction"],
             g=phys["g"], dt=phys["dt"], n_steps=phys["n_steps"],
+            rolling=bool(phys.get("rolling", False)),
+            rolling_resistance=float(phys.get("rolling_resistance", 0.0)),
+            drag_coeff=float(phys.get("drag_coeff", 0.0)),
         )
         self._n_frames = len(self._traj)
 

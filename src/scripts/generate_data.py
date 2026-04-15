@@ -104,6 +104,9 @@ def _simulate_chunk(
     friction = phys_cfg["friction"]
     g = phys_cfg["g"]
     dt = phys_cfg["dt"]
+    rolling            = bool(phys_cfg.get("rolling", False))
+    rolling_resistance = float(phys_cfg.get("rolling_resistance", 0.0))
+    drag_coeff         = float(phys_cfg.get("drag_coeff", 0.0))
 
     min_steps = gen_cfg.get("min_steps", 50)
 
@@ -123,6 +126,9 @@ def _simulate_chunk(
             g=g,
             dt=dt,
             n_steps=n_steps,
+            rolling=rolling,
+            rolling_resistance=rolling_resistance,
+            drag_coeff=drag_coeff,
         )
         if len(traj) >= max(2, min_steps):
             X_parts.append(traj[:-1].astype(np.float32))
