@@ -173,6 +173,62 @@ Après chaque mise à jour de vitesse (tous intégrateurs) : si `|v| < g_frictio
 
 ---
 
+## Niveaux de précision physique (cône et membrane)
+
+Les deux simulateurs acceptent trois paramètres optionnels qui permettent d'affiner progressivement le modèle physique :
+
+| Niveau | Paramètre | Valeur typique | Description |
+| --- | --- | --- | --- |
+| 0 (défaut) | — | `rolling=False` | Glissement pur — Coulomb cinétique μ constant |
+| 1 | `rolling=True` | — | Roulement sans glissement — facteur de masse effective f = 5/7 (sphère pleine, I = 2/5·m·r²), Coulomb supprimé |
+| 2 | `rolling_resistance` | 0.001–0.005 | + Résistance au roulement μ_r · m · g · cos β — force bien plus faible que Coulomb (rapport ×10 à ×50) |
+| 3 | `drag_coeff` | 0.01–0.1 m⁻¹ | + Traînée aérodynamique quadratique k · ‖v‖ · v, avec k = ρ_air · C_d · A / (2m) |
+
+Les niveaux 2 et 3 sont **cumulatifs** : `rolling=True, rolling_resistance=0.003, drag_coeff=0.05` active les 4 effets simultanément.
+
+### Équations — roulement pur (Niveau 1)
+
+Pour une sphère pleine (`I = 2/5·m·r²`), la contrainte de roulement sans glissement introduit un facteur effectif f = 5/7 dans les équations de Newton :
+
+```text
+dvr/dt = (vθ²/r − g·sin α) · f          [f = 5/7 pour sphère pleine]
+dvθ/dt = (−vr·vθ / r) · f
+```
+
+Le terme de Coulomb disparaît. Sans résistance au roulement ni traînée, le système est **conservatif** (énergie mécanique + rotationnelle conservée) — la bille orbite indéfiniment.
+
+### Équations — résistance au roulement (Niveau 2)
+
+La résistance au roulement est une force dissipative proportionnelle à la normale, mais d'amplitude μ_r ≪ μ :
+
+```text
+f_rr = μ_r · m · g · cos β    (cône : cos β = cos α constant)
+                               (membrane : cos β = 1/√(1+(k/r)²) variable)
+
+dvr/dt += −f_rr/m · vr / |v|
+dvθ/dt += −f_rr/m · vθ / |v|
+```
+
+### Équations — traînée aérodynamique (Niveau 3)
+
+```text
+F_drag = −k · |v| · v     (quadratique en vitesse)
+
+dvr/dt += −k · |v| · vr
+dvθ/dt += −k · |v| · vθ
+```
+
+### Snap-to-zero unifié
+
+Le critère d'arrêt est adapté au mode :
+
+- Glissement : `|v| < g_friction · dt` ET `|g_radial| ≤ g_friction`
+- Roulement : `|v| < rolling_resistance_force · dt` ET `|g_radial| · f ≤ rolling_resistance_force`
+
+Sans résistance au roulement (`rolling=True, rolling_resistance=0`), le snap-to-zero ne se déclenche jamais — la bille conserve sa vitesse indéfiniment.
+
+---
+
 ## Comparaison cône / membrane
 
 | | Cône | Membrane |
