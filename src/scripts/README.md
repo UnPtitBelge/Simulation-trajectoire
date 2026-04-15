@@ -44,6 +44,12 @@ semi-implicite de `physics/cone.py`) et écrit les paires d'états successifs
 **Parallélisme** : `ProcessPoolExecutor` avec `--workers N` processus.
 Seeds reproductibles via `np.random.SeedSequence(42)`.
 
+**Niveau physique** : le simulateur utilise les paramètres de `src/config/common.toml [physics]`.
+Les clés `rolling`, `rolling_resistance`, `drag_coeff` contrôlent le niveau de précision
+(Level 0 glissement par défaut). **Tout changement nécessite de régénérer les chunks et
+de réentraîner les modèles** — les chunks existants restent cohérents avec la physique
+qui les a produits.
+
 ### Arguments
 
 | Argument | Défaut | Description |
