@@ -1,10 +1,20 @@
 """Test des modèles ML (linéaire et MLP) sur tous les contextes d'entraînement.
 
+Charge et évalue deux familles de modèles :
+  - Step-by-step : synth_{linear,mlp}_{ctx}.pkl — prédiction récursive pas-à-pas
+  - Directs CI→traj : direct_{linear,mlp}_{ctx}.pkl — prédiction en une inférence
+
+Produit deux figures 2×2 (une par famille), avec la même structure :
+  col 0 = linéaire  |  col 1 = MLP
+  row 0 = trajectoire XY (vue de dessus)
+  row 1 = r(t) et |v|(t)
+
 Usage :
     python src/scripts/test_ml_models.py
 """
 
 import concurrent.futures as cf
+import pickle
 import sys
 from pathlib import Path
 
@@ -23,23 +33,24 @@ from utils.angle import v0_dir_to_vr_vtheta
 ALGOS       = ["linear", "mlp"]
 ALGO_LABELS = {"linear": "Régression linéaire", "mlp": "MLP"}
 
-# Palette construite dynamiquement depuis la config pour éviter un KeyError
-# si un nouveau contexte est ajouté dans ml.toml.
 _PALETTE = ["steelblue", "darkorange", "seagreen", "crimson", "mediumpurple"]
 
 
-def _load_predict(args: tuple) -> tuple[tuple[str, str], "np.ndarray | None"]:
-    """Charge un modèle et prédit une trajectoire (worker indépendant)."""
+# ── Modèles step-by-step ──────────────────────────────────────────────────────
+
+
+def _load_predict_step(args: tuple) -> tuple[tuple[str, str], "np.ndarray | None"]:
+    """Worker : charge un modèle step et prédit une trajectoire."""
     models_dir, algo, context, init_state, n_steps, r_max, r_min, v_stop = args
-    model = load_model(models_dir, algo, context)
+    model = _load_step_model(models_dir, algo, context)
     if model is None:
         return (algo, context), None
     traj = predict_trajectory(model, init_state, n_steps, r_max=r_max, r_min=r_min, v_stop=v_stop)
     return (algo, context), traj
 
 
-def load_model(models_dir: Path, algo: str, context: str):
-    """Charge un modèle pré-entraîné. Retourne None si le fichier est absent."""
+def _load_step_model(models_dir: Path, algo: str, context: str):
+    """Charge un modèle step-by-step pré-entraîné. Retourne None si absent."""
     path = models_dir / f"synth_{algo}_{context}.pkl"
     if not path.exists():
         return None
@@ -48,51 +59,88 @@ def load_model(models_dir: Path, algo: str, context: str):
     return MLPStepModel.load(path)
 
 
+# ── Modèles directs ────────────────────────────────────────────────────────────
+
+
+def _load_direct_model(models_dir: Path, algo: str, context: str) -> dict | None:
+    """Charge un modèle direct (dict pkl). Retourne None si absent."""
+    path = models_dir / f"direct_{algo}_{context}.pkl"
+    if not path.exists():
+        return None
+    with open(path, "rb") as f:
+        return pickle.load(f)
+
+
+def _predict_direct(model_data: dict, init_state: np.ndarray) -> np.ndarray:
+    """Prédit une trajectoire avec un modèle direct en une seule inférence.
+
+    Retourne array (target_len, 4) en (r, θ, vr, vθ).
+    """
+    target_len = model_data["target_len"]
+    scaler_X   = model_data["scaler_X"]
+    model      = model_data["model"]
+
+    x = np.array(
+        [init_state[0], np.cos(init_state[1]), np.sin(init_state[1]),
+         init_state[2], init_state[3]],
+        dtype=np.float32,
+    ).reshape(1, -1)
+    x_s = scaler_X.transform(x)
+    y_flat = model.predict(x_s)[0]
+    return y_flat.reshape(target_len, 4).astype(np.float32)
+
+
+# ── Statistiques console ───────────────────────────────────────────────────────
+
+
 def print_stats(
-    algo: str, context: str, traj: np.ndarray, dt: float, n_max: int, R: float
+    paradigm: str, algo: str, context: str,
+    traj: np.ndarray, dt: float, R: float,
+    target_len: int | None = None,
 ) -> None:
     r      = traj[:, 0]
     vr     = traj[:, 2]
     vtheta = traj[:, 3]
     speed  = np.sqrt(vr**2 + vtheta**2)
-
     n_used = len(traj)
-    if n_used >= n_max:
-        early = " (borne atteinte)"
-    elif r[-1] >= R - 1e-6:
-        early = " (sortie bord)"
-    else:
-        early = " (bille arrêtée)"   # |v| < seuil
 
-    print(f"\n{'─' * 48}")
-    print(f"  {ALGO_LABELS[algo]:28s}  [{context}]")
-    print(f"{'─' * 48}")
-    print(f"  Pas utilisés    : {n_used} / {n_max}{early}")
-    print(f"  Durée simulée   : {n_used * dt:.2f} s")
+    if paradigm == "direct":
+        stop_reason = f"(output fixe, target_len={target_len})"
+    elif r[-1] >= R - 1e-6:
+        stop_reason = "(sortie bord)"
+    else:
+        stop_reason = "(bille arrêtée)"
+
+    print(f"\n{'─' * 52}")
+    print(f"  [{paradigm}] {ALGO_LABELS[algo]:28s}  [{context}]")
+    print(f"{'─' * 52}")
+    print(f"  Pas       : {n_used} {stop_reason}")
+    print(f"  Durée     : {n_used * dt:.2f} s")
     print(f"  r  : min={r.min():.4f} m   max={r.max():.4f} m   final={r[-1]:.4f} m")
     print(f"  vr : min={vr.min():.4f}    max={vr.max():.4f}    final={vr[-1]:.4f} m/s")
     print(f"  vθ : min={vtheta.min():.4f}    max={vtheta.max():.4f}    final={vtheta[-1]:.4f} m/s")
-    print(f"  |v|: min={speed.min():.4f}    max={speed.max():.4f}    final={speed[-1]:.4f} m/s")
-    print(f"  Énergie cinétique finale : {0.5 * speed[-1]**2:.6f} J/kg")
+    print(f"  |v|: final={speed[-1]:.4f} m/s   Ec finale={0.5 * speed[-1]**2:.6f} J/kg")
+
+
+# ── Visualisation ──────────────────────────────────────────────────────────────
 
 
 def plot_results(
-    trajs: dict,           # {(algo, context): np.ndarray}
+    trajs: dict,               # {(algo, context): np.ndarray}
     R: float,
     dt: float,
     preset_name: str,
     contexts: list[str],
     context_colors: dict[str, str],
+    title_prefix: str = "Modèles step-by-step",
 ) -> None:
+    """Figure 2×2 : col = algo (linear|mlp), row = (XY | r+v).
+
+    Chaque subplot superpose tous les contextes disponibles.
     """
-    Figure 2×2 :
-      col 0 = linéaire  |  col 1 = MLP
-      row 0 = XY (vue dessus)  |  row 1 = r(t) et |v|(t)
-    Chaque subplot superpose les 3 contextes.
-    """
-    fig, axes = plt.subplots(2, 2, figsize=(13, 10))
+    fig, axes = plt.subplots(2, 2, figsize=(13, 10), constrained_layout=True)
     fig.suptitle(
-        f"Modèles ML — preset « {preset_name} »   (R = {R} m,  dt = {dt} s)",
+        f"{title_prefix} — preset « {preset_name} »   (R = {R} m,  dt = {dt} s)",
         fontsize=13,
     )
 
@@ -120,14 +168,11 @@ def plot_results(
             x     = r * np.cos(theta)
             y     = r * np.sin(theta)
 
-            # ── Vue de dessus ────────────────────────────────────────────────
             ax_xy.plot(x, y, color=color, linewidth=1.5, label=context)
-            ax_xy.plot(x[0],  y[0],  "o", color=color, markersize=6)   # départ
-            ax_xy.plot(x[-1], y[-1], "x", color=color, markersize=8, markeredgewidth=2)  # arrivée
+            ax_xy.plot(x[0],  y[0],  "o", color=color, markersize=6)
+            ax_xy.plot(x[-1], y[-1], "x", color=color, markersize=8, markeredgewidth=2)
 
-            # ── r(t) et |v|(t) ───────────────────────────────────────────────
-            ax_rv.plot(t, r,     color=color, linewidth=1.5,
-                       label=f"r — {context}")
+            ax_rv.plot(t, r,     color=color, linewidth=1.5, label=f"r — {context}")
             ax_rv.plot(t, speed, color=color, linewidth=1.0, linestyle="--",
                        label=f"|v| — {context}")
 
@@ -144,8 +189,10 @@ def plot_results(
         ax_rv.legend(fontsize=8, ncol=2)
         ax_rv.grid(True, alpha=0.25)
 
-    plt.tight_layout()
     plt.show()
+
+
+# ── Main ───────────────────────────────────────────────────────────────────────
 
 
 if __name__ == "__main__":
@@ -167,11 +214,13 @@ if __name__ == "__main__":
           f"  v0={preset['v0']} m/s  dir={preset['direction_deg']}°"
           f"  → vr0={vr0:.4f} m/s  vθ0={vtheta0:.4f} m/s")
 
-    trajs: dict = {}
-    missing: list[str] = []
-
     r_min  = phys["center_radius"]
     v_stop = phys["v_stop"]
+
+    # ── 1. Modèles step-by-step (prédiction en parallèle) ────────────────────
+    print("\n═══ Modèles step-by-step ════════════════════════════════")
+    trajs_step: dict = {}
+    missing_step: list[str] = []
 
     combos = [
         (models_dir, algo, context, init_state, n_steps, R, r_min, v_stop)
@@ -179,19 +228,52 @@ if __name__ == "__main__":
         for context in CONTEXTS
     ]
     with cf.ProcessPoolExecutor() as pool:
-        for (algo, context), traj in pool.map(_load_predict, combos):
+        for (algo, context), traj in pool.map(_load_predict_step, combos):
             if traj is None:
-                missing.append(f"synth_{algo}_{context}.pkl")
+                missing_step.append(f"synth_{algo}_{context}.pkl")
             else:
-                trajs[(algo, context)] = traj
-                print_stats(algo, context, traj, dt, n_steps, R)
+                trajs_step[(algo, context)] = traj
+                print_stats("step", algo, context, traj, dt, R)
 
-    if missing:
-        print(f"\n⚠  Modèles introuvables dans {models_dir} :")
-        for name in missing:
+    if missing_step:
+        print(f"\n⚠  Modèles step-by-step introuvables :")
+        for name in missing_step:
             print(f"     {name}")
         print("   Lancez d'abord : python src/scripts/train_models.py")
 
-    if trajs:
+    # ── 2. Modèles directs (chargés séquentiellement — léger) ────────────────
+    print("\n═══ Modèles directs CI→trajectoire ══════════════════════")
+    trajs_direct: dict = {}
+    missing_direct: list[str] = []
+
+    for algo in ALGOS:
+        for context in CONTEXTS:
+            model_data = _load_direct_model(models_dir, algo, context)
+            if model_data is None:
+                missing_direct.append(f"direct_{algo}_{context}.pkl")
+                continue
+            traj = _predict_direct(model_data, init_state)
+            trajs_direct[(algo, context)] = traj
+            print_stats("direct", algo, context, traj, dt, R,
+                        target_len=model_data["target_len"])
+
+    if missing_direct:
+        print(f"\n⚠  Modèles directs introuvables :")
+        for name in missing_direct:
+            print(f"     {name}")
+        print("   Lancez d'abord : python src/scripts/train_direct_models.py")
+
+    # ── Visualisation ─────────────────────────────────────────────────────────
+    if trajs_step:
         print()
-        plot_results(trajs, R, dt, "default", CONTEXTS, CONTEXT_COLORS)
+        plot_results(
+            trajs_step, R, dt, "default", CONTEXTS, CONTEXT_COLORS,
+            title_prefix="Modèles step-by-step (synth_*)",
+        )
+
+    if trajs_direct:
+        print()
+        plot_results(
+            trajs_direct, R, dt, "default", CONTEXTS, CONTEXT_COLORS,
+            title_prefix="Modèles directs CI→trajectoire (direct_*)",
+        )
