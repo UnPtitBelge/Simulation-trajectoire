@@ -23,7 +23,6 @@ Usage :
 
 import argparse
 import csv
-import pickle
 import sys
 from pathlib import Path
 
@@ -33,6 +32,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from config.loader import load_config
+from ml.direct_models import DirectModelBase
 from ml.models import LinearStepModel, MLPStepModel, StepModelBase
 from ml.predict import predict_trajectory
 from physics.cone import compute_cone
@@ -132,29 +132,19 @@ def evaluate_step_model(
 # ── Évaluation modèle direct ───────────────────────────────────────────────────
 
 
-def _ci_to_features(ic: np.ndarray) -> np.ndarray:
-    """(r, θ, vr, vθ) → (r, cos θ, sin θ, vr, vθ) — encodage CI pour modèle direct."""
-    return np.array(
-        [ic[0], np.cos(ic[1]), np.sin(ic[1]), ic[2], ic[3]],
-        dtype=np.float32,
-    )
-
-
 def evaluate_direct_model(
-    model_data: dict,
+    model: DirectModelBase,
     ics: list[np.ndarray],
     refs: list[np.ndarray],
     r_max: float,
     min_steps: int = 20,
 ) -> dict:
-    """Évalue un modèle direct (dict pkl) sur les ICs, retourne un dict de métriques.
+    """Évalue un modèle direct (DirectModelBase) sur les ICs, retourne un dict de métriques.
 
-    Le modèle prédit la trajectoire entière en une seule inférence.
+    Le modèle prédit la trajectoire entière en une seule inférence via model.predict(ic).
     La longueur prédite est toujours target_len (fixe).
     """
-    model      = model_data["model"]
-    scaler_X   = model_data["scaler_X"]
-    target_len = model_data["target_len"]
+    target_len = model.target_len
 
     mae_r_list, rmse_r_list, mae_total_list = [], [], []
     pred_lengths, ref_lengths = [], []
@@ -163,11 +153,8 @@ def evaluate_direct_model(
     for ic, ref in zip(ics, refs):
         ref_lengths.append(len(ref))
 
-        # Prédiction
-        x = _ci_to_features(ic).reshape(1, -1)
-        x_s = scaler_X.transform(x)
-        y_flat = model.predict(x_s)[0]                   # (4 × target_len,)
-        pred = y_flat.reshape(target_len, 4).astype(np.float64)
+        # Prédiction via l'API unifiée
+        pred = model.predict(ic).astype(np.float64)      # (target_len, 4)
 
         # Stabilité : pas de NaN/Inf et r < 2R
         r_pred = pred[:, 0]
@@ -275,15 +262,14 @@ def main() -> None:
                 continue
 
             print(f"  {algo_name:>6} / {ctx:>6} ...", end=" ", flush=True)
-            with open(pkl_path, "rb") as f:
-                model_data = pickle.load(f)
-            m = evaluate_direct_model(model_data, ics, refs, R, args.min_steps)
+            model = DirectModelBase.load(pkl_path)
+            m = evaluate_direct_model(model, ics, refs, R, args.min_steps)
             m.update({"paradigm": "direct", "algo": algo_name, "context": ctx})
             rows.append(m)
             print(
                 f"MAE(r)={m['mae_r']:.5f}  RMSE(r)={m['rmse_r']:.5f}"
                 f"  stab={m['stability_pct']:.1f}%  len={m['mean_length']:.0f}"
-                f"  (target={model_data['target_len']} pas)"
+                f"  (target={model.target_len} pas)"
             )
 
     if not rows:

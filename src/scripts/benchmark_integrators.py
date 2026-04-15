@@ -17,8 +17,8 @@ Résultats attendus :
 
 Usage :
     python src/scripts/benchmark_integrators.py
-    python src/scripts/benchmark_integrators.py --output figures/integrators.png
-    python src/scripts/benchmark_integrators.py --no-plot --output results/integrators.csv
+    python src/scripts/benchmark_integrators.py --output figures/integrators.png --csv results/integrators.csv
+    python src/scripts/benchmark_integrators.py --no-plot
 """
 
 import argparse
@@ -230,8 +230,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Benchmark de convergence des intégrateurs numériques."
     )
-    parser.add_argument("--output",  type=str, default=None,
-                        help="Chemin de sauvegarde de la figure (.png) ou des données (.csv)")
+    parser.add_argument("--output",  type=Path, default=ROOT.parent / "figures" / "integrators.png",
+                        help="Chemin de sauvegarde de la figure (défaut : <projet>/figures/integrators.png)")
+    parser.add_argument("--csv",     type=Path, default=ROOT.parent / "results" / "integrators.csv",
+                        help="Chemin de sauvegarde du CSV (défaut : <projet>/results/integrators.csv)")
     parser.add_argument("--no-plot", action="store_true",
                         help="Ne pas afficher la figure (utile en mode batch)")
     args = parser.parse_args()
@@ -249,11 +251,9 @@ if __name__ == "__main__":
 
     print_table(results)
 
-    output_path = Path(args.output) if args.output else None
+    save_csv(results, args.csv)
 
-    if output_path is not None and output_path.suffix == ".csv":
-        save_csv(results, output_path)
-    elif not args.no_plot or output_path is not None:
-        plot_convergence(results, output_path if (output_path and output_path.suffix in (".png", ".pdf")) else None)
-        if args.no_plot:
-            plt.close("all")
+    if not args.no_plot:
+        plot_convergence(results, args.output)
+    else:
+        plt.close("all")

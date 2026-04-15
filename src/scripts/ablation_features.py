@@ -29,8 +29,8 @@ Prérequis : chunks dans data/synthetic/ (lancer generate_data.py).
 Usage :
     python src/scripts/ablation_features.py
     python src/scripts/ablation_features.py --n-chunks 20
-    python src/scripts/ablation_features.py --output figures/ablation.png
-    python src/scripts/ablation_features.py --no-plot --output results/ablation.csv
+    python src/scripts/ablation_features.py --output figures/ablation.png --csv results/ablation.csv
+    python src/scripts/ablation_features.py --no-plot
 """
 
 import argparse
@@ -234,12 +234,12 @@ def generate_test_cases(
     n: int, phys: dict, gen_cfg: dict, rng: np.random.Generator, n_steps: int,
 ) -> list[tuple[np.ndarray, np.ndarray]]:
     """Génère n couples (état initial, trajectoire de référence)."""
-    ics = _sample_initial_conditions(n, phys, gen_cfg, rng)
+    merged_cfg = {**phys, **gen_cfg}
+    r0s, theta0s, vr0s, vth0s = _sample_initial_conditions(n, merged_cfg, rng)
     cases = []
-    for ic in ics:
-        vr0, vth0 = ic["vr0"], ic["vtheta0"]
+    for r0, theta0, vr0, vth0 in zip(r0s, theta0s, vr0s, vth0s):
         ref = compute_cone(
-            r0=ic["r0"], theta0=ic["theta0"], vr0=vr0, vtheta0=vth0,
+            r0=r0, theta0=theta0, vr0=vr0, vtheta0=vth0,
             R=phys["R"], depth=phys["depth"],
             friction=phys["friction"], g=phys["g"],
             dt=phys["dt"], n_steps=n_steps,
@@ -247,7 +247,7 @@ def generate_test_cases(
         )
         if len(ref) < 10:
             continue
-        init = np.array([ic["r0"], ic["theta0"], vr0, vth0])
+        init = np.array([r0, theta0, vr0, vth0])
         cases.append((init, ref))
     return cases
 
@@ -355,13 +355,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Ablation des features ML — compare 4 sous-ensembles de features."
     )
-    parser.add_argument("--n-chunks",  type=int, default=10,
-                        help="Chunks d'entraînement (défaut : 10)")
-    parser.add_argument("--n-test",    type=int, default=100,
-                        help="Trajectoires de test (défaut : 100)")
+    parser.add_argument("--n-chunks",  type=int, default=9999,
+                        help="Chunks d'entraînement (défaut : tous les chunks disponibles)")
+    parser.add_argument("--n-test",    type=int, default=500,
+                        help="Trajectoires de test (défaut : 500)")
     parser.add_argument("--seed",      type=int, default=42)
-    parser.add_argument("--output",    type=str, default=None,
-                        help="Sauvegarde la figure (.png) ou les données (.csv)")
+    parser.add_argument("--output",    type=Path, default=ROOT.parent / "figures" / "features.png",
+                        help="Chemin de sauvegarde de la figure (défaut : <projet>/figures/features.png)")
+    parser.add_argument("--csv",       type=Path, default=ROOT.parent / "results" / "features.csv",
+                        help="Chemin de sauvegarde du CSV (défaut : <projet>/results/features.csv)")
     parser.add_argument("--no-plot",   action="store_true",
                         help="Mode batch sans fenêtre graphique")
     args = parser.parse_args()
@@ -402,12 +404,9 @@ if __name__ == "__main__":
 
     print_table(results)
 
-    output_path = Path(args.output) if args.output else None
+    save_csv(results, args.csv)
 
-    if output_path is not None and output_path.suffix == ".csv":
-        save_csv(results, output_path)
+    if not args.no_plot:
+        plot_ablation(results, args.output)
     else:
-        if not args.no_plot or output_path is not None:
-            plot_ablation(results, output_path if (output_path and output_path.suffix in (".png", ".pdf")) else None)
-            if args.no_plot:
-                plt.close("all")
+        plt.close("all")

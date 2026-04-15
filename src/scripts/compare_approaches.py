@@ -15,10 +15,12 @@ pixel (coordonnées caméra).
 Usage :
     python src/scripts/compare_approaches.py
     python src/scripts/compare_approaches.py --test-id 9
-    python src/scripts/compare_approaches.py --passes 5 --output figures/compare.png
+    python src/scripts/compare_approaches.py --passes 5 --output figures/compare.png --csv results/compare.csv
+    python src/scripts/compare_approaches.py --no-plot
 """
 
 import argparse
+import csv
 import sys
 from pathlib import Path
 
@@ -43,17 +45,18 @@ from utils.angle import v0_dir_to_vr_vtheta  # noqa: F401  (non utilisé ici mai
 
 
 def load_experiments(
-    csv_path: Path, tracking: dict,
+    csv_path: Path, tracking: dict, center_radius: float,
 ) -> tuple[dict[int, np.ndarray], pd.DataFrame]:
     """Charge toutes les expériences en unités pixels centrés.
 
     Retourne ({expID: states (N,4)}, df brut).
     states = (r_px, θ, vr_px, vθ_px) dans le repère centré sur le cône.
+    center_radius : rayon de la zone morte centrale (mètres, depuis phys_cfg).
     """
     df = pd.read_csv(csv_path, sep=";", skipinitialspace=True)
     df.columns = df.columns.str.strip()
     centers = compute_exp_centers(df, tracking)
-    r_min_px = tracking["center_radius"] * tracking["px_per_meter"]
+    r_min_px = center_radius * tracking["px_per_meter"]
 
     experiments: dict[int, np.ndarray] = {}
     for exp_id, grp in df.groupby("expID"):
@@ -142,6 +145,51 @@ def _draw_circle(ax, radius_norm: float = 1.0, **kw) -> None:
     ax.plot(radius_norm * np.cos(ang), radius_norm * np.sin(ang), **kw)
 
 
+def save_csv(
+    real_states: np.ndarray,
+    lr_traj:     np.ndarray,
+    mlp_traj:    np.ndarray,
+    phys_traj:   np.ndarray,
+    R_px:        float,
+    R_m:         float,
+    fps:         float,
+    dt_phys:     float,
+    test_id:     int,
+    csv_path:    Path,
+) -> None:
+    """Sauvegarde le résumé des métriques de comparaison."""
+    csv_path.parent.mkdir(parents=True, exist_ok=True)
+    rows = []
+    n_real = len(real_states)
+    for label, traj, unit, R in [
+        ("ML Linéaire", lr_traj,  "px", R_px),
+        ("ML MLP",      mlp_traj, "px", R_px),
+        ("Physique",    phys_traj, "m", R_m),
+    ]:
+        n = min(len(traj), n_real)
+        if unit == "px":
+            r_pred = traj[:n, 0]
+            r_real = real_states[:n, 0]
+        else:
+            # physique en mètres — pas de référence directe en mètres disponible
+            r_pred = traj[:n, 0]
+            r_real = None
+        mae_r = float(np.abs(r_pred - r_real).mean()) if r_real is not None else float("nan")
+        rows.append({
+            "test_id":    test_id,
+            "approche":   label,
+            "n_pas_pred": len(traj),
+            "n_pas_reel": n_real,
+            "mae_r_px":   round(mae_r, 4) if unit == "px" else float("nan"),
+            "mae_r_sur_R": round(mae_r / R, 6) if unit == "px" else float("nan"),
+        })
+    with open(csv_path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        writer.writeheader()
+        writer.writerows(rows)
+    print(f"CSV sauvegardé : {csv_path}")
+
+
 def plot_comparison(
     real_states:  np.ndarray,     # (N, 4) en pixels
     phys_traj:    np.ndarray,     # (P, 4) en mètres
@@ -158,13 +206,13 @@ def plot_comparison(
 ) -> None:
     """Figure 2×2 : XY normalisé, r/R vs t, |v|/v0 vs t, erreur r vs t."""
 
-    fig = plt.figure(figsize=(14, 10))
+    fig = plt.figure(figsize=(14, 10), constrained_layout=True)
     fig.suptitle(
         f"Comparaison des approches — expID {test_id} (test, {n_train} exp. entraînement)\n"
         "Toutes les courbes normalisées par R (sans dimension)",
         fontsize=12, fontweight="bold",
     )
-    gs = gridspec.GridSpec(2, 2, figure=fig, hspace=0.38, wspace=0.32)
+    gs = gridspec.GridSpec(2, 2, figure=fig)
     ax_xy  = fig.add_subplot(gs[0, 0])
     ax_r   = fig.add_subplot(gs[0, 1])
     ax_v   = fig.add_subplot(gs[1, 0])
@@ -235,7 +283,7 @@ def plot_comparison(
         t_cmp = t_ax[:n]
         t_ref = t_real_s[:n]
         # Ré-échantillonne la référence sur la grille temporelle de la prédiction
-        r_ref_interp = np.interp(t_cmp, t_ref, norm_r_real(real_states))
+        r_ref_interp = np.interp(t_cmp, t_ref, norm_r_real(real_states[:n]))
         err = np.abs(r_fn(traj)[:n] - r_ref_interp)
         ax_err.plot(t_cmp, err, color=color, label=label, linestyle=ls, linewidth=lw)
 
@@ -244,8 +292,6 @@ def plot_comparison(
     ax_err.set_ylabel("|r_pred/R − r_réel/R|")
     ax_err.legend(fontsize=8)
     ax_err.grid(True, alpha=0.25)
-
-    plt.tight_layout()
 
     if output is not None:
         output.parent.mkdir(parents=True, exist_ok=True)
@@ -264,10 +310,14 @@ if __name__ == "__main__":
     )
     parser.add_argument("--test-id", type=int, default=None,
                         help="expID utilisé comme test (défaut : dernier)")
-    parser.add_argument("--passes",  type=int, default=3,
-                        help="Passes d'entraînement ML (défaut : 3)")
-    parser.add_argument("--output",  type=str, default=None,
-                        help="Chemin de sauvegarde de la figure (ex. figures/compare.png)")
+    parser.add_argument("--passes",  type=int, default=5,
+                        help="Passes d'entraînement ML (défaut : 5)")
+    parser.add_argument("--output",  type=Path, default=ROOT.parent / "figures" / "compare.png",
+                        help="Chemin de sauvegarde de la figure (défaut : <projet>/figures/compare.png)")
+    parser.add_argument("--csv",     type=Path, default=ROOT.parent / "results" / "compare.csv",
+                        help="Chemin de sauvegarde du CSV (défaut : <projet>/results/compare.csv)")
+    parser.add_argument("--no-plot", action="store_true",
+                        help="Mode batch sans fenêtre graphique")
     args = parser.parse_args()
 
     cfg      = load_config("ml")
@@ -284,7 +334,7 @@ if __name__ == "__main__":
 
     # ── Chargement tracking ──────────────────────────────────────────────────
     print("\nChargement des expériences de tracking...")
-    experiments, df = load_experiments(csv_path, tracking)
+    experiments, df = load_experiments(csv_path, tracking, phys_cfg["center_radius"])
     all_ids  = sorted(experiments.keys())
     test_id  = args.test_id if args.test_id is not None else all_ids[-1]
 
@@ -344,19 +394,35 @@ if __name__ == "__main__":
         print(f"  {label:<22}  {mae_r:<12.2f}  {mae_r / R_px:.4f}")
     print(f"{'═' * 54}\n")
 
-    # ── Affichage ─────────────────────────────────────────────────────────────
-    output_path = Path(args.output) if args.output else None
-    plot_comparison(
+    # ── Sauvegarde CSV ────────────────────────────────────────────────────────
+    save_csv(
         real_states=test_states,
-        phys_traj=phys_traj,
         lr_traj=lr_traj,
         mlp_traj=mlp_traj,
-        timestamps_s=timestamps_s,
+        phys_traj=phys_traj,
         R_px=R_px,
         R_m=R_m,
-        dt_phys=phys_cfg["dt"],
         fps=float(fps),
+        dt_phys=phys_cfg["dt"],
         test_id=test_id,
-        n_train=n_train,
-        output=output_path,
+        csv_path=args.csv,
     )
+
+    # ── Affichage ─────────────────────────────────────────────────────────────
+    if not args.no_plot:
+        plot_comparison(
+            real_states=test_states,
+            phys_traj=phys_traj,
+            lr_traj=lr_traj,
+            mlp_traj=mlp_traj,
+            timestamps_s=timestamps_s,
+            R_px=R_px,
+            R_m=R_m,
+            dt_phys=phys_cfg["dt"],
+            fps=float(fps),
+            test_id=test_id,
+            n_train=n_train,
+            output=args.output,
+        )
+    else:
+        plt.close("all")

@@ -17,13 +17,15 @@ Métriques tracées :
 
 Usage :
     python src/scripts/benchmark_physics_levels.py
-    python src/scripts/benchmark_physics_levels.py --no-plot --output results/levels.csv
+    python src/scripts/benchmark_physics_levels.py --output figures/physics_levels.png --csv results/physics_levels.csv
+    python src/scripts/benchmark_physics_levels.py --no-plot
 """
 
 import argparse
 import sys
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import numpy as np
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -120,8 +122,6 @@ def _print_table(surface: str, results: list[tuple]) -> None:
 # ── Plotting ──────────────────────────────────────────────────────────────────
 
 def _plot(cone_data: list, membrane_data: list, output: Path | None) -> None:
-    import matplotlib.pyplot as plt
-
     fig, axes = plt.subplots(2, 3, figsize=(16, 10))
     fig.suptitle("Comparaison des niveaux de précision physique", fontsize=13)
 
@@ -220,8 +220,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Compare les 4 niveaux de précision physique (cône + membrane)."
     )
-    parser.add_argument("--output", type=Path, default=None,
-                        help="Chemin de sortie : .png/.pdf pour figure, .csv pour données")
+    parser.add_argument("--output",  type=Path, default=ROOT.parent / "figures" / "physics_levels.png",
+                        help="Chemin de sauvegarde de la figure (défaut : <projet>/figures/physics_levels.png)")
+    parser.add_argument("--csv",     type=Path, default=ROOT.parent / "results" / "physics_levels.csv",
+                        help="Chemin de sauvegarde du CSV (défaut : <projet>/results/physics_levels.csv)")
     parser.add_argument("--no-plot", action="store_true",
                         help="Mode batch — pas de fenêtre graphique")
     args = parser.parse_args()
@@ -259,12 +261,13 @@ def main() -> None:
     _print_table("cône",     cone_data)
     _print_table("membrane", membrane_data)
 
-    if args.output and str(args.output).endswith(".csv"):
-        _save_csv(cone_data, membrane_data, args.output)
-    elif not args.no_plot or (args.output and not str(args.output).endswith(".csv")):
-        _plot(cone_data, membrane_data, args.output if not args.no_plot else None)
-        if args.output and args.no_plot:
-            _plot(cone_data, membrane_data, args.output)
+    _save_csv(cone_data, membrane_data, args.csv)
+
+    if not args.no_plot:
+        _plot(cone_data, membrane_data, args.output)
+
+    else:
+        plt.close("all")
 
 
 if __name__ == "__main__":

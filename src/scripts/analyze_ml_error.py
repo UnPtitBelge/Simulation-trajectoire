@@ -23,10 +23,12 @@ Prérequis :
 Usage :
     python src/scripts/analyze_ml_error.py
     python src/scripts/analyze_ml_error.py --n-ic 100 --horizon 500
-    python src/scripts/analyze_ml_error.py --context 50pct --output figures/ml_error.png
+    python src/scripts/analyze_ml_error.py --context 50pct --output figures/ml_error.png --csv results/ml_error.csv
+    python src/scripts/analyze_ml_error.py --no-plot
 """
 
 import argparse
+import csv
 import sys
 from pathlib import Path
 
@@ -209,6 +211,34 @@ def plot_error_accumulation(
     plt.show()
 
 
+def save_csv(
+    errors_lr:  np.ndarray,
+    errors_mlp: np.ndarray,
+    dt:         float,
+    csv_path:   Path,
+) -> None:
+    """Sauvegarde les courbes d'erreur (médiane + Q25/Q75) pas par pas."""
+    csv_path.parent.mkdir(parents=True, exist_ok=True)
+    horizon = errors_lr.shape[1]
+    steps = np.arange(horizon)
+    med_lr  = np.nanmedian(errors_lr,  axis=0)
+    q25_lr  = np.nanpercentile(errors_lr,  25, axis=0)
+    q75_lr  = np.nanpercentile(errors_lr,  75, axis=0)
+    med_mlp = np.nanmedian(errors_mlp, axis=0)
+    q25_mlp = np.nanpercentile(errors_mlp, 25, axis=0)
+    q75_mlp = np.nanpercentile(errors_mlp, 75, axis=0)
+    with open(csv_path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["step", "t_s",
+                         "lr_median", "lr_q25", "lr_q75",
+                         "mlp_median", "mlp_q25", "mlp_q75"])
+        for i in steps:
+            writer.writerow([i, round(i * dt, 6),
+                             med_lr[i], q25_lr[i], q75_lr[i],
+                             med_mlp[i], q25_mlp[i], q75_mlp[i]])
+    print(f"CSV sauvegardé : {csv_path}")
+
+
 def print_error_table(errors_lr: np.ndarray, errors_mlp: np.ndarray, dt: float) -> None:
     """Affiche les médianes d'erreur à quelques horizons clés."""
     horizons = [1, 10, 50, 100, 200, 500]
@@ -232,17 +262,21 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Analyse de l'accumulation d'erreur ML sur l'horizon de prédiction."
     )
-    parser.add_argument("--n-ic",     type=int, default=200,
-                        help="Nombre de conditions initiales (défaut : 200)")
-    parser.add_argument("--horizon",  type=int, default=300,
-                        help="Horizon max en pas (défaut : 300 = 3 s à dt=0.01)")
+    parser.add_argument("--n-ic",     type=int, default=500,
+                        help="Nombre de conditions initiales (défaut : 500)")
+    parser.add_argument("--horizon",  type=int, default=500,
+                        help="Horizon max en pas (défaut : 500 = 5 s à dt=0.01)")
     parser.add_argument("--context",  type=str, default="100pct",
                         choices=["1pct", "10pct", "50pct", "100pct"],
                         help="Contexte des modèles synthétiques (défaut : 100pct)")
     parser.add_argument("--seed",     type=int, default=42,
                         help="Graine aléatoire (défaut : 42)")
-    parser.add_argument("--output",   type=str, default=None,
-                        help="Chemin de sauvegarde de la figure")
+    parser.add_argument("--output",   type=Path, default=ROOT.parent / "figures" / "ml_error.png",
+                        help="Chemin de sauvegarde de la figure (défaut : <projet>/figures/ml_error.png)")
+    parser.add_argument("--csv",      type=Path, default=ROOT.parent / "results" / "ml_error.csv",
+                        help="Chemin de sauvegarde du CSV (défaut : <projet>/results/ml_error.csv)")
+    parser.add_argument("--no-plot",  action="store_true",
+                        help="Mode batch sans fenêtre graphique")
     args = parser.parse_args()
 
     cfg      = load_config("ml")
@@ -277,9 +311,14 @@ if __name__ == "__main__":
 
     print_error_table(errors_lr, errors_mlp, phys["dt"])
 
-    plot_error_accumulation(
-        errors_lr, errors_mlp,
-        dt=phys["dt"], horizon=args.horizon,
-        context=args.context, n_valid=n_valid,
-        output=Path(args.output) if args.output else None,
-    )
+    save_csv(errors_lr, errors_mlp, phys["dt"], args.csv)
+
+    if not args.no_plot:
+        plot_error_accumulation(
+            errors_lr, errors_mlp,
+            dt=phys["dt"], horizon=args.horizon,
+            context=args.context, n_valid=n_valid,
+            output=args.output,
+        )
+    else:
+        plt.close("all")

@@ -14,7 +14,6 @@ Usage :
 """
 
 import concurrent.futures as cf
-import pickle
 import sys
 from pathlib import Path
 
@@ -25,6 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from config.loader import load_config
+from ml.direct_models import DirectModelBase
 from ml.models import LinearStepModel, MLPStepModel
 from ml.predict import predict_trajectory
 from utils.angle import v0_dir_to_vr_vtheta
@@ -62,32 +62,12 @@ def _load_step_model(models_dir: Path, algo: str, context: str):
 # ── Modèles directs ────────────────────────────────────────────────────────────
 
 
-def _load_direct_model(models_dir: Path, algo: str, context: str) -> dict | None:
-    """Charge un modèle direct (dict pkl). Retourne None si absent."""
+def _load_direct_model(models_dir: Path, algo: str, context: str) -> DirectModelBase | None:
+    """Charge un modèle direct (DirectModelBase). Retourne None si absent."""
     path = models_dir / f"direct_{algo}_{context}.pkl"
     if not path.exists():
         return None
-    with open(path, "rb") as f:
-        return pickle.load(f)
-
-
-def _predict_direct(model_data: dict, init_state: np.ndarray) -> np.ndarray:
-    """Prédit une trajectoire avec un modèle direct en une seule inférence.
-
-    Retourne array (target_len, 4) en (r, θ, vr, vθ).
-    """
-    target_len = model_data["target_len"]
-    scaler_X   = model_data["scaler_X"]
-    model      = model_data["model"]
-
-    x = np.array(
-        [init_state[0], np.cos(init_state[1]), np.sin(init_state[1]),
-         init_state[2], init_state[3]],
-        dtype=np.float32,
-    ).reshape(1, -1)
-    x_s = scaler_X.transform(x)
-    y_flat = model.predict(x_s)[0]
-    return y_flat.reshape(target_len, 4).astype(np.float32)
+    return DirectModelBase.load(path)
 
 
 # ── Statistiques console ───────────────────────────────────────────────────────
@@ -248,14 +228,14 @@ if __name__ == "__main__":
 
     for algo in ALGOS:
         for context in CONTEXTS:
-            model_data = _load_direct_model(models_dir, algo, context)
-            if model_data is None:
+            model = _load_direct_model(models_dir, algo, context)
+            if model is None:
                 missing_direct.append(f"direct_{algo}_{context}.pkl")
                 continue
-            traj = _predict_direct(model_data, init_state)
+            traj = model.predict(init_state)
             trajs_direct[(algo, context)] = traj
             print_stats("direct", algo, context, traj, dt, R,
-                        target_len=model_data["target_len"])
+                        target_len=model.target_len)
 
     if missing_direct:
         print(f"\n⚠  Modèles directs introuvables :")

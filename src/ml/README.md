@@ -105,7 +105,63 @@ Architecture : `(64, 32)` neurones cachés, activation ReLU, régularisation L2 
 
 ---
 
-## 3. Entraînement — `train.py`
+## 3. Modèles directs — `direct_models.py` + `train_direct.py`
+
+### Paradigme direct
+
+```
+ci_to_features(état_0)
+  → (r₀, cos θ₀, sin θ₀, vr₀, vθ₀)   — 5 scalaires
+      │
+      ▼ DirectLinearModel.predict()  ou  DirectMLPModel.predict()
+  → trajectoire aplatie (r₀, θ₀, vr₀, vθ₀, r₁, θ₁, …)  — 4 × target_len scalaires
+      │
+      ▼ reshape (target_len, 4)
+  → trajectoire (r, θ, vr, vθ) de longueur fixe target_len
+```
+
+**Avantage** : pas d'accumulation d'erreur récursive — l'erreur de prédiction est bornée même sur de longues séquences.
+
+**Limitation** : taille de sortie fixe (`target_len` pas). Avec peu de données, Ridge surpasse MLP car le problème est sous-déterminé (haute dimension de sortie, peu d'exemples d'entraînement).
+
+### `ci_to_features(state)` — encodage des CI
+
+Encode l'état initial `(r, θ, vr, vθ)` en `(r, cos θ, sin θ, vr, vθ)` (5 features).
+Même raison que pour `state_to_features` : évite la discontinuité de θ à ±π.
+
+### `DirectModelBase` — interface commune
+
+| Méthode | Description |
+|---------|-------------|
+| `fit(X_ci, Y_traj)` | Entraîne le modèle. Fitte le scaler sur X_ci, calcule mae_r_train. |
+| `predict(ic)` | Prédit la trajectoire depuis un état (r, θ, vr, vθ). Retourne `(target_len, 4)`. |
+| `save(path)` | Sérialise en pickle (même interface que StepModelBase). |
+| `DirectModelBase.load(path)` | Charge un modèle depuis un fichier pickle. |
+
+Attributs publics après `fit()` : `target_len`, `n_train`, `mae_r_train`, `scaler_X`, `context`.
+
+### `DirectLinearModel` — Ridge direct
+
+Résout `W = (XᵀX + λI)⁻¹ Xᵀy` en une passe sur l'ensemble des données (pas incrémental). Solution exacte, pas de taux d'apprentissage à régler.
+
+### `DirectMLPModel` — MLP direct
+
+Architecture `(64, 32)`, early stopping activé si ≥ 10 exemples d'entraînement. La haute dimension de sortie (4 × `target_len` ≈ 4 000 scalaires) rend l'apprentissage difficile avec peu de données — à comparer à Ridge via `benchmark_direct.py`.
+
+### Entraînement — `train_direct.py`
+
+`train_direct_synth(phys_cfg, gen_cfg, contexts, n_total, max_steps, models_dir)` :
+1. Génère `n_total` trajectoires complètes (seed=0, indépendant du jeu de test seed=999).
+2. Calcule `target_len = min(médiane des longueurs, max_steps)` — partagé pour tous les contextes.
+3. Pour chaque contexte : `DirectLinearModel.fit()` + `DirectMLPModel.fit()`, sauvegarde les `.pkl`.
+
+**Scaler par contexte** (contrairement au scaler partagé du step-by-step) : ici `X_ctx` est entier en mémoire → statistiques représentatives par construction. Le step-by-step nécessite un scaler partagé car chaque chunk est trop petit pour estimer la distribution globale.
+
+Fichiers produits : `direct_linear_{ctx}.pkl`, `direct_mlp_{ctx}.pkl`.
+
+---
+
+## 4. Entraînement step-by-step — `train.py`
 
 ### Données synthétiques — `train_synth()`
 

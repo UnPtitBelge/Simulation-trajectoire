@@ -15,8 +15,8 @@ Usage :
     python src/scripts/benchmark_mlp.py --max-chunks 50 --epochs 2
     python src/scripts/benchmark_mlp.py --n-contexts 10 --n-test 30
     python src/scripts/benchmark_mlp.py --n-highlight 4 --workers 4
-    python src/scripts/benchmark_mlp.py --output figures/mlp.png
-    python src/scripts/benchmark_mlp.py --no-plot --output results/mlp.csv
+    python src/scripts/benchmark_mlp.py --output figures/mlp.png --csv results/mlp.csv
+    python src/scripts/benchmark_mlp.py --no-plot
 """
 
 import argparse
@@ -342,16 +342,16 @@ if __name__ == "__main__":
         help="Nombre max de chunks à utiliser (défaut : tous)",
     )
     parser.add_argument(
-        "--n-contexts", type=int, default=12,
-        help="Nombre de points sur la progression géométrique (défaut : 12)",
+        "--n-contexts", type=int, default=20,
+        help="Nombre de points sur la progression géométrique (défaut : 20)",
     )
     parser.add_argument(
-        "--epochs", type=int, default=3,
-        help="Passes d'entraînement par contexte (défaut : 3)",
+        "--epochs", type=int, default=5,
+        help="Passes d'entraînement par contexte (défaut : 5)",
     )
     parser.add_argument(
-        "--n-test", type=int, default=20,
-        help="Trajectoires de test indépendantes pour moyenner les métriques (défaut : 20)",
+        "--n-test", type=int, default=100,
+        help="Trajectoires de test indépendantes pour moyenner les métriques (défaut : 100)",
     )
     parser.add_argument(
         "--n-highlight", type=int, default=5,
@@ -362,8 +362,12 @@ if __name__ == "__main__":
         help="Processus parallèles pour les étapes du benchmark (défaut : 1)",
     )
     parser.add_argument(
-        "--output", type=str, default=None,
-        help="Sauvegarde la figure (.png/.pdf) ou les données (.csv)",
+        "--output", type=Path, default=ROOT.parent / "figures" / "mlp.png",
+        help="Chemin de sauvegarde de la figure (défaut : <projet>/figures/mlp.png)",
+    )
+    parser.add_argument(
+        "--csv", type=Path, default=ROOT.parent / "results" / "mlp.csv",
+        help="Chemin de sauvegarde du CSV (défaut : <projet>/results/mlp.csv)",
     )
     parser.add_argument(
         "--no-plot", action="store_true",
@@ -440,12 +444,9 @@ if __name__ == "__main__":
     hi_idx    = np.unique(np.round(np.linspace(0, len(steps) - 1, args.n_highlight)).astype(int))
     highlight = [steps[int(i)] for i in hi_idx]
 
-    output_path = Path(args.output) if args.output else None
+    _save_csv(steps, errors, args.csv)
 
-    if output_path is not None and output_path.suffix == ".csv":
-        _save_csv(steps, errors, output_path)
+    if not args.no_plot:
+        _plot(steps, errors, trajs, ref_true, highlight, r_max, phys["dt"], args.epochs, args.n_test, args.output)
     else:
-        fig_path = output_path if output_path else None
-        _plot(steps, errors, trajs, ref_true, highlight, r_max, phys["dt"], args.epochs, args.n_test, fig_path)
-        if args.no_plot:
-            plt.close("all")
+        plt.close("all")
