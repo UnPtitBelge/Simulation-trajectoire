@@ -406,6 +406,67 @@ python src/scripts/benchmark_mlp.py --no-plot --output results/mlp.csv
 
 ---
 
+## benchmark_physics_levels.py
+
+**Rôle** : compare les 4 niveaux de précision physique (L0–L3) sur le cône et la membrane.
+
+Pour chaque simulateur, trace r(t)/R, énergie cinétique normalisée E(t)/E₀ et trajectoires
+XY dans l'espace normalisé r/R, pour les 4 niveaux :
+
+- L0 : glissement Coulomb (défaut)
+- L1 : roulement pur (facteur 5/7)
+- L2 : roulement + résistance au roulement (μr·g·cosβ)
+- L3 : roulement + résistance + traînée quadratique (k·|v|·v)
+
+La condition initiale est à la vitesse orbitale (trajectoire quasi-circulaire stable sans
+friction) pour maximiser le contraste entre niveaux.
+
+**Prérequis** : aucun.
+
+### Arguments (benchmark_physics_levels)
+
+| Argument        | Défaut | Description                                       |
+| --------------- | ------ | ------------------------------------------------- |
+| `--output PATH` | —      | Sauvegarde la figure (.png) ou les données (.csv) |
+| `--no-plot`     | off    | Mode batch sans fenêtre graphique                 |
+
+```bash
+python src/scripts/benchmark_physics_levels.py
+python src/scripts/benchmark_physics_levels.py --output figures/physics_levels.png
+python src/scripts/benchmark_physics_levels.py --no-plot --output results/physics_levels.csv
+```
+
+---
+
+## collect_metrics.py
+
+**Rôle** : consolide les métriques de prédiction ML pour les 8 modèles pré-entraînés
+(2 algorithmes × 4 contextes) en une seule table CSV.
+
+Pour N conditions initiales de test, prédit une trajectoire avec chaque modèle et calcule :
+`mae_r`, `rmse_r`, `mae_total` (erreur sur les 4 composantes), `stability_pct` (fraction
+de trajectoires qui ne divergent pas), `mean_length` (longueur prédite), `ref_length`
+(longueur physique de référence).
+
+**Prérequis** : fichiers `.pkl` dans `data/models/` (lancer `train_models.py`).
+
+### Arguments (collect_metrics)
+
+| Argument           | Défaut | Description                                       |
+| ------------------ | ------ | ------------------------------------------------- |
+| `--n-test N`       | 100    | Conditions initiales de test                      |
+| `--n-steps-pred N` | 500    | Horizon max de prédiction                         |
+| `--min-steps N`    | 50     | Longueur minimale pour comptabiliser une IC       |
+| `--seed N`         | 999    | Graine aléatoire (indépendante du train)          |
+| `--output PATH`    | —      | Sauvegarde les métriques (.csv)                   |
+
+```bash
+python src/scripts/collect_metrics.py
+python src/scripts/collect_metrics.py --n-test 200 --output results/metrics.csv
+```
+
+---
+
 ## ablation_features.py
 
 **Rôle** : justifie empiriquement le choix des 9 features ML en entraînant
