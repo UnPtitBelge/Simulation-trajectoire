@@ -230,4 +230,5 @@ dist
 .html
 .benchmarks
 .claude
-src/data/
+src/data/models/
+src/data/synthetic/
