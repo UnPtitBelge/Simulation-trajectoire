@@ -97,17 +97,39 @@ Première grande partie de notre réflexion, la simulation physique nous a permi
 
 %------------------------------------------------
 
-\section{Approximations numériques}
+\section{Calcul numérique}
+
+\subsection{Approximation numérique}
 
 Dans le cadre d'une approche scientifique, il est important de prendre en compte tous les paramètres pouvant entrer en jeu et potentiellement perturber et modifier l'expérience. Dans notre cas nous distinguons deux types d'erreur principaux\cite[16]{Marteen:2022}: les erreurs numériques et les erreurs de modélisation.
 
+\subsubsection{Erreurs numériques}
+
 Les erreurs numériques apparaissent lorsque l'ordinateur effectue des calculs et se déclinent sous différentes formes.
-Dans un premier temps, les erreurs de troncature sont des erreurs qui apparaissent lorsque nous devons arreter un processus qui est infini, par exemple une série de Taylor.
-Ensuite, les erreurs d'arrondi sont des erreurs causées par la représentation finie des nombres en machine. L'ordinateur ne peut pas représenter tous les nombres réels avec une précision infinie, cela créer une approximation.
-De plus, les erreurs de propagation et de génération sont des erreurs qui apparaissent lorsque les erreurs numériques se propagent à travers les calculs ou sont générées à chaque étape d'un processus de calcul. Par exemple, si nous simplifions $\pi$ à 3.14, nous introduisons une erreur d'arrondi qui peut se propager à travers les calculs ultérieurs, affectant ainsi la précision globale des résultats.
-Finalement, la catégorie des erreurs de modélisation regroupe deux types d'erreurs.
-Le premier, les erreurs de mesure se produisent quant à elles dans le cadre physique de notre expérience. En effet, nous ne disposons pas d'outils de mesures parfaits, ce qui induit donc des imprécisions numériques de l'ordre du millimètre lorsque nous mesurons par exemple une distance.
-Le second, les erreurs de modélisation du phénomène sont des erreurs qui apparaissent lorsque nous faisons des simplifications dans notre modèle pour le rendre plus facile à comprendre ou à résoudre. Par exemple, dans notre cas, nous avons fait l'hypothèse que la pression de l'air n'impact pas la trajectoire de la balle.
+Dans un premier temps, les erreurs de troncature sont des erreurs qui apparaissent lorsque nous devons arrêter un processus qui est infini, par exemple une série de Taylor.
+
+Ensuite, les erreurs d'arrondi sont des erreurs causées par la représentation finie des nombres en machine dans les registres du processeur (généralement 32 ou 64 bits). L'ordinateur ne peut pas représenter tous les nombres réels avec une précision infinie, ce qui crée alors une approximation.
+
+Les erreurs de propagation et de génération sont des erreurs qui apparaissent lorsque les erreurs numériques se propagent à travers les calculs. Les erreurs de génération se produisent à chaque itération, étape des calculs et les erreur de propagation regroupent toutes les erreurs de génération jusqu'à l'étape courante. Par exemple, si nous simplifions $\pi$ à 3.14, nous introduisons une erreur d'arrondi à une certaine génération qui va se propager à travers les calculs ultérieurs, affectant ainsi la précision globale des résultats.
+
+\subsubsection{Erreurs de modélisation}
+
+La catégorie des erreurs de modélisation se décline en deux types d'erreurs.
+
+Le premier type, les erreurs de mesure qui se produisent dans le cadre physique de notre expérience. En effet, nous ne disposons pas d'outils de mesure parfaits, ce qui induit donc des imprécisions numériques de l'ordre du millimètre lorsque nous mesurons des éléments de notre expérience comme par exemple la largeur du dispositif.
+
+Le second regroupe les erreurs de modélisation du phénomène; des erreurs qui apparaissent lorsque nous faisons des simplifications, des hypothèses dans notre modèle pour le rendre plus facile à comprendre ou à résoudre. Un exemple d'hypothèse émise dans le cadre de notre expérience concerne la pression de l'air, supposée sans impact sur la trajectoire de la balle.
+
+\subsection{Consistance}
+La consistance est la capacité d'un algorithme à produire des résultats qui convergent vers la solution exacte du problème.
+Un algorithme est dit consistant si, à mesure que la discrétisation devient plus fine, les résultats obtenus se rapprochent de la solution exacte.
+Dans notre cas, la méthode de Euler (explicite ou implicite) est consistante. % d'ordre 1. Parler des autres aussi quand on aura fait/trouver les étapes de calculs.
+
+\subsection{Stabilité}
+La stabilité est la propriété d'un algorithme qui garantit que les erreurs apportées durant les calculs ne s'amplifient pas de manière exponentielle au fil des itérations.
+Un algorithme est dit stable si une petite perturbation dans les données d'entrée entraîne une petit perturbation dans les résultats. % meh mais dans le cours mdr
+
+\subsection{Condtionnement}
 
 % TODO: ASPECT ANALYTIQUE
 % en particulier, il nous faut un cas concret, une erreur concrète, prise en flagrant délit pour appuyer nos propos
@@ -125,10 +147,10 @@ Le second, les erreurs de modélisation du phénomène sont des erreurs qui appa
 
 \section{Discussion et conclusion}
 
-
 %----------------------------------------------------------------------------------------
-%	 REFERENCES
+%	 ANNEXES
 %----------------------------------------------------------------------------------------
+% On peut mettre le développement de la consistance des méthodes ? Euler dans le cours de CFN
 
 \printbibliography % Output the bibliography
 
