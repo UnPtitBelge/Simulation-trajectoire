@@ -232,3 +232,24 @@ dist
 .claude
 src/data/models/
 src/data/synthetic/
+
+# Fichiers de compilation LaTeX (dossier doc/)
+doc/**/*.aux
+doc/**/*.log
+doc/**/*.out
+doc/**/*.bcf
+doc/**/*.run.xml
+doc/**/*.fls
+doc/**/*.fdb_latexmk
+doc/**/*.synctex.gz
+doc/**/*.toc
+doc/**/*.lof
+doc/**/*.lot
+doc/**/*.bbl
+doc/**/*.blg
+doc/**/*.idx
+doc/**/*.ilg
+doc/**/*.ind
+doc/**/*.nav
+doc/**/*.snm
+doc/**/*.vrb

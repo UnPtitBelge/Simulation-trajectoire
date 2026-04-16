@@ -1,0 +1,137 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Journal Article
+% LaTeX Template
+% Version 2.0 (February 7, 2023)
+%
+% This template originates from:
+% https://www.LaTeXTemplates.com
+%
+% Author:
+% Vel (vel@latextemplates.com)
+%
+% License:
+% CC BY-NC-SA 4.0 (https://creativecommons.org/licenses/by-nc-sa/4.0/)
+%
+% NOTE: The bibliography needs to be compiled using the biber engine.
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%----------------------------------------------------------------------------------------
+%	PACKAGES AND OTHER DOCUMENT CONFIGURATIONS
+%----------------------------------------------------------------------------------------
+
+\documentclass[
+	a4paper, % Paper size, use either a4paper or letterpaper
+	10pt, % Default font size, can also use 11pt or 12pt, although this is not recommended
+	unnumberedsections, % Comment to enable section numbering
+	twoside, % Two side traditional mode where headers and footers change between odd and even pages, comment this option to make them fixed
+]{LTJournalArticle}
+
+\addbibresource{bibliography.bib} % BibLaTeX bibliography file
+
+\runninghead{Shortened Running Article Title} % A shortened article title to appear in the running head, leave this command empty for no running head
+
+\footertext{\textit{Journal of Biological Sampling} (2024) 12:533-684} % Text to appear in the footer, leave this command empty for no footer text
+
+\setcounter{page}{1} % The page number of the first page, set this to a higher number if the article is to be part of an issue or larger work
+
+%----------------------------------------------------------------------------------------
+%	TITLE SECTION
+%----------------------------------------------------------------------------------------
+
+\title{Simulation et modélisation de  trajectoires circulaires} % Article title, use manual lines breaks (\\) to beautify the layout
+
+% Authors are listed in a comma-separated list with superscript numbers indicating affiliations
+% \thanks{} is used for any text that should be placed in a footnote on the first page, such as the corresponding author's email, journal acceptance dates, a copyright/license notice, keywords, etc
+\author{%
+	Manuel Rocca, Damian Kazberuk, Matteo Morbée
+}
+
+% Affiliations are output in the \date{} command
+\date{\today}
+
+% Full-width abstract
+\renewcommand{\maketitlehookd}{%
+	\begin{abstract}
+		\noindent ABSTRACT
+	\end{abstract}
+}
+
+%----------------------------------------------------------------------------------------
+
+\begin{document}
+
+\maketitle % Output the title section
+
+%----------------------------------------------------------------------------------------
+%	ARTICLE CONTENTS
+%----------------------------------------------------------------------------------------
+
+\section{Introduction}
+
+
+%------------------------------------------------
+
+\section{Modèles}
+
+\subsection{Qu'est-ce qu'un modèle}
+La définition d'un modèle est la pièce centrale de notre travail. En effet, commencer par comprendre ce qu'est un modèle et comment s'en servir est essentiel pour pouvoir ensuite essayer de simuler la réalité. Un modèle est une représentation simplifiée de la réalité qui permet de comprendre, d'expliquer et parfois prédire des phénomènes. Dans notre cas, nous utilisons des modèles pour simuler et prédire la trajectoire d'une bille lancée sur une surface circulaire en forme de cône.
+
+Plusieurs types de modèles existent, en particulier les modèles physiques et informatiques que nous utilisons. Choisir un certain type de modèle dépend entièrement de l'objectif à atteindre et de la complexité de la réalité que nous souhaitons simuler. Nous avons choisi d'utiliser ces deux types de modèles car ils nous permettent de comparer les deux approches et de mieux comprendre les avantages et les inconvéniants de chacune d'entre elles, en particulier sur la question de la représentation de la réalité et de la précision des résultats obtenus.
+
+
+\subsection{Limitations et hypothèses}
+
+
+
+%------------------------------------------------
+
+\section{Simulation}
+
+
+\subsection{Simulation physique}
+Première grande partie de notre réflexion, la simulation physique nous a permis de modéliser la trajectoire de la bille à l'aide de différentes méthodes numériques. Nous avons utilisé des méthodes d'Euler explicite, semi-implicite et Velvet, ainsi que la méthode de Runge-Kutta d'ordre 4 (RK4) pour simuler le mouvement de la bille sur la surface circulaire. Ces méthodes nous ont permis d'obtenir des résultats précis et de comparer les différentes approches pour simuler le même phénomène. Nous avons également manipulé les paramètres de notre modèle pour observer comment ils affectent la trajectoire de la bille, ce qui nous a permis de mieux comprendre les forces en jeu et les facteurs qui influencent le mouvement de la bille. Ces observations nous ont permis de tirer des conclusions sur la précision et la fiabilité de nos simulations, ainsi que sur les limites de notre modèle physique. En effet, nous avons constaté que représenter la réalité de manière précise relève de l'exploit, et que, en plus des approximations numériques inévitables, il est nécessaire de faire des hypothèses et des simplifications pour rendre le modèle plus facile à comprendre et à résoudre. Par exemple, nous avons fait  plusieurs hypothèse: la pression de l'air n'impact pas la trajectoire de la bille, la déformation de la surface par la bille est négligeable, la bille est un point matériel, etc. Nous avons donc réalisé plusieurs expériences sur deux représentations différentes de notre surface circulaire, une utilisant une forme géométrique conique et l'autre utilisant une forme logarithmique. Cela couplé avec les différentes méthodes d'intégration numérique et à la manipulation (ajout et retrait) des paramètres nous a permis d'obtenir une grande variété de résultats et d'observations. % ajouter graphique ici ??
+
+
+\subsection{Simulation à l'aide de l'ordinateur}
+
+%------------------------------------------------
+
+\section{Approximations numériques}
+
+Dans le cadre d'une approche scientifique, il est important de prendre en compte tous les paramètres pouvant entrer en jeu et potentiellement perturber et modifier l'expérience. Dans notre cas nous distinguons deux types d'erreur principaux\cite[16]{Marteen:2022}: les erreurs numériques et les erreurs de modélisation.
+
+Les erreurs numériques apparaissent lorsque l'ordinateur effectue des calculs et se déclinent sous différentes formes.
+Dans un premier temps, les erreurs de troncature sont des erreurs qui apparaissent lorsque nous devons arreter un processus qui est infini, par exemple une série de Taylor.
+Ensuite, les erreurs d'arrondi sont des erreurs causées par la représentation finie des nombres en machine. L'ordinateur ne peut pas représenter tous les nombres réels avec une précision infinie, cela créer une approximation.
+De plus, les erreurs de propagation et de génération sont des erreurs qui apparaissent lorsque les erreurs numériques se propagent à travers les calculs ou sont générées à chaque étape d'un processus de calcul. Par exemple, si nous simplifions $\pi$ à 3.14, nous introduisons une erreur d'arrondi qui peut se propager à travers les calculs ultérieurs, affectant ainsi la précision globale des résultats.
+Finalement, la catégorie des erreurs de modélisation regroupe deux types d'erreurs.
+Le premier, les erreurs de mesure se produisent quant à elles dans le cadre physique de notre expérience. En effet, nous ne disposons pas d'outils de mesures parfaits, ce qui induit donc des imprécisions numériques de l'ordre du millimètre lorsque nous mesurons par exemple une distance.
+Le second, les erreurs de modélisation du phénomène sont des erreurs qui apparaissent lorsque nous faisons des simplifications dans notre modèle pour le rendre plus facile à comprendre ou à résoudre. Par exemple, dans notre cas, nous avons fait l'hypothèse que la pression de l'air n'impact pas la trajectoire de la balle.
+
+% TODO: ASPECT ANALYTIQUE
+% en particulier, il nous faut un cas concret, une erreur concrète, prise en flagrant délit pour appuyer nos propos
+% => comment faire ?: outils de mesure par exemple MSE (ou tout autre)
+
+% Parler du conditionnement du problème ? consistance ?
+
+% notation des nombres en machine, précision finie => EN PARLER ABSOLUMENT (tout simplement car on en a beaucoup parlé dans la vulgarisation et car c'est un peu la source de tous les problèmes en qlq sorte)
+
+
+% différentes simus:
+% simus physique: euler explicite, semi-implicite et velvet (+rk4)
+% simu ml: régression linéaire et MLP (multi-layer perceptron)
+%------------------------------------------------
+
+\section{Discussion et conclusion}
+
+
+%----------------------------------------------------------------------------------------
+%	 REFERENCES
+%----------------------------------------------------------------------------------------
+
+\printbibliography % Output the bibliography
+
+%----------------------------------------------------------------------------------------
+
+\end{document}
