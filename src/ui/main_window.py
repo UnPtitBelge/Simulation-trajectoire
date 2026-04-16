@@ -1,4 +1,4 @@
-"""Fenêtre principale — QTabWidget avec 5 onglets de simulation.
+"""Fenêtre principale — QTabWidget avec 6 onglets de simulation.
 
 Chaque onglet = QSplitter(sim_widget | controls_panel).
 La config est lue depuis les TOML via le dict `configs`.
@@ -7,7 +7,7 @@ Raccourcis clavier (actifs quelle que soit la fenêtre active) :
   [ / ]       — preset précédent / suivant (onglet actif)
   L           — algorithme Linéaire  (onglets ML uniquement)
   M           — algorithme MLP       (onglets ML uniquement)
-  Ctrl+1–4    — contexte d'entraînement (onglet ML — Synthétique uniquement)
+  Ctrl+1–4    — contexte d'entraînement (onglets ML — Synthétique et ML — Direct)
   P           — ajouter un marqueur (géré dans BaseSimWidget)
 """
 
@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 from ui.base_sim_widget import BaseSimWidget
 from ui.controls import ControlsPanel
 from ui.cone_widget import ConeWidget
+from ui.direct_ml_widget import DirectMLWidget
 from ui.membrane_widget import MembraneWidget
 from ui.mcu_widget import MCUWidget
 from ui.ml_widget import MLWidget
@@ -72,6 +73,18 @@ class MainWindow(QMainWindow):
                 self._ctx_combos[tab_idx] = ctx_combo
             self._tabs.addTab(tab, label)
 
+        direct_widget = DirectMLWidget(configs["ml"])
+        direct_widget.error_occurred.connect(self._show_error)
+        tab_idx = self._tabs.count()
+        tab, controls, algo_combo, ctx_combo = self._make_ml_tab(
+            direct_widget, configs["ml"]
+        )
+        self._tab_controls.append(controls)
+        self._algo_combos[tab_idx] = algo_combo
+        if ctx_combo is not None:
+            self._ctx_combos[tab_idx] = ctx_combo
+        self._tabs.addTab(tab, "ML — Direct")
+
         self.setCentralWidget(self._tabs)
         self._setup_shortcuts()
 
@@ -95,7 +108,7 @@ class MainWindow(QMainWindow):
         return splitter, controls
 
     def _make_ml_tab(
-        self, ml_widget: MLWidget, cfg: dict
+        self, ml_widget: MLWidget | DirectMLWidget, cfg: dict
     ) -> tuple[QWidget, ControlsPanel, QComboBox, QComboBox | None]:
         """Onglet ML avec sélecteurs algo/contexte supplémentaires."""
         controls = ControlsPanel(cfg)
@@ -111,7 +124,7 @@ class MainWindow(QMainWindow):
         controls.add_extra_widget("Algorithme  (L / M)", algo_combo)
 
         ctx_combo = None
-        if ml_widget._mode == "synth":
+        if ml_widget._mode in ("synth", "direct"):
             ctx_names = cfg.get("synth", {}).get("contexts", {}).get("names", ["100pct"])
             ctx_combo = QComboBox()
             ctx_combo.blockSignals(True)
