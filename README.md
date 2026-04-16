@@ -10,11 +10,12 @@ Trois approches comparées : simulation physique déterministe, prédiction ML s
 
 ## Prérequis au premier lancement
 
-Générer les données synthétiques puis entraîner les 8 modèles :
+Générer les données synthétiques, entraîner les modèles step-by-step puis les modèles directs :
 
 ```bash
 python src/scripts/generate_data.py [--workers N]
 python src/scripts/train_models.py  [--workers 8]
+python src/scripts/train_direct_models.py
 ```
 
 Les modèles entraînés sur données réelles (tracking CSV) sont produits automatiquement au lancement de l'app.
@@ -44,7 +45,8 @@ Au démarrage, l'app vérifie la présence de `data/tracking_data.csv` et des 8 
 | Cône | 3 intégrateurs : Euler, Euler-Cromer (défaut), RK4 | 3D OpenGL |
 | Membrane | Euler-Cromer, surface logarithmique (pente variable) | 3D OpenGL |
 | ML — Réel | Ridge + MLP entraînés sur CSV de tracking réel | 2D pyqtgraph |
-| ML — Synthétique | Mêmes modèles, 4 contextes (1 % / 10 % / 50 % / 100 %) | 2D pyqtgraph |
+| ML — Synthétique | Ridge + MLP step-by-step, 4 contextes (1 % / 10 % / 50 % / 100 %) | 2D pyqtgraph |
+| ML — Direct | Ridge + MLP direct CI→trajectoire, 4 contextes | 2D pyqtgraph |
 
 ### Niveaux de précision physique
 
@@ -84,7 +86,7 @@ Les deux algorithmes apprennent les **résidus** `Δ = feat(s_{t+1}) − feat(s_
 | `P` | Poser un marqueur (r, θ) | Tous les onglets |
 | `L` | Sélectionner le modèle Linéaire | ML uniquement |
 | `M` | Sélectionner le modèle MLP | ML uniquement |
-| `Ctrl+1/2/3/4` | Contexte 1 % / 10 % / 50 % / 100 % | ML — Synthétique uniquement |
+| `Ctrl+1/2/3/4` | Contexte 1 % / 10 % / 50 % / 100 % | ML — Synthétique et ML — Direct |
 
 ---
 
