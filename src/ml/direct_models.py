@@ -133,9 +133,31 @@ class DirectModelBase(ABC):
 
     @classmethod
     def load(cls, path: Path) -> "DirectModelBase":
-        """Charge un modèle depuis un fichier pickle."""
+        """Charge un modèle depuis un fichier pickle.
+
+        Supporte l'ancien format dict (avant la refactorisation en classes) :
+          {'model': sklearn_model, 'scaler_X': scaler, 'target_len': int,
+           'context': str, 'model_type': 'Ridge'|'MLP', 'n_train': int,
+           'mae_r_train': float}
+        """
         with open(path, "rb") as f:
-            return pickle.load(f)
+            obj = pickle.load(f)
+        if isinstance(obj, DirectModelBase):
+            return obj
+        # Ancien format dict — reconstruction
+        model_type = obj.get("model_type", "Ridge")
+        instance: DirectModelBase
+        if model_type == "Ridge":
+            instance = DirectLinearModel(context=obj.get("context", ""))
+        else:
+            instance = DirectMLPModel(context=obj.get("context", ""))
+        instance.target_len  = obj["target_len"]
+        instance.n_train     = obj["n_train"]
+        instance.mae_r_train = obj["mae_r_train"]
+        instance.scaler_X    = obj["scaler_X"]
+        instance._model      = obj["model"]
+        instance._fitted     = True
+        return instance
 
 
 class DirectLinearModel(DirectModelBase):
