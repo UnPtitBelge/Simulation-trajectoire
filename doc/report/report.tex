@@ -103,29 +103,67 @@ Quel est un bon modèle pour représenter un phénomène réel ? Plus particuli�
 Première grande partie de notre réflexion, la simulation physique nous a permis de modéliser la trajectoire de la bille à l'aide de différentes méthodes numériques. Nous avons utilisé des méthodes d'Euler explicite, semi-implicite et Velvet, ainsi que la méthode de Runge-Kutta d'ordre 4 (RK4) pour simuler le mouvement de la bille sur la surface circulaire. Ces méthodes nous ont permis d'obtenir des résultats précis et de comparer les différentes approches pour simuler le même phénomène. Nous avons également manipulé les paramètres de notre modèle pour observer comment ils affectent la trajectoire de la bille, ce qui nous a permis de mieux comprendre les forces en jeu et les facteurs qui influencent le mouvement de la bille. Ces observations nous ont permis de tirer des conclusions sur la précision et la fiabilité de nos simulations, ainsi que sur les limites de notre modèle physique. En effet, nous avons constaté que représenter la réalité de manière précise relève de l'exploit. De plus des approximations numériques sont inévitables. Il est donc nécessaire de faire des hypothèses et des simplifications pour rendre le modèle plus facile à comprendre et à résoudre. Par exemple, nous avons fait  plusieurs hypothèse: la pression de l'air n'impact pas la trajectoire de la bille, la déformation de la surface par la bille est négligeable, la bille est un point matériel, etc. Nous avons donc réalisé plusieurs expériences sur deux représentations différentes de notre surface circulaire, une utilisant une forme géométrique conique et l'autre utilisant une forme logarithmique. Cela couplé avec les différentes méthodes d'intégration numérique et à la manipulation (ajout et retrait) des paramètres nous a permis d'obtenir une grande variété de résultats et d'observations. % ajouter graphique ici ??
 
 
-\subsection{Simulation à l'aide de machine learning}
-La deuxième grande famille de méthodes de simulation, est celle utilisant le machine learning. 
-Celles-ci fonctionnant avec une grande quantité de données, nous avons utilisé les résultats obtenus à partir de nos 
-simulations physiques pour entraîner nos modèles de machine learning.
-Nous avons utilisé deux types de modèles de machine learning: la régression linéaire et le multi-layer perceptron (MLP).
-La régression linéaire est un modèle de machine learning simple qui permet de modéliser la relation entre une variable dépendante 
-et une ou plusieurs variables indépendantes. 
-Nous avons utilisé la régression linéaire pour modéliser la relation entre les paramètres de notre modèle physique, tels que le vecteur 
-vitesse initial, ainsi que la position de la bile a chaque instant t, et les résultats obtenus est donc la trajectoire de la bille. 
-Cette approche nous a permis d'obtenir une approximation de plus en plus précise en fonction du nombre de données disponibles.
-Ceci nous a permis de reproduire la trajectoire de la bille à partir de données sans avoir la connaissance ni la compréhension du modèle physique sous-jacent.
+\subsection{Simulation à l'aide de méthodes de machine learning (ML)}
 
-Le multi-layer perceptron (MLP) est un modèle de machine learning plus complexe qui permet de modéliser des relations non linéaires entre les variables. 
-Nous avons utilisé le MLP pour modéliser la relation entre les paramètres de notre modèle physique et les résultats obtenus, de manière plus précise que la régression linéaire. 
-Cette approche nous a permis d'obtenir des résultats plus précis que la régression linéaire, en particulier pour les trajectoires plus complexes. 
-Cependant, le MLP nécessite une plus grande quantité de données pour être entraîné de manière efficace.
+Une seconde classe de méthodes de simulation repose sur l’utilisation de techniques d’apprentissage automatique, 
+visant à approximer directement la dynamique du système à partir de données. Contrairement aux approches déterministes 
+fondées sur la modélisation explicite des lois physiques, ces méthodes s’inscrivent dans un cadre empirique, dans lequel 
+la relation entrée-sortie est apprise à partir d’un ensemble fini d’observations.
+Dans cette étude, les données générées par les simulations physiques sont utilisées comme ensemble d’entraînement. 
+L’objectif du ML est d’apprendre une fonction
+\[
+f: \mathbb{R}^4 \rightarrow \mathbb{R}^{2N}
+\]
+telle que:
+\[
+\mathbf{y} = f(\mathbf{x}),
+\]
+où \( \mathbf{x} \) représente les conditions initiales du système et \( \mathbf{y} \) la trajectoire correspondante.
 
-Cette approche de simulation à l'aide de machine learning nous a permis d'obtenir des résultats probant et réaliste, sa force résidant 
-dans sa capacité à apprendre à partir de données et à modéliser des relations complexes entre les variables fait du machine learning
- une approche très intéressante pour simuler des phénomènes complexes, 
- en particulier lorsque la compréhension du modèle physique sous-jacent est limitée. Cependant, il est important de noter que le machine learning 
- ne remplace pas la compréhension du modèle physique, et que les résultats obtenus à partir de modèles de machine learning doivent être 
- interprétés avec prudence, en tenant compte des limites et des hypothèses du modèle utilisé.
+Plus précisément, le vecteur d’entrée est défini par:
+\[
+\mathbf{x} = (x_0, y_0, v_{x0}, v_{y0}) \in \mathbb{R}^4,
+\]
+où \( x_0 \) et \( y_0 \) désignent les coordonnées initiales de la bille, et \( v_{x0} \), \( v_{y0} \) les composantes initiales de sa vitesse.
+
+La sortie correspond à une discrétisation temporelle de la trajectoire:
+\[
+\mathbf{y} = (x_1, y_1, x_2, y_2, \dots, x_N, y_N) \in \mathbb{R}^{2N},
+\]
+où \( N \) désigne le nombre de pas de temps considérés. 
+Cette formulation permet d’exprimer la dynamique du système sous la forme d’une application entre vecteurs d’entrée et de sortie.
+
+Deux modèles ont été considérés pour approximer la fonction \( f \) : la régression linéaire (LR) et le perceptron multicouche (MLP).
+
+La régression linéaire constitue un modèle paramétrique dans lequel la sortie est exprimée comme une combinaison affine des variables d’entrée. Dans notre cas, elle est utilisée pour approximer la fonction \( f : \mathbb{R}^4 \rightarrow \mathbb{R}^{2N} \) reliant les conditions initiales à la trajectoire de la bille.
+
+Plus précisément, le modèle s’écrit :
+\[
+\hat{\mathbf{y}} = \mathbf{W}\mathbf{x} + \mathbf{b},
+\]
+où \( \mathbf{W} \in \mathbb{R}^{2N \times 4} \) est une matrice de paramètres et \( \mathbf{b} \in \mathbb{R}^{2N} \) un vecteur de biais.
+
+Chaque composante de la trajectoire prédite est ainsi modélisée comme une combinaison linéaire des conditions initiales. 
+Cette approche revient à supposer que la dynamique du système peut être approximée globalement par une transformation affine.
+
+Toutefois, un tel modèle ne permet pas de capturer des dépendances temporelles explicites entre les différents instants de la trajectoire, 
+ni des comportements non linéaires. Par conséquent, sa capacité de modélisation reste limitée pour des dynamiques complexes.
+
+Afin de modéliser des comportements plus complexes, un perceptron multicouche a également été utilisé. Dans le cas d’une 
+architecture à une couche cachée, la fonction \( f \) s’écrit :
+\[
+f(\mathbf{x}) = \mathbf{W}^{(2)} \, \sigma(\mathbf{W}^{(1)} \mathbf{x} + \mathbf{b}^{(1)}) + \mathbf{b}^{(2)},
+\]
+où \( \sigma \) est une fonction d’activation non linéaire. \( \sigma \) 
+est représentée par la fonction ReLU (Rectified Linear Unit), définie par \( \sigma(z) = \max(0, z) \).
+
+Les paramètres du modèle, regroupés dans \( \theta \), sont estimés en minimisant une fonction de coût, généralement choisie comme l’erreur quadratique moyenne (MSE) :
+\[
+\mathcal{L}(\theta) = \frac{1}{M} \sum_{i=1}^{M} \left\| \mathbf{y}^{(i)} - \hat{\mathbf{y}}^{(i)} \right\|_2^2,
+\]
+où \( M \) désigne le nombre d’échantillons d’entraînement. Pour chaque exemple \( i \), \( \mathbf{y}^{(i)} \) 
+correspond à la trajectoire réelle associée aux conditions initiales \( \mathbf{x}^{(i)} \), 
+et \( \hat{\mathbf{y}}^{(i)} = f_{\theta}(\mathbf{x}^{(i)}) \) la prédiction du modèle.
 
  % TODO: intégrer dans la partie modèle !!!
  \subsubsection{Erreurs de modélisation}
