@@ -26,7 +26,8 @@
 	unnumberedsections, % Comment to enable section numbering
 	twoside, % Two side traditional mode where headers and footers change between odd and even pages, comment this option to make them fixed
 ]{LTJournalArticle}
-
+\usepackage{tabularx}
+\usepackage{array}
 \addbibresource{bibliography.bib} % BibLaTeX bibliography file
 
 \runninghead{Shortened Running Article Title} % A shortened article title to appear in the running head, leave this command empty for no running head
@@ -189,25 +190,32 @@ La génération synthétique a simulé \(1\,000\,000\) trajectoires, dont \(375\
 
 \subsection{Résultats quantitatifs clés}
 \begin{table}[h]
-	\centering
-	\small
-	\setlength{\tabcolsep}{4pt}
-	\caption{Indicateurs extraits des résultats de benchmark.}
-	\begin{tabularx}{\linewidth}{|>{\raggedright\arraybackslash}p{0.36\linewidth}|>{\raggedright\arraybackslash}X|}
-		\hline
-		\textbf{Indicateur} & \textbf{Valeur observée} \\
-		\hline
-		Convergence intégrateurs (pente log-log) & Euler explicite \(\approx 1.20\), Euler semi-implicite \(\approx 1.11\), RK4 \(\approx 4.00\) \\
-		\hline
-		RMSE radial à \(\Delta t=0.01\,s\) & Euler explicite \(9.23\times 10^{-4}\,m\), Euler semi-implicite \(6.47\times 10^{-4}\,m\), RK4 \(1.93\times 10^{-9}\,m\) \\
-		\hline
-		Meilleur modèle ML step-by-step & MLP (10\%) : \(\mathrm{MAE}_r = 3.55\times 10^{-3}\,m\), stabilité \(71.5\%\) \\
-		\hline
-		Comparaison sur test réel & MAE radiale normalisée : Linéaire \(0.109\,R\), MLP \(0.217\,R\) \\
-		\hline
-		Erreur récursive à 5 s (\(|\Delta r|/R\), médiane) & Linéaire \(0.0597\), MLP \(0.0525\) \\
-		\hline
-	\end{tabularx}
+    \centering
+    \small
+    \setlength{\tabcolsep}{4pt}
+    \caption{Indicateurs extraits des résultats de benchmark.}
+    \begin{tabularx}{\linewidth}{|>{\raggedright\arraybackslash}p{0.36\linewidth}|>{\raggedright\arraybackslash}X|}
+        \hline
+        \textbf{Indicateur} & \textbf{Valeur observée} \\
+        \hline
+        Convergence intégrateurs (pente log-log) & 
+        Euler explicite ($\approx 1.20$), Euler semi-implicite ($\approx 1.11$), RK4 ($\approx 4.00$) \\
+        \hline
+        RMSE radial à ($\Delta t = 0.01\,\mathrm{s}$) & 
+        Euler explicite ($9.23 \times 10^{-4}\,\mathrm{m}$), 
+        Euler semi-implicite ($6.47 \times 10^{-4}\,\mathrm{m}$), 
+        RK4 ($1.93 \times 10^{-9}\,\mathrm{m}$) \\
+        \hline
+        Meilleur modèle ML step-by-step & 
+        MLP (10\%) : ($\mathrm{MAE}_r = 3.55 \times 10^{-3}\,\mathrm{m}$), stabilité (71.5\%) \\
+        \hline
+        Comparaison sur test réel & 
+        MAE radiale normalisée : Linéaire ($0.109\,R$), MLP ($0.217\,R$) \\
+        \hline
+        Erreur récursive à 5 s ($|\Delta r|/R$, médiane) & 
+        Linéaire ($0.0597$), MLP ($0.0525$) \\
+        \hline
+    \end{tabularx}
 \end{table}
 
 \subsection{Lecture des résultats}
