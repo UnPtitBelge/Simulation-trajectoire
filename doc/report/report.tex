@@ -28,6 +28,8 @@
 ]{LTJournalArticle}
 \usepackage{tabularx}
 \usepackage{array}
+\usepackage{amsfonts}
+\usepackage{amsmath}
 \addbibresource{bibliography.bib} % BibLaTeX bibliography file
 
 \runninghead{Shortened Running Article Title} % A shortened article title to appear in the running head, leave this command empty for no running head
@@ -124,42 +126,112 @@ dans sa capacité à apprendre à partir de données et à modéliser des relati
  en particulier lorsque la compréhension du modèle physique sous-jacent est limitée. Cependant, il est important de noter que le machine learning 
  ne remplace pas la compréhension du modèle physique, et que les résultats obtenus à partir de modèles de machine learning doivent être 
  interprétés avec prudence, en tenant compte des limites et des hypothèses du modèle utilisé.
-%------------------------------------------------
 
-\section{Calcul numérique}
-
-\subsection{Approximation numérique}
-
-Dans le cadre d'une approche scientifique, il est important de prendre en compte tous les paramètres pouvant entrer en jeu et potentiellement perturber et modifier l'expérience. Dans notre cas nous distinguons deux types d'erreur principaux\cite[16]{Marteen:2022}: les erreurs numériques et les erreurs de modélisation.
-
-\subsubsection{Erreurs numériques}
-
-Les erreurs numériques apparaissent lorsque l'ordinateur effectue des calculs et se déclinent sous différentes formes.
-Dans un premier temps, les erreurs de troncature sont des erreurs qui apparaissent lorsque nous devons arrêter un processus qui est infini, par exemple une série de Taylor.
-
-Ensuite, les erreurs d'arrondi sont des erreurs causées par la représentation finie des nombres en machine dans les registres du processeur (généralement 32 ou 64 bits). L'ordinateur ne peut pas représenter tous les nombres réels avec une précision infinie, ce qui crée alors une approximation.
-
-Les erreurs de propagation et de génération sont des erreurs qui apparaissent lorsque les erreurs numériques se propagent à travers les calculs. Les erreurs de génération se produisent à chaque itération, étape des calculs et les erreur de propagation regroupent toutes les erreurs de génération jusqu'à l'étape courante. Par exemple, si nous simplifions $\pi$ à 3.14, nous introduisons une erreur d'arrondi à une certaine génération qui va se propager à travers les calculs ultérieurs, affectant ainsi la précision globale des résultats.
-
-\subsubsection{Erreurs de modélisation}
+ % TODO: intégrer dans la partie modèle !!!
+ \subsubsection{Erreurs de modélisation}
 
 La catégorie des erreurs de modélisation se décline en deux types d'erreurs.
 
 Le premier type, les erreurs de mesure qui se produisent dans le cadre physique de notre expérience. En effet, nous ne disposons pas d'outils de mesure parfaits, ce qui induit donc des imprécisions numériques de l'ordre du millimètre lorsque nous mesurons des éléments de notre expérience comme par exemple la largeur du dispositif.
 
 Le second regroupe les erreurs de modélisation du phénomène; des erreurs qui apparaissent lorsque nous faisons des simplifications, des hypothèses dans notre modèle pour le rendre plus facile à comprendre ou à résoudre. Un exemple d'hypothèse émise dans le cadre de notre expérience concerne la pression de l'air, supposée sans impact sur la trajectoire de la balle.
+%------------------------------------------------
+
+\section{Calcul numérique}
+
+\subsection{Erreurs numériques}
+
+Dans le cadre d'une approche scientifique, il est important de prendre en compte tous les paramètres pouvant entrer en jeu et potentiellement perturber et modifier l'expérience. Nous avons déjà abordé les erreurs de modélisation mais ce ne sont pas les seules entrant en jeu. En particulier, nous considérons les erreurs numériques qui apparaissent lorsque l'ordinateur effectue des calculs \cite[16]{Marteen:2022}. Elles se déclinent sous-différentes, chacune explicitée dans les sous-sections suivantes.
+
+\subsubsection{Erreurs de troncature}
+
+Nos modèles itératifs à pas discret sont infinis. Il est donc impossible d'obtenir une solution exacte en un temps fini même en faisant abstraction de tout autre type d'erreur pouvant entrer en jeu. Afin d'obtenir un résultat, nous établissons une variable $n\_steps$ qui limite le nombre d'itération de manière à obtenir un bon équilibre entre temps d'exécution et précision du résultat.
+
+
+\subsubsection{Erreurs d'arrondi}
+
+Les erreurs d'arrondi sont des erreurs causées par la représentation finie des nombres en machine dans les registres du processeur (généralement 32 ou 64 bits). L'ordinateur ne peut pas représenter tous les nombres réels avec une précision infinie, ce qui crée alors une approximation. 
+
+Pour définir formellement ce type d'erreur, notons par $\mathbb{F}(b, t, L, U)$ l'ensemble des nombres réels qui sont représentés par une notation à virgule flottante en base $b$, comportant $t$ chiffres significatifs et dont l'exposant varie dans l'intervalle $[L, U]$. Considérons un ordinateur utilisant cette notation $\mathbb{F}$. Soit $x \in \mathbb{R}$ un nombre réel quelconque et $fl(x) \in \mathbb{F}$ la représentation machine à virgule flottante de $x$. Désignons par $\varepsilon_x$ son erreur relative
+\begin{equation}
+    \varepsilon_x = \frac{|fl(x) - x|}{|x|}.
+\end{equation}
+
+Nous allons évaluer la borne supérieure de l'erreur relative d'arrondi. Il est évident que cette quantité ne peut dépasser la moitié de la distance relative entre les deux nombres consécutifs à virgule flottante $x_i \in \mathbb{F}(b,t,L,U)$ et $x_{i+1} \in \mathbb{F}(b,t,L,U)$ tels que
+\begin{equation}
+    x_i \le x \le x_{i+1}.
+\end{equation}
+
+Il vient alors que
+\begin{equation}
+    \varepsilon_x \equiv |\rho_x|
+    \le \frac{1}{2} \left| \frac{x_{i+1} - x_i}{x} \right|
+    \le \frac{1}{2} b^{1-t}
+    = \frac{1}{2} \epsilon
+    = u,
+\end{equation}
+où $u$ est dite la précision machine.
+
+Avec la notion d'écart relatif définie telle que
+\begin{equation}
+    \rho_x = \frac{\hat{x} - x}{x}
+\end{equation}
+, nous obtenons
+\begin{equation}
+    \hat{x} = fl(x) = x(1 + \rho_x),
+\end{equation}
+où $\varepsilon_x = |\rho_x| \le u$ est dite l'erreur d'arrondi \cite{Marteen:2022}.
+
+Il est clair que nous retrouvons ce type d'erreur dans nos simulation.
+
+\subsubsection{Erreurs de propagation et génération}
+
+Les erreurs de propagation et de génération sont des erreurs qui apparaissent lorsque les erreurs numériques se propagent à travers les calculs. Les erreurs de génération se produisent à chaque itération, étape des calculs et les erreur de propagation regroupent toutes les erreurs de génération jusqu'à l'étape courante. Par exemple, si nous simplifions $\pi$ à 3.14, nous introduisons une erreur d'arrondi à une certaine génération qui va se propager à travers les calculs ultérieurs, affectant ainsi la précision globale des résultats.
+
+
+
+\subsection{Analyse numérique du problème}
+
+Nous étudions, dans les sous-sections suivantes, les notions de consistance, stabilité et de conditionnement afin d'analyser les propriétés de nos modèles. Par ces analyses, nous pouvons prédire certains comportements de nos modèles lors des simulations.
+
+Définissons d'abord la notion d'algorithme nu-mérique. Étant donné un problème bien posé $F(x, d) = 0$, nous définissons l’algorithme numérique pour la résolution du problème $F$ par la suite de problèmes approchés
+\begin{equation}
+    F_1\big(x^{(1)}, d^{(1)}\big), \; F_2\big(x^{(2)}, d^{(2)}\big), \; \ldots, \; F_n\big(x^{(n)}, d^{(n)}\big)
+\end{equation}
+dépendant d'un paramètre $n$, où $x^{(n)}$ est la solution du sous-problème $F_n$ \cite{Marteen:2022}.
 
 \subsection{Consistance}
 La consistance est la capacité d'un algorithme à produire des résultats qui convergent vers la solution exacte du problème.
-Un algorithme est dit consistant si, à mesure que la discrétisation devient plus fine, les résultats obtenus se rapprochent de la solution exacte.
+Un algorithme $F_n(x^{(n)}, d^{(n)})$ est dit consistant si
+\begin{equation}
+    \lim_{n \to \infty} F_n(x, d^{(n)}) = F(x, d) = 0,
+\end{equation}
+c.-à-d., si la solution exacte $x$ du problème est une solution de
+$F_n(x^{(n)}, d^{(n)}) = 0$ pour $n \to \infty$.
+
+En d'autres termes, un algorithme est consistant si à partir d'une certaine étape
+le sous-problème approché $F_n$ a la solution $x$ parmi ses solutions \cite{Marteen:2022}.
+
 Dans notre cas, la méthode de Euler (explicite ou implicite) est consistante. % d'ordre 1. Parler des autres aussi quand on aura fait/trouver les étapes de calculs.
 
 \subsection{Stabilité}
-La stabilité est la propriété d'un algorithme qui garantit que les erreurs apportées durant les calculs ne s'amplifient pas de manière exponentielle au fil des itérations.
-Un algorithme est dit stable si une petite perturbation dans les données d'entrée entraîne une petit perturbation dans les résultats. % meh mais dans le cours mdr
+La stabilité est la propriété d'un algorithme qui garantit que les erreurs apportées durant les calculs ne s'amplifient pas de manière exponentielle au fil des itérations. En particulier, un algorithme numérique est dit stable (ou bien posé) si
+
+\begin{enumerate}
+\item il existe pour tout $n$ une solution unique $x^{(n)}$ ;
+\item pour tout $\epsilon > 0$, il existe $\eta > 0$ et $n_0$ tels que
+\begin{align*}
+\|\delta d^{(i)}\| &\le \eta \quad \forall i = 1,\ldots,m \\
+&\Rightarrow \|\bar{x}^{(n)} - x^{(n)}\| \le \epsilon
+\end{align*}
+\end{enumerate}
+
+En d'autres termes, un algorithme est stable si des petites perturbations des
+données du sous-problème $F_n$ entraînent de petites perturbations de sa solution
+$x^{(n)}$.
 
 \subsection{Conditionnement}
-Le conditionnement décrit la sensibilité intrinsèque du problème : une petite perturbation des données d'entrée peut produire une petite ou une grande variation de la solution exacte.
+Le conditionnement décrit la sensibilité intrinsèque du problème : une petite perturbation des données d'entrée peut produire une petite ou une grande variation de la solution exacte lors de la résolution numérique.
 Un problème bien conditionné est peu sensible aux perturbations, tandis qu'un problème mal conditionné les amplifie.
 % TODO: ASPECT ANALYTIQUE
 % en particulier, il nous faut un cas concret, une erreur concrète, prise en flagrant délit pour appuyer nos propos
