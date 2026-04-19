@@ -93,6 +93,38 @@ Quel est un bon modèle pour représenter un phénomène réel ? Plus particuli�
 
 %------------------------------------------------
 
+\section{Simulation}
+
+
+\subsection{Simulation physique}
+Première grande partie de notre réflexion, la simulation physique nous a permis de modéliser la trajectoire de la bille à l'aide de différentes méthodes numériques. Nous avons utilisé des méthodes d'Euler explicite, semi-implicite et Velvet, ainsi que la méthode de Runge-Kutta d'ordre 4 (RK4) pour simuler le mouvement de la bille sur la surface circulaire. Ces méthodes nous ont permis d'obtenir des résultats précis et de comparer les différentes approches pour simuler le même phénomène. Nous avons également manipulé les paramètres de notre modèle pour observer comment ils affectent la trajectoire de la bille, ce qui nous a permis de mieux comprendre les forces en jeu et les facteurs qui influencent le mouvement de la bille. Ces observations nous ont permis de tirer des conclusions sur la précision et la fiabilité de nos simulations, ainsi que sur les limites de notre modèle physique. En effet, nous avons constaté que représenter la réalité de manière précise relève de l'exploit, et que, en plus des approximations numériques inévitables, il est nécessaire de faire des hypothèses et des simplifications pour rendre le modèle plus facile à comprendre et à résoudre. Par exemple, nous avons fait  plusieurs hypothèse: la pression de l'air n'impact pas la trajectoire de la bille, la déformation de la surface par la bille est négligeable, la bille est un point matériel, etc. Nous avons donc réalisé plusieurs expériences sur deux représentations différentes de notre surface circulaire, une utilisant une forme géométrique conique et l'autre utilisant une forme logarithmique. Cela couplé avec les différentes méthodes d'intégration numérique et à la manipulation (ajout et retrait) des paramètres nous a permis d'obtenir une grande variété de résultats et d'observations. % ajouter graphique ici ??
+
+
+\subsection{Simulation à l'aide de machine learning}
+La deuxième grande famille de méthodes de simulation, est celle utilisant le machine learning. 
+Celles-ci fonctionnant avec une grande quantité de données, nous avons utilisé les résultats obtenus à partir de nos 
+simulations physiques pour entraîner nos modèles de machine learning.
+Nous avons utilisé deux types de modèles de machine learning: la régression linéaire et le multi-layer perceptron (MLP).
+La régression linéaire est un modèle de machine learning simple qui permet de modéliser la relation entre une variable dépendante 
+et une ou plusieurs variables indépendantes. 
+Nous avons utilisé la régression linéaire pour modéliser la relation entre les paramètres de notre modèle physique, tels que le vecteur 
+vitesse initial, ainsi que la position de la bile a chaque instant t, et les résultats obtenus est donc la trajectoire de la bille. 
+Cette approche nous a permis d'obtenir une approximation de plus en plus précise en fonction du nombre de données disponibles.
+Ceci nous a permis de reproduire la trajectoire de la bille à partir de données sans avoir la connaissance ni la compréhension du modèle physique sous-jacent.
+
+Le multi-layer perceptron (MLP) est un modèle de machine learning plus complexe qui permet de modéliser des relations non linéaires entre les variables. 
+Nous avons utilisé le MLP pour modéliser la relation entre les paramètres de notre modèle physique et les résultats obtenus, de manière plus précise que la régression linéaire. 
+Cette approche nous a permis d'obtenir des résultats plus précis que la régression linéaire, en particulier pour les trajectoires plus complexes. 
+Cependant, le MLP nécessite une plus grande quantité de données pour être entraîné de manière efficace.
+
+Cette approche de simulation à l'aide de machine learning nous a permis d'obtenir des résultats probant et réaliste, sa force résidant 
+dans sa capacité à apprendre à partir de données et à modéliser des relations complexes entre les variables fait du machine learning
+ une approche très intéressante pour simuler des phénomènes complexes, 
+ en particulier lorsque la compréhension du modèle physique sous-jacent est limitée. Cependant, il est important de noter que le machine learning 
+ ne remplace pas la compréhension du modèle physique, et que les résultats obtenus à partir de modèles de machine learning doivent être 
+ interprétés avec prudence, en tenant compte des limites et des hypothèses du modèle utilisé.
+%------------------------------------------------
+
 \section{Calcul numérique}
 
 \subsection{Approximation numérique}
@@ -125,11 +157,12 @@ Dans notre cas, la méthode de Euler (explicite ou implicite) est consistante. %
 La stabilité est la propriété d'un algorithme qui garantit que les erreurs apportées durant les calculs ne s'amplifient pas de manière exponentielle au fil des itérations.
 Un algorithme est dit stable si une petite perturbation dans les données d'entrée entraîne une petit perturbation dans les résultats. % meh mais dans le cours mdr
 
-\subsection{Condtionnement}
-
+\subsection{Conditionnement}
+Le conditionnement décrit la sensibilité intrinsèque du problème : une petite perturbation des données d'entrée peut produire une petite ou une grande variation de la solution exacte.
+Un problème bien conditionné est peu sensible aux perturbations, tandis qu'un problème mal conditionné les amplifie.
 % TODO: ASPECT ANALYTIQUE
 % en particulier, il nous faut un cas concret, une erreur concrète, prise en flagrant délit pour appuyer nos propos
-% => comment faire ?: outils de mesure par exemple MSE (ou tout autre, RMSE, NMSE (bien celle-là), etc)
+% => comment faire ?: outils de mesure par exemple MSE (ou tout autre)
 
 % Parler du conditionnement du problème ? consistance ?
 
@@ -140,6 +173,47 @@ Un algorithme est dit stable si une petite perturbation dans les données d'entr
 % simus physique: euler explicite, semi-implicite et velvet (+rk4)
 % simu ml: régression linéaire et MLP (multi-layer perceptron)
 %------------------------------------------------
+
+\section{Génération et analyse des données}
+
+\subsection{Pipeline de génération}
+Pour produire les données nécessaires à l'analyse, nous avons exécuté un pipeline reproductible en quatre étapes:
+\begin{enumerate}[leftmargin=*, itemsep=0.2em, topsep=0.2em]
+	\item génération des trajectoires synthétiques
+	\item entraînement des modèles
+	\item exécution des benchmarks
+	\item comparaison avec les données réelles
+\end{enumerate}
+
+La génération synthétique a simulé \(1\,000\,000\) trajectoires, dont \(375\,266\) conservées après filtrage, pour un total de \(103\,792\,281\) paires d'états utilisées pour l'entraînement.
+
+\subsection{Résultats quantitatifs clés}
+\begin{table}[h]
+	\centering
+	\small
+	\setlength{\tabcolsep}{4pt}
+	\caption{Indicateurs extraits des résultats de benchmark.}
+	\begin{tabularx}{\linewidth}{|>{\raggedright\arraybackslash}p{0.36\linewidth}|>{\raggedright\arraybackslash}X|}
+		\hline
+		\textbf{Indicateur} & \textbf{Valeur observée} \\
+		\hline
+		Convergence intégrateurs (pente log-log) & Euler explicite \(\approx 1.20\), Euler semi-implicite \(\approx 1.11\), RK4 \(\approx 4.00\) \\
+		\hline
+		RMSE radial à \(\Delta t=0.01\,s\) & Euler explicite \(9.23\times 10^{-4}\,m\), Euler semi-implicite \(6.47\times 10^{-4}\,m\), RK4 \(1.93\times 10^{-9}\,m\) \\
+		\hline
+		Meilleur modèle ML step-by-step & MLP (10\%) : \(\mathrm{MAE}_r = 3.55\times 10^{-3}\,m\), stabilité \(71.5\%\) \\
+		\hline
+		Comparaison sur test réel & MAE radiale normalisée : Linéaire \(0.109\,R\), MLP \(0.217\,R\) \\
+		\hline
+		Erreur récursive à 5 s (\(|\Delta r|/R\), médiane) & Linéaire \(0.0597\), MLP \(0.0525\) \\
+		\hline
+	\end{tabularx}
+\end{table}
+
+\subsection{Lecture des résultats}
+Les mesures physiques confirment la théorie: RK4 est nettement plus précis, mais plus coûteux; Euler semi-implicite reste un compromis robuste pour des pas de temps usuels. Côté ML, les performances sur données synthétiques sont bonnes, mais la comparaison au réel montre un écart significatif (\textit{sim-to-real}).
+
+L'analyse d'horizon confirme également un point important: même quand l'erreur au pas est faible, la prédiction récursive accumule les écarts. Ce résultat justifie l'usage de métriques dépendant du temps (et pas seulement d'une erreur moyenne globale) pour évaluer les modèles dynamiques.
 
 \section{Discussion et conclusion}
 
