@@ -88,11 +88,11 @@ Quel est un bon modèle pour représenter un phénomène réel ? Plus particuli�
 
 \subsection{Simulation à l'aide de méthodes de machine learning (ML)}
 
-Une seconde classe de méthodes de simulation repose sur l’utilisation de techniques d’apprentissage automatique, 
-visant à approximer directement la dynamique du système à partir de données. Contrairement aux approches déterministes 
-fondées sur la modélisation explicite des lois physiques, ces méthodes s’inscrivent dans un cadre empirique, dans lequel 
+Une seconde classe de méthodes de simulation repose sur l’utilisation de techniques d’apprentissage automatique,
+visant à approximer directement la dynamique du système à partir de données. Contrairement aux approches déterministes
+fondées sur la modélisation explicite des lois physiques, ces méthodes s’inscrivent dans un cadre empirique, dans lequel
 la relation entrée-sortie est apprise à partir d’un ensemble fini d’observations.
-Dans cette étude, les données générées par les simulations physiques sont utilisées comme ensemble d’entraînement. 
+Dans cette étude, les données générées par les simulations physiques sont utilisées comme ensemble d’entraînement.
 L’objectif du ML est d’apprendre une fonction
 \[
 f: \mathbb{R}^4 \rightarrow \mathbb{R}^{2N}
@@ -113,14 +113,14 @@ La sortie correspond à une discrétisation temporelle de la trajectoire:
 \[
 \mathbf{y} = (x_1, y_1, x_2, y_2, \dots, x_N, y_N) \in \mathbb{R}^{2N},
 \]
-où \( N \) désigne le nombre de pas de temps considérés. 
+où \( N \) désigne le nombre de pas de temps considérés.
 Cette formulation permet d’exprimer la dynamique du système sous la forme d’une application entre vecteurs d’entrée et de sortie.
 
 Deux modèles ont été considérés pour approximer la fonction \( f \) : la régression linéaire (LR) et le perceptron multicouche (MLP).
 
 \subsubsection{Regression linéaire}
 
-La régression linéaire constitue un modèle paramétrique dans lequel la sortie est exprimée comme une combinaison affine des variables d’entrée. 
+La régression linéaire constitue un modèle paramétrique dans lequel la sortie est exprimée comme une combinaison affine des variables d’entrée.
 Dans notre cas, elle est utilisée pour approximer la fonction \( f : \mathbb{R}^4 \rightarrow \mathbb{R}^{2N} \) reliant les conditions initiales à la trajectoire de la bille.
 
 Plus précisément, le modèle s’écrit :
@@ -129,42 +129,31 @@ Plus précisément, le modèle s’écrit :
 \]
 où \( \mathbf{W} \in \mathbb{R}^{2N \times 4} \) est une matrice de paramètres et \( \mathbf{b} \in \mathbb{R}^{2N} \) un vecteur de biais.
 
-Chaque composante de la trajectoire prédite est ainsi modélisée comme une combinaison linéaire des conditions initiales. 
+Chaque composante de la trajectoire prédite est ainsi modélisée comme une combinaison linéaire des conditions initiales.
 Cette approche revient à supposer que la dynamique du système peut être approximée globalement par une transformation affine.
 
-Toutefois, un tel modèle ne permet pas de capturer des dépendances temporelles explicites entre les différents instants de la trajectoire, 
+Toutefois, un tel modèle ne permet pas de capturer des dépendances temporelles explicites entre les différents instants de la trajectoire,
 ni des comportements non linéaires. Par conséquent, sa capacité de modélisation reste limitée pour des dynamiques complexes.
 
-\subsubsection{Multicouche perceptron} 
+\subsubsection{Multicouche perceptron}
 
-Afin de modéliser des comportements plus complexes, un perceptron multicouche a également été utilisé. Dans le cas d’une 
+Afin de modéliser des comportements plus complexes, un perceptron multicouche a également été utilisé. Dans le cas d’une
 architecture à une couche cachée, la fonction \( f \) s’écrit :
 \[
 f(\mathbf{x}) = \mathbf{W}^{(2)} \, \sigma(\mathbf{W}^{(1)} \mathbf{x} + \mathbf{b}^{(1)}) + \mathbf{b}^{(2)},
 \]
-où \( \sigma \) est une fonction d’activation non linéaire. \( \sigma \) 
+où \( \sigma \) est une fonction d’activation non linéaire. \( \sigma \)
 est représentée par la fonction ReLU (Rectified Linear Unit), définie par \( \sigma(z) = \max(0, z) \).
 
 Les paramètres du modèle, regroupés dans \( \theta \), sont estimés en minimisant une fonction de coût, généralement choisie comme l’erreur quadratique moyenne (MSE) :
 \[
 \mathcal{L}(\theta) = \frac{1}{M} \sum_{i=1}^{M} \left\| \mathbf{y}^{(i)} - \hat{\mathbf{y}}^{(i)} \right\|_2^2,
 \]
-où \( M \) désigne le nombre d’échantillons d’entraînement. Pour chaque exemple \( i \), \( \mathbf{y}^{(i)} \) 
-correspond à la trajectoire réelle associée aux conditions initiales \( \mathbf{x}^{(i)} \), 
+où \( M \) désigne le nombre d’échantillons d’entraînement. Pour chaque exemple \( i \), \( \mathbf{y}^{(i)} \)
+correspond à la trajectoire réelle associée aux conditions initiales \( \mathbf{x}^{(i)} \),
 et \( \hat{\mathbf{y}}^{(i)} = f_{\theta}(\mathbf{x}^{(i)}) \) la prédiction du modèle.
 
-
-%------------------------------------------------
-
-\section{Simulation}
-
-
-\subsection{Simulation physique}
-Première grande partie de notre réflexion, la simulation physique nous a permis de modéliser la trajectoire de la bille à l'aide de différentes méthodes numériques. Nous avons utilisé des méthodes d'Euler explicite, semi-implicite et Velvet, ainsi que la méthode de Runge-Kutta d'ordre 4 (RK4) pour simuler le mouvement de la bille sur la surface circulaire. Ces méthodes nous ont permis d'obtenir des résultats précis et de comparer les différentes approches pour simuler le même phénomène. Nous avons également manipulé les paramètres de notre modèle pour observer comment ils affectent la trajectoire de la bille, ce qui nous a permis de mieux comprendre les forces en jeu et les facteurs qui influencent le mouvement de la bille. Ces observations nous ont permis de tirer des conclusions sur la précision et la fiabilité de nos simulations, ainsi que sur les limites de notre modèle physique. En effet, nous avons constaté que représenter la réalité de manière précise relève de l'exploit. De plus des approximations numériques sont inévitables. Il est donc nécessaire de faire des hypothèses et des simplifications pour rendre le modèle plus facile à comprendre et à résoudre. Par exemple, nous avons fait  plusieurs hypothèse: la pression de l'air n'impact pas la trajectoire de la bille, la déformation de la surface par la bille est négligeable, la bille est un point matériel, etc. Nous avons donc réalisé plusieurs expériences sur deux représentations différentes de notre surface circulaire, une utilisant une forme géométrique conique et l'autre utilisant une forme logarithmique. Cela couplé avec les différentes méthodes d'intégration numérique et à la manipulation (ajout et retrait) des paramètres nous a permis d'obtenir une grande variété de résultats et d'observations. % ajouter graphique ici ??
-
-
- % TODO: intégrer dans la partie modèle !!!
- \subsubsection{Erreurs de modélisation}
+ \subsection{Erreurs de modélisation}
 
 La catégorie des erreurs de modélisation se décline en deux types d'erreurs.
 
@@ -186,7 +175,7 @@ Nos modèles itératifs à pas discret sont infinis. Il est donc impossible d'ob
 
 \subsubsection{Erreurs d'arrondi}
 
-Les erreurs d'arrondi sont des erreurs causées par la représentation finie des nombres en machine dans les registres du processeur (généralement 32 ou 64 bits). L'ordinateur ne peut pas représenter tous les nombres réels avec une précision infinie, ce qui crée alors une approximation. 
+Les erreurs d'arrondi sont des erreurs causées par la représentation finie des nombres en machine dans les registres du processeur (généralement 32 ou 64 bits). L'ordinateur ne peut pas représenter tous les nombres réels avec une précision infinie, ce qui crée alors une approximation.
 
 Pour définir formellement ce type d'erreur, notons par $\mathbb{F}(b, t, L, U)$ l'ensemble des nombres réels qui sont représentés par une notation à virgule flottante en base $b$, comportant $t$ chiffres significatifs et dont l'exposant varie dans l'intervalle $[L, U]$. Considérons un ordinateur utilisant cette notation $\mathbb{F}$. Soit $x \in \mathbb{R}$ un nombre réel quelconque et $fl(x) \in \mathbb{F}$ la représentation machine à virgule flottante de $x$. Désignons par $\varepsilon_x$ son erreur relative
 \begin{equation}
@@ -306,21 +295,21 @@ La génération synthétique a simulé \(1\,000\,000\) trajectoires, dont \(375\
         \hline
         \textbf{Indicateur} & \textbf{Valeur observée} \\
         \hline
-        Convergence intégrateurs (pente log-log) & 
+        Convergence intégrateurs (pente log-log) &
         Euler explicite ($\approx 1.20$), Euler semi-implicite ($\approx 1.11$), RK4 ($\approx 4.00$) \\
         \hline
-        RMSE radial à ($\Delta t = 0.01\,\mathrm{s}$) & 
-        Euler explicite ($9.23 \times 10^{-4}\,\mathrm{m}$), 
-        Euler semi-implicite ($6.47 \times 10^{-4}\,\mathrm{m}$), 
+        RMSE radial à ($\Delta t = 0.01\,\mathrm{s}$) &
+        Euler explicite ($9.23 \times 10^{-4}\,\mathrm{m}$),
+        Euler semi-implicite ($6.47 \times 10^{-4}\,\mathrm{m}$),
         RK4 ($1.93 \times 10^{-9}\,\mathrm{m}$) \\
         \hline
-        Meilleur modèle ML step-by-step & 
+        Meilleur modèle ML step-by-step &
         MLP (10\%) : ($\mathrm{MAE}_r = 3.55 \times 10^{-3}\,\mathrm{m}$), stabilité (71.5\%) \\
         \hline
-        Comparaison sur test réel & 
+        Comparaison sur test réel &
         MAE radiale normalisée : Linéaire ($0.109\,R$), MLP ($0.217\,R$) \\
         \hline
-        Erreur récursive à 5 s ($|\Delta r|/R$, médiane) & 
+        Erreur récursive à 5 s ($|\Delta r|/R$, médiane) &
         Linéaire ($0.0597$), MLP ($0.0525$) \\
         \hline
     \end{tabularx}
