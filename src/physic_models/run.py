@@ -80,6 +80,7 @@ ALPHA = np.arctan(np.linalg.norm(V0) ** 2 / (G * np.linalg.norm(R0)))
 # Définition des modèles et intégrateurs
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 # Pas adaptatif pour le modèle Laplace pur : dt ∝ r^(3/2) (loi de Kepler)
 # calibré pour que dt(R_REF) = DT. Concrètement : à l'apogée le pas est
 # ~DT, au périgée il est beaucoup plus petit → la stiffness numérique
@@ -160,12 +161,22 @@ def run(slope_func, integrator, dt_spec):
     stop = stop_at_radius(R_MIN, R_MAX)
     if callable(dt_spec):
         return simulate_adaptive(
-            R0, V0, acc, integrator, dt_spec,
-            stop_condition=stop, max_steps=MAX_STEPS,
+            R0,
+            V0,
+            acc,
+            integrator,
+            dt_spec,
+            stop_condition=stop,
+            max_steps=MAX_STEPS,
         )
     return simulate(
-        R0, V0, acc, integrator, dt_spec,
-        stop_condition=stop, max_steps=MAX_STEPS,
+        R0,
+        V0,
+        acc,
+        integrator,
+        dt_spec,
+        stop_condition=stop,
+        max_steps=MAX_STEPS,
     )
 
 
