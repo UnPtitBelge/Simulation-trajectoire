@@ -6,9 +6,10 @@ import matplotlib.pyplot as plt
 from functools import partial
 from pathlib import Path
 
-from surfaces import cone_slope, laplace_regularized_slope
+from surfaces import cone_slope, laplace_slope, laplace_regularized_slope
 from physics import (
     centripetal_acceleration,
+    laplace_mechanical_energy,
     laplace_regularized_mechanical_energy,
     cone_mechanical_energy,
 )
@@ -18,7 +19,7 @@ from integrators import (
     velocity_verlet,
     rk4,
 )
-from simulations import simulate, stop_at_radius
+from simulations import simulate, simulate_adaptive, stop_at_radius
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Paramètres expérimentaux
@@ -32,19 +33,24 @@ MU = 0.01  # coefficient de résistance au roulement (adimensionnel)
 DT = 1e-3  # pas de temps (s)
 MAX_STEPS = 1_000_000  # garde-fou (orbite sans frottement n'atteint jamais r_min/r_max)
 
-# Rayon de régularisation du modèle Laplace (m).
-# Pour r < R_C, la surface est un cône tangent à la courbe Laplace en r = R_C
-# (raccord C¹). Motivation : la pente Laplace dz/dr = K/(m g r²) diverge en
-# 1/r² au voisinage du centre, ce qui crée une stiffness numérique énorme
-# au périgée (pas dt = 1e-3 s sous-échantillonne l'orbite locale) et fait
-# osciller artificiellement l'énergie mécanique.
-# Choix de R_C : 0.10 m ≈ 3.3 × R_MIN. Ce facteur réduit a_c(R_C) d'un
-# facteur ~11 par rapport à a_c(R_MIN) (relation quadratique), tout en ne
-# modifiant la surface que sur une zone restreinte proche du centre.
-# Interprétation physique : la bille centrale de rayon R_MIN aplatit la
-# membrane sous elle sur un disque de rayon ≈ R_C — c'est la zone où le
-# modèle de masse ponctuelle n'est plus réaliste.
+# Rayon de régularisation du modèle Laplace (m), utilisé uniquement par
+# le modèle « Laplace R_C ». Pour r < R_C, la surface est un cône tangent
+# à la courbe Laplace en r = R_C (raccord C¹). Motivation : la pente
+# Laplace dz/dr = K/(m g r²) diverge en 1/r² au voisinage du centre,
+# ce qui crée une stiffness numérique énorme au périgée.
+# Choix de R_C : 0.10 m ≈ 3.3 × R_MIN — borne a_c(R_C) à un facteur ~11
+# de plus que a_c(R_MIN) (relation quadratique), sans défigurer la
+# surface au-delà. Interprétation physique : la bille centrale de rayon
+# R_MIN aplatit la membrane sous elle sur un disque de rayon ≈ R_C.
 R_C = 0.10
+
+# Bornes du pas adaptatif pour le modèle Laplace pur. L'adaptatif suit
+# la loi de Kepler dt(r) = DT × (r / R_REF)^(3/2) : nombre de pas par
+# orbite constant, quelle que soit la distance au centre. Plafonné pour
+# éviter un dt excessif à grand r, et borné par le bas pour garder un
+# minimum de précision même au périgée.
+DT_ADAPT_MAX = 5e-3
+DT_ADAPT_MIN = 1e-6
 
 # Dossier de destination des graphes
 FIGURES_DIR = Path("figures/physic_models")
@@ -74,18 +80,44 @@ ALPHA = np.arctan(np.linalg.norm(V0) ** 2 / (G * np.linalg.norm(R0)))
 # Définition des modèles et intégrateurs
 # ─────────────────────────────────────────────────────────────────────────────
 
+# Pas adaptatif pour le modèle Laplace pur : dt ∝ r^(3/2) (loi de Kepler)
+# calibré pour que dt(R_REF) = DT. Concrètement : à l'apogée le pas est
+# ~DT, au périgée il est beaucoup plus petit → la stiffness numérique
+# est compensée sans surcoût global (moins de pas dans la branche stable
+# de l'orbite, plus dans la branche rapide).
+def dt_kepler_adaptive(r_vec, _v_vec):
+    rn = float(np.linalg.norm(r_vec))
+    dt = DT * (rn / R_REF) ** 1.5
+    return float(np.clip(dt, DT_ADAPT_MIN, DT_ADAPT_MAX))
+
+
 MODELS = {
     "Conique": partial(cone_slope, alpha_const=ALPHA),
-    "Laplace": partial(laplace_regularized_slope, K=K, m=M, r_c=R_C, g=G),
+    "Laplace": partial(laplace_slope, K=K, m=M, g=G),
+    "Laplace R_C": partial(laplace_regularized_slope, K=K, m=M, r_c=R_C, g=G),
 }
 
 ENERGY_FUNCS = {
     "Conique": lambda r, v: cone_mechanical_energy(
         M, np.linalg.norm(v), np.linalg.norm(r), ALPHA, G, R_REF
     ),
-    "Laplace": lambda r, v: laplace_regularized_mechanical_energy(
+    "Laplace": lambda r, v: laplace_mechanical_energy(
+        M, np.linalg.norm(v), np.linalg.norm(r), K, G, R_REF
+    ),
+    "Laplace R_C": lambda r, v: laplace_regularized_mechanical_energy(
         M, np.linalg.norm(v), np.linalg.norm(r), K, R_C, G, R_REF
     ),
+}
+
+# Stratégie d'intégration par modèle :
+#   - float  → simulate() avec dt fixe
+#   - Callable → simulate_adaptive() avec dt_func(r, v)
+# Seul Laplace pur (singulier en 1/r²) justifie le coût d'un pas adaptatif ;
+# Conique et Laplace R_C ont une accélération bornée, un dt fixe suffit.
+DT_SPEC = {
+    "Conique": DT,
+    "Laplace": dt_kepler_adaptive,
+    "Laplace R_C": DT,
 }
 
 INTEGRATORS = {
@@ -98,6 +130,7 @@ INTEGRATORS = {
 COLORS_MODEL = {
     "Conique": "#e07b54",
     "Laplace": "#5b8dd9",
+    "Laplace R_C": "#b07bd9",
 }
 
 COLORS_INTEG = {
@@ -122,15 +155,17 @@ def make_acc(slope_func):
     return acc
 
 
-def run(slope_func, integrator):
+def run(slope_func, integrator, dt_spec):
+    acc = make_acc(slope_func)
+    stop = stop_at_radius(R_MIN, R_MAX)
+    if callable(dt_spec):
+        return simulate_adaptive(
+            R0, V0, acc, integrator, dt_spec,
+            stop_condition=stop, max_steps=MAX_STEPS,
+        )
     return simulate(
-        R0,
-        V0,
-        make_acc(slope_func),
-        integrator,
-        DT,
-        stop_condition=stop_at_radius(R_MIN, R_MAX),
-        max_steps=MAX_STEPS,
+        R0, V0, acc, integrator, dt_spec,
+        stop_condition=stop, max_steps=MAX_STEPS,
     )
 
 
@@ -142,7 +177,7 @@ results = {}
 for model_name, slope_func in MODELS.items():
     results[model_name] = {}
     for integ_name, integrator in INTEGRATORS.items():
-        t, r, v, a = run(slope_func, integrator)
+        t, r, v, a = run(slope_func, integrator, DT_SPEC[model_name])
         Em = np.array([ENERGY_FUNCS[model_name](r[i], v[i]) for i in range(len(t))])
         results[model_name][integ_name] = {"t": t, "r": r, "v": v, "Em": Em}
 
