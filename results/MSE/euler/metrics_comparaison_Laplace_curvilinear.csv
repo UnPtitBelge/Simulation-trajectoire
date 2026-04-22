@@ -1,0 +1,2 @@
+sim_file,real_file,method,mse,rmse,nrmse
+resultsLaplace.csv,tracking_data.csv,trajectory_comparison_curvilinear_normalized,0.6041249587847242,0.7772547579685338,0.7772547579685338

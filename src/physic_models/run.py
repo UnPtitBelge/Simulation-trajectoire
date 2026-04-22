@@ -25,11 +25,11 @@ from simulations import simulate, simulate_adaptive, stop_at_radius
 # Paramètres expérimentaux
 # ─────────────────────────────────────────────────────────────────────────────
 
-M = 1.00  # masse bille (kg)
+M = 10000  # masse bille (kg)
 G = 9.81  # pesanteur (m/s²)
 R_MIN = 0.03  # rayon bille centrale (m) — condition d'arrêt (collision)
 R_MAX = 0.80  # rayon membrane (m)
-MU = 0.01  # coefficient de résistance au roulement (adimensionnel)
+MU = 0.011  # coefficient de résistance au roulement (adimensionnel)
 DT = 1e-3  # pas de temps (s)
 MAX_STEPS = 1_000_000  # garde-fou (orbite sans frottement n'atteint jamais r_min/r_max)
 
@@ -93,18 +93,18 @@ def dt_kepler_adaptive(r_vec, _v_vec):
 
 
 MODELS = {
-    "Conique": partial(cone_slope, alpha_const=ALPHA),
-    "Laplace": partial(laplace_slope, K=K, m=M, g=G),
+    # "Conique": partial(cone_slope, alpha_const=ALPHA),
+    # "Laplace": partial(laplace_slope, K=K, m=M, g=G),
     "Laplace R_C": partial(laplace_regularized_slope, K=K, m=M, r_c=R_C, g=G),
 }
 
 ENERGY_FUNCS = {
-    "Conique": lambda r, v: cone_mechanical_energy(
-        M, np.linalg.norm(v), np.linalg.norm(r), ALPHA, G, R_REF
-    ),
-    "Laplace": lambda r, v: laplace_mechanical_energy(
-        M, np.linalg.norm(v), np.linalg.norm(r), K, G, R_REF
-    ),
+    # "Conique": lambda r, v: cone_mechanical_energy(
+    #     M, np.linalg.norm(v), np.linalg.norm(r), ALPHA, G, R_REF
+    # ),
+    # "Laplace": lambda r, v: laplace_mechanical_energy(
+    #     M, np.linalg.norm(v), np.linalg.norm(r), K, G, R_REF
+    # ),
     "Laplace R_C": lambda r, v: laplace_regularized_mechanical_energy(
         M, np.linalg.norm(v), np.linalg.norm(r), K, R_C, G, R_REF
     ),
@@ -116,16 +116,16 @@ ENERGY_FUNCS = {
 # Seul Laplace pur (singulier en 1/r²) justifie le coût d'un pas adaptatif ;
 # Conique et Laplace R_C ont une accélération bornée, un dt fixe suffit.
 DT_SPEC = {
-    "Conique": DT,
-    "Laplace": dt_kepler_adaptive,
+    # "Conique": DT,
+    # "Laplace": dt_kepler_adaptive,
     "Laplace R_C": DT,
 }
 
 INTEGRATORS = {
     "Euler": explicit_euler,
-    "Euler semi-implicite": semi_implicit_euler,
-    "Verlet": velocity_verlet,
-    "RK4": rk4,
+    # "Euler semi-implicite": semi_implicit_euler,
+    # "Verlet": velocity_verlet,
+    # "RK4": rk4,
 }
 
 COLORS_MODEL = {
@@ -191,6 +191,296 @@ for model_name, slope_func in MODELS.items():
         t, r, v, a = run(slope_func, integrator, DT_SPEC[model_name])
         Em = np.array([ENERGY_FUNCS[model_name](r[i], v[i]) for i in range(len(t))])
         results[model_name][integ_name] = {"t": t, "r": r, "v": v, "Em": Em}
+
+# import matplotlib.pyplot as plt
+# import pandas as pd
+#
+#
+# data = results["Laplace R_C"]["Euler"]
+#
+# t = data["t"]
+# r = data["r"]
+# v = data["v"]
+# Em = data["Em"]
+#
+# df = pd.DataFrame({
+#     "t": t,
+#     "r_x": r[:, 0],
+#     "r_y": r[:, 1],
+#     "v_x": v[:, 0],
+#     "v_y": v[:, 1],
+#     "Em": Em
+# })
+#
+# df.to_csv("resultsLaplace R_C.csv", index=False)
+
+
+
+import pandas as pd
+import numpy as np
+
+
+def _load_data(datafile1="resultsConique.csv", data2_file="tracking_data.csv"):
+    sim = pd.read_csv(datafile1)
+    real = pd.read_csv(data2_file, delimiter=";")
+
+    sim.columns = sim.columns.str.strip()
+    real.columns = real.columns.str.strip()
+    real["y"] = real["y"].max() - real["y"]
+
+    return sim, real
+
+
+def _safe_minmax_normalize(values, vmin, vmax):
+    if vmax == vmin:
+        return np.zeros_like(values, dtype=float)
+    return (values - vmin) / (vmax - vmin)
+
+
+def MSE_normalized_interpolate(data1_file="resultsConique.csv", data2_file="tracking_data.csv"):
+    sim, real = _load_data(datafile1=data1_file, data2_file=data2_file)
+
+    sim_x = sim["r_x"].to_numpy()
+    sim_y = sim["r_y"].to_numpy()
+
+    real_x = real["x"].to_numpy()
+    real_y = real["y"].to_numpy()
+
+    sim_x = sim_x - sim_x[0]
+    sim_y = sim_y - sim_y[0]
+    real_x = real_x - real_x[0]
+    real_y = real_y - real_y[0]
+
+    # Paramètre normalisé entre 0 et 1
+    t_sim = np.linspace(0, 1, len(sim_x))
+    t_real = np.linspace(0, 1, len(real_x))
+
+    # Interpolation du tracking sur la grille de la simulation
+    real_x_interp = np.interp(t_sim, t_real, real_x)
+    real_y_interp = np.interp(t_sim, t_real, real_y)
+
+    # Normalisation globale
+    x_all = np.concatenate([sim_x, real_x_interp])
+    y_all = np.concatenate([sim_y, real_y_interp])
+
+    x_min, x_max = x_all.min(), x_all.max()
+    y_min, y_max = y_all.min(), y_all.max()
+
+    sim_x_n = _safe_minmax_normalize(sim_x, x_min, x_max)
+    sim_y_n = _safe_minmax_normalize(sim_y, y_min, y_max)
+    real_x_n = _safe_minmax_normalize(real_x_interp, x_min, x_max)
+    real_y_n = _safe_minmax_normalize(real_y_interp, y_min, y_max)
+
+    # MSE / RMSE / NRMSE
+    mse = np.mean((sim_x_n - real_x_n) ** 2 + (sim_y_n - real_y_n) ** 2)
+    rmse = np.sqrt(mse)
+    nrmse = rmse
+
+    print(f"Comparaison {data1_file} vs {data2_file} :")
+    print("MSE :", mse)
+    # print("RMSE :", rmse)
+    print("NRMSE :", nrmse)
+
+    # Sauvegarde des données interpolées
+    df_interp = pd.DataFrame({
+        "t_norm": t_sim,
+        "sim_x": sim_x,
+        "sim_y": sim_y,
+        "real_x_interp": real_x_interp,
+        "real_y_interp": real_y_interp,
+        "sim_x_norm": sim_x_n,
+        "sim_y_norm": sim_y_n,
+        "real_x_interp_norm": real_x_n,
+        "real_y_interp_norm": real_y_n
+    })
+    df_interp.to_csv("donnees_interpole_Conique_classic.csv", index=False)
+
+    # Sauvegarde des métriques
+    pd.DataFrame({
+        "method": ["normalized_interpolation_index"],
+        "mse": [mse],
+        "rmse": [rmse],
+        "nrmse": [nrmse]
+    }).to_csv("metrics_interpolation_Conique_index.csv", index=False)
+
+    return mse, rmse, nrmse
+
+
+
+print("Les MSE linspace sous forme de temps")
+MSE_normalized_interpolate("results/MSE/resultsConique.csv", "results/MSE/tracking_data.csv")
+MSE_normalized_interpolate("results/MSE/resultsLaplace.csv", "results/MSE/tracking_data.csv")
+MSE_normalized_interpolate("results/MSE/resultsLaplace R_C.csv", "results/MSE/tracking_data.csv")
+
+import pandas as pd
+import numpy as np
+
+
+def _curve_parameter(x, y):
+    dx = np.diff(x)
+    dy = np.diff(y)
+    dist = np.sqrt(dx**2 + dy**2)
+    s = np.concatenate(([0.0], np.cumsum(dist)))
+
+    if s[-1] == 0:
+        return np.zeros_like(s, dtype=float)
+
+    return s / s[-1]
+
+
+def compare_trajectory_error(
+    sim_file="results/MSE/results.csv",
+    real_file="results/MSE/tracking_data.csv",
+    output_data_file="trajectory_comparison.csv",
+    output_metrics_file="trajectory_metrics.csv",
+    n_samples=500
+):
+    # -------------------------
+    # Chargement
+    # -------------------------
+    sim = pd.read_csv(sim_file)
+    real = pd.read_csv(real_file, delimiter=";")
+
+    sim.columns = sim.columns.str.strip()
+    real.columns = real.columns.str.strip()
+
+    # -------------------------
+    # Extraction des coordonnées
+    # -------------------------
+    sim_x = sim["r_x"].to_numpy(dtype=float)
+    sim_y = sim["r_y"].to_numpy(dtype=float)
+
+    real_x = real["x"].to_numpy(dtype=float)
+    real_y = real["y"].to_numpy(dtype=float)
+
+    # -------------------------
+    # Correction du repère tracking
+    # y image -> y physique
+    # -------------------------
+    real_y = real_y.max() - real_y
+
+    # -------------------------
+    # Recentrage sur le point de départ
+    # -------------------------
+    sim_x = sim_x - sim_x[0]
+    sim_y = sim_y - sim_y[0]
+
+    real_x = real_x - real_x[0]
+    real_y = real_y - real_y[0]
+
+    # -------------------------
+    # Paramètre curviligne
+    # -------------------------
+    s_sim = _curve_parameter(sim_x, sim_y)
+    s_real = _curve_parameter(real_x, real_y)
+
+    # -------------------------
+    # Grille commune
+    # -------------------------
+    s_common = np.linspace(0, 1, n_samples)
+
+    # -------------------------
+    # Interpolation des deux trajectoires
+    # -------------------------
+    sim_x_interp = np.interp(s_common, s_sim, sim_x)
+    sim_y_interp = np.interp(s_common, s_sim, sim_y)
+
+    real_x_interp = np.interp(s_common, s_real, real_x)
+    real_y_interp = np.interp(s_common, s_real, real_y)
+
+    # -------------------------
+    # Normalisation globale
+    # -------------------------
+    x_all = np.concatenate([sim_x_interp, real_x_interp])
+    y_all = np.concatenate([sim_y_interp, real_y_interp])
+
+    x_min, x_max = x_all.min(), x_all.max()
+    y_min, y_max = y_all.min(), y_all.max()
+
+    sim_x_n = _safe_minmax_normalize(sim_x_interp, x_min, x_max)
+    sim_y_n = _safe_minmax_normalize(sim_y_interp, y_min, y_max)
+
+    real_x_n = _safe_minmax_normalize(real_x_interp, x_min, x_max)
+    real_y_n = _safe_minmax_normalize(real_y_interp, y_min, y_max)
+
+    # -------------------------
+    # Erreurs
+    # -------------------------
+    point_error_sq = (sim_x_n - real_x_n) ** 2 + (sim_y_n - real_y_n) ** 2
+
+    mse = np.mean(point_error_sq)
+    rmse = np.sqrt(mse)
+    nrmse = rmse   # car données normalisées entre 0 et 1
+
+    print(f"Comparaison {sim_file} vs {real_file} :")
+    print("MSE   :", mse)
+    # print("RMSE  :", rmse)
+    print("NRMSE :", nrmse)
+
+    # -------------------------
+    # Sauvegarde des données comparées
+    # -------------------------
+    df_out = pd.DataFrame({
+        "s": s_common,
+        "sim_x_interp": sim_x_interp,
+        "sim_y_interp": sim_y_interp,
+        "real_x_interp": real_x_interp,
+        "real_y_interp": real_y_interp,
+        "sim_x_norm": sim_x_n,
+        "sim_y_norm": sim_y_n,
+        "real_x_norm": real_x_n,
+        "real_y_norm": real_y_n,
+        "point_error_sq": point_error_sq
+    })
+    df_out.to_csv(output_data_file, index=False)
+
+    # -------------------------
+    # Sauvegarde des métriques
+    # -------------------------
+    df_metrics = pd.DataFrame({
+        "sim_file": [sim_file],
+        "real_file": [real_file],
+        "method": ["trajectory_comparison_curvilinear_normalized"],
+        "mse": [mse],
+        "rmse": [rmse],
+        "nrmse": [nrmse]
+    })
+    df_metrics.to_csv(output_metrics_file, index=False)
+
+    return mse, rmse, nrmse
+
+print("\nComparaison des trajectoires sur une grille curviligne normalisée")
+compare_trajectory_error(
+    sim_file="results/MSE/resultsConique.csv",
+    real_file="results/MSE/tracking_data.csv",
+    output_data_file="donnees_comparaison_Conique_curvilinear.csv",
+    output_metrics_file="metrics_comparaison_Conique_curvilinear.csv",
+    n_samples=500
+)
+compare_trajectory_error(
+    sim_file="results/MSE/resultsLaplace.csv",
+    real_file="results/MSE/tracking_data.csv",
+    output_data_file="donnees_comparaison_Laplace_curvilinear.csv",
+    output_metrics_file="metrics_comparaison_Laplace_curvilinear.csv",
+    n_samples=500
+)
+compare_trajectory_error(
+    sim_file="results/MSE/resultsLaplace R_C.csv",
+    real_file="results/MSE/tracking_data.csv",
+    output_data_file="donnees_comparaison_Laplace_RC_curvilinear.csv",
+    output_metrics_file="metrics_comparaison_Laplace_RC_curvilinear.csv",
+    n_samples=500
+)
+
+# import cv2
+# image = np.zeros((720, 1280, 3), dtype=np.uint8)
+# for r in results["Conique"]["Euler"]["r"]:
+#     cv2.circle(image, (int(1280 / 2 + r[0] * 600), int(720 / 2 - r[1] * 600)), 2, (255, 255, 255), -1)
+# cv2.imwrite("orbit.png", image)
+# cv2.imshow("Orbit", image)
+# cv2.waitKey(0)
+#
+exit(0) 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Style global
