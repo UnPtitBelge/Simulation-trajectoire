@@ -11,7 +11,7 @@ import os
 
 from path import DEFAULT_TRACKING_DIR
 
-FIRST_LINE = "expID; temps; x; y; speedX; speedY"
+FIRST_LINE = "expID;temps;x;y;speedX;speedY"
 
 class DataWriter:
     finalFile = ""

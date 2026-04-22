@@ -1,0 +1,2 @@
+sim_file,real_file,method,mse,rmse,nrmse
+resultsConique.csv,tracking_data.csv,trajectory_comparison_curvilinear_normalized,0.6037661792724155,0.7770239245173958,0.7770239245173958
