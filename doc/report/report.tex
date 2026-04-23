@@ -30,6 +30,7 @@
 \usepackage{array}
 \usepackage{amsfonts}
 \usepackage{amsmath}
+\usepackage{booktabs}
 \addbibresource{bibliography.bib} % BibLaTeX bibliography file
 
 \runninghead{Étude et analyse de modèles} % A shortened article title to appear in the running head, leave this command empty for no running head
@@ -192,7 +193,6 @@ Dans le cadre d'une approche scientifique, il est important de prendre en compte
 
 Nos modèles itératifs à pas discret sont infinis. Il est donc impossible d'obtenir une solution exacte en un temps fini même en faisant abstraction de tout autre type d'erreur pouvant entrer en jeu. Afin d'obtenir un résultat, nous établissons une variable $n\_steps$ qui limite le nombre d'itération de manière à obtenir un bon équilibre entre temps d'exécution et précision du résultat.
 
-
 \subsubsection{Erreurs d'arrondi}
 
 Les erreurs d'arrondi sont des erreurs causées par la représentation finie des nombres en machine dans les registres du processeur (généralement 32 ou 64 bits). L'ordinateur ne peut pas représenter tous les nombres réels avec une précision infinie, ce qui crée alors une approximation.
@@ -232,8 +232,6 @@ Il est clair que nous retrouvons ce type d'erreur dans nos simulation.
 \subsubsection{Erreurs de propagation et génération}
 
 Les erreurs de propagation et de génération sont des erreurs qui apparaissent lorsque les erreurs numériques se propagent à travers les calculs. Les erreurs de génération se produisent à chaque itération, étape des calculs et les erreur de propagation regroupent toutes les erreurs de génération jusqu'à l'étape courante. Par exemple, si nous simplifions $\pi$ à 3.14, nous introduisons une erreur d'arrondi à une certaine génération qui va se propager à travers les calculs ultérieurs, affectant ainsi la précision globale des résultats.
-
-
 
 \subsection{Analyse numérique du problème}
 
@@ -290,6 +288,27 @@ Un problème bien conditionné est peu sensible aux perturbations, tandis qu'un 
 % différentes simus:
 % simus physique: euler explicite, semi-implicite et velvet (+rk4)
 % simu ml: régression linéaire et MLP (multi-layer perceptron)
+
+\subsection{Comparaison des méthodes d’approximation numérique}
+Plusieurs méthodes d’approximation numérique peuvent être utilisées pour résoudre les équations différentielles ordinaires associées aux différents modèles étudiés.
+% Parmi les méthodes les plus courantes figurent l’Euler explicite, l’Euler semi-implicite ainsi que la méthode de Runge-Kutta d’ordre 4 (RK4).
+Le tableau suivant présente, pour chaque méthode et chaque modèle, l’erreur géométrique normalisée mesurant l’écart entre la trajectoire simulée et la trajectoire réelle.
+\begin{table}[h]
+    \centering
+    \small
+    \caption{Erreur géométrique normalisée entre la trajectoire simulée et la trajectoire réelle pour chaque combinaison de modèle et de méthode numérique.}
+    \label{tab:comparaison_methodes_modeles}
+    \begin{tabular}{lccc}
+        \toprule
+        Méthode & Conique & Laplace & Laplace $R_C$ \\
+        \midrule
+        Euler exp.      & 0.7681 & 0.7682 & 0.7680 \\
+        Euler semi-imp. & 0.7681 & 0.7682 & 0.7680 \\
+        RK4             & 0.7682 & 0.7682 & 0.7680 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
 %------------------------------------------------
 
 \section{Génération et analyse des données}
