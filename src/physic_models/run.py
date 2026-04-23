@@ -308,9 +308,9 @@ def MSE_normalized_interpolate(data1_file="resultsConique.csv", data2_file="trac
 
 
 print("Les MSE linspace sous forme de temps")
-MSE_normalized_interpolate("resultsConique.csv", "tracking_data.csv")
-MSE_normalized_interpolate("resultsLaplace.csv", "tracking_data.csv")
-MSE_normalized_interpolate("resultsLaplace R_C.csv", "tracking_data.csv")
+MSE_normalized_interpolate("results/MSE/resultsConique.csv", "results/MSE/tracking_data.csv")
+MSE_normalized_interpolate("results/MSE/resultsLaplace.csv", "results/MSE/tracking_data.csv")
+MSE_normalized_interpolate("results/MSE/resultsLaplace R_C.csv", "results/MSE/tracking_data.csv")
 
 import pandas as pd
 import numpy as np
@@ -329,8 +329,8 @@ def _curve_parameter(x, y):
 
 
 def compare_trajectory_error(
-    sim_file="results.csv",
-    real_file="tracking_data.csv",
+    sim_file="results/MSE/results.csv",
+    real_file="results/MSE/tracking_data.csv",
     output_data_file="trajectory_comparison.csv",
     output_metrics_file="trajectory_metrics.csv",
     n_samples=500
@@ -451,22 +451,22 @@ def compare_trajectory_error(
 
 print("\nComparaison des trajectoires sur une grille curviligne normalisée")
 compare_trajectory_error(
-    sim_file="resultsConique.csv",
-    real_file="tracking_data.csv",
+    sim_file="results/MSE/resultsConique.csv",
+    real_file="results/MSE/tracking_data.csv",
     output_data_file="donnees_comparaison_Conique_curvilinear.csv",
     output_metrics_file="metrics_comparaison_Conique_curvilinear.csv",
     n_samples=500
 )
 compare_trajectory_error(
-    sim_file="resultsLaplace.csv",
-    real_file="tracking_data.csv",
+    sim_file="results/MSE/resultsLaplace.csv",
+    real_file="results/MSE/tracking_data.csv",
     output_data_file="donnees_comparaison_Laplace_curvilinear.csv",
     output_metrics_file="metrics_comparaison_Laplace_curvilinear.csv",
     n_samples=500
 )
 compare_trajectory_error(
-    sim_file="resultsLaplace R_C.csv",
-    real_file="tracking_data.csv",
+    sim_file="results/MSE/resultsLaplace R_C.csv",
+    real_file="results/MSE/tracking_data.csv",
     output_data_file="donnees_comparaison_Laplace_RC_curvilinear.csv",
     output_metrics_file="metrics_comparaison_Laplace_RC_curvilinear.csv",
     n_samples=500
