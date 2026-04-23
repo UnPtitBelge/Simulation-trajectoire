@@ -72,7 +72,27 @@
 %----------------------------------------------------------------------------------------
 
 \section{Introduction}
-Quel est un bon modèle pour représenter un phénomène réel ? Plus particulièrement, comment choisir un modèle pour un cas précis ? Pour répondre à ces questions, nous avons élaboré plusieurs modèles sur base de notre expérience physique, la trajectoire d'une bille tournant sur une surface "placer lien vers figure expérience ?". Ce rapport présente et analyse quatres modèles, deux modèles basés sur des équations physiques et deux modèles basés sur des méthodes de machine learning.
+La modélisation et la simulation de phénomènes physiques constituent des outils fondamentaux en sciences, 
+permettant de décrire, analyser et prédire le comportement de systèmes dynamiques. Dans de nombreux contextes, 
+plusieurs approches de modélisation peuvent être envisagées, reposant sur des cadres théoriques distincts et impliquant des compromis entre précision, 
+complexité et coût de calcul.
+Le présent travail s’inscrit dans ce cadre et porte sur l’étude de différentes méthodes de simulation appliquées à un système physique simple: 
+la trajectoire d’une bille en mouvement circulaire sur un dispositif expérimental. Bien que ce système soit relativement élémentaire, 
+il présente une dynamique suffisamment riche pour mettre en évidence les avantages et les limites de différentes approches de modélisation.
+Deux grandes familles de méthodes sont considérées. La première regroupe les modèles fondés sur des équations physiques explicites, 
+dans lesquels la dynamique du système est décrite à l’aide de lois fondamentales. 
+Ces approches offrent une interprétation directe des phénomènes observés, 
+mais nécessitent l’introduction d’hypothèses simplificatrices et peuvent devenir difficiles à exploiter analytiquement ou numériquement lorsque la complexité du système augmente.
+La seconde famille repose sur des techniques d’apprentissage automatique, visant à approximer la dynamique du système à partir de données. 
+Dans ce cadre, le problème est reformulé comme l’apprentissage d’une application reliant les conditions initiales du système à son évolution temporelle. 
+Ces méthodes permettent de capturer des comportements non linéaires complexes sans expliciter les lois physiques sous-jacentes, 
+au prix d’une dépendance accrue à la qualité des données et d’une interprétabilité plus limitée.
+Au-delà de la construction des modèles, une attention particulière est portée à l’analyse des erreurs affectant les simulations. 
+Celles-ci incluent à la fois les erreurs de mesure, 
+les erreurs de modélisation résultant des hypothèses adoptées, ainsi que les erreurs numériques introduites par les méthodes de calcul. 
+L’étude de propriétés telles que la consistance, la stabilité et le conditionnement permet ainsi d’évaluer la robustesse et la fiabilité des approches considérées.
+L’objectif de ce rapport est d’analyser et de comparer ces différentes méthodes de simulation, en mettant en évidence leurs performances, 
+leurs limites et leur domaine de validité, tant du point de vue physique que numérique.
 
 %------------------------------------------------
 
