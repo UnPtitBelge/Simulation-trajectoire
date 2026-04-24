@@ -49,7 +49,7 @@
 % Authors are listed in a comma-separated list with superscript numbers indicating affiliations
 % \thanks{} is used for any text that should be placed in a footnote on the first page, such as the corresponding author's email, journal acceptance dates, a copyright/license notice, keywords, etc
 \author{%
-	Manuel Rocca, Damian Kazberuk, Matteo Morbée, Romain Liefferinckx
+	Manuel Rocca, Damian Kazberuk, Matteo Morbée, Romain Liefferinckx, Martin Gouverneur
 }
 
 % Affiliations are output in the \date{} command
@@ -247,50 +247,42 @@ Définissons d'abord la notion d'algorithme nu-mérique. Étant donné un probl�
 dépendant d'un paramètre $n$, où $x^{(n)}$ est la solution du sous-problème $F_n$ \cite{Marteen:2022}.
 
 \subsection{Consistance}
-La consistance est la capacité d'un algorithme à produire des résultats qui convergent vers la solution exacte du problème.
-Un algorithme $F_n(x^{(n)}, d^{(n)})$ est dit consistant si
+La consistance traduit la capacité d'un modèle numérique à tendre vers les lois pures de la physique lorsque le pas de temps s'affine. Formellement \cite{Marteen:2022}, un schéma $F_n(x^{(n)}, d^{(n)})$ est consistant si la solution exacte $x$ vérifie le modèle limite :
 \begin{equation}
-    \lim_{n \to \infty} F_n(x, d^{(n)}) = F(x, d) = 0,
+    \lim_{n \to \infty} F_n(x, d^{(n)}) = F(x, d) = 0.
 \end{equation}
-c.-à-d., si la solution exacte $x$ du problème est une solution de
-$F_n(x^{(n)}, d^{(n)}) = 0$ pour $n \to \infty$.
 
-En d'autres termes, un algorithme est consistant si à partir d'une certaine étape
-le sous-problème approché $F_n$ a la solution $x$ parmi ses solutions \cite{Marteen:2022}.
-
-Dans notre cas, la méthode de Euler (explicite ou implicite) est consistante. % d'ordre 1. Parler des autres aussi quand on aura fait/trouver les étapes de calculs.
+En pratique, pour une trajectoire $y' = f(t,y)$, la méthode d'Euler (explicite ou semi-implicite) admet le développement de Taylor suivant :
+\begin{equation}
+    y(t_{n+1}) = y(t_n) + \Delta t f\big(t_n, y(t_n)\big) + \mathcal{O}(\Delta t^2).
+\end{equation}
+L'erreur locale de troncature par pas de temps est $\tau_{n+1} = \mathcal{O}(\Delta t)$. Ces méthodes sont donc consistantes à l'ordre 1. À l'inverse, l'approche de Runge-Kutta (RK4) annule analytiquement les termes d'erreur d'ordre inférieur, offrant $\tau_{n+1} = \mathcal{O}(\Delta t^4)$, soit une très haute consistance polynomiale.
 
 \subsection{Stabilité}
-La stabilité est la propriété d'un algorithme qui garantit que les erreurs apportées durant les calculs ne s'amplifient pas de manière exponentielle au fil des itérations. En particulier, un algorithme numérique est dit stable (ou bien posé) si
+La stabilité garantit que les perturbations inévitables (comme les erreurs d'arrondi) ne s'amplifient pas exponentiellement. Un algorithme est numérique stable si, pour tout $\epsilon > 0$, il existe $\eta > 0$ tel que toute perturbation initiale d'amplitude $\eta$ affecte la solution finale de moins de $\epsilon$.
 
-\begin{enumerate}
-\item il existe pour tout $n$ une solution unique $x^{(n)}$ ;
-\item pour tout $\epsilon > 0$, il existe $\eta > 0$ et $n_0$ tels que
-\begin{align*}
-\|\delta d^{(i)}\| &\le \eta \quad \forall i = 1,\ldots,m \\
-&\Rightarrow \|\bar{x}^{(n)} - x^{(n)}\| \le \epsilon
-\end{align*}
-\end{enumerate}
+Pour l'analyser, on utilise couramment l'équation de test linéaire $y' = \lambda y$ (avec $\lambda \in \mathbb{C}$). Pour l'Euler explicite, sa récurrence dicte $y_{n+1} = G \cdot y_n$, avec $G = (1 + \lambda\Delta t)$. La stabilité exige impérativement $|G| \le 1$.
+Cependant, pour notre trajectoire purement inertielle (système conservatif), $\lambda$ est imaginaire pur ($\lambda = i\omega$). Le facteur d'amplification devient :
+\begin{equation}
+    |G| = |1 + i\omega\Delta t| = \sqrt{1 + \omega^2\Delta t^2} > 1.
+\end{equation}
+L'Euler explicite amplifie artificiellement l'énergie du système oscillatoire et diverge de son orbite. En structurant l'intégration différemment, l'Euler semi-implicite met à jour la position depuis la vitesse future. Cette conception \textit{symplectique} préserve le volume de l'espace des phases et assure une grande stabilité à long terme pour les orbites.
 
-En d'autres termes, un algorithme est stable si des petites perturbations des
-données du sous-problème $F_n$ entraînent de petites perturbations de sa solution
-$x^{(n)}$.
+\subsection{Convergence et Machine Learning}
+Le \textbf{théorème d'équivalence de Lax} stipule logiquement que pour un problème bien posé, la consistance couplée à la stabilité assure la \textbf{convergence} globale du modèle discret vers la vérité continue.
+
+Toutefois, ce théorème ne s'extrapole pas aux réseaux de neurones (MLP, LR). Entraînés de manière isolée pour lisser l'étape $n \to n+1$, la régression est aveugle aux variations sur temps long. Intégrée en boucle auto-régressive (\textit{step-by-step}), ses légères imprécisions déplacent l'état évalué hors du domaine vu à l'apprentissage (un \textit{distribution shift}). Ces erreurs alimentent exponentiellement les futures imprécisions, déclenchant sur la durée une déviation divergente similaire à de l'instabilité numérique classique.
 
 \subsection{Conditionnement}
-Le conditionnement décrit la sensibilité intrinsèque du problème : une petite perturbation des données d'entrée peut produire une petite ou une grande variation de la solution exacte lors de la résolution numérique.
-Un problème bien conditionné est peu sensible aux perturbations, tandis qu'un problème mal conditionné les amplifie.
-% TODO: ASPECT ANALYTIQUE
-% en particulier, il nous faut un cas concret, une erreur concrète, prise en flagrant délit pour appuyer nos propos
-% => comment faire ?: outils de mesure par exemple MSE (ou tout autre)
+Contrairement à la stabilité qui évalue l'algorithme choisi, le conditionnement diagnostique la susceptibilité intrinsèque du \textit{problème analytique} en lui-même. 
+Pour une évolution de type $y' = f(t,y)$, la variation $\delta y(t)$ issue d'une erreur d'entrée se dilate proportionnellement à la matrice Jacobienne $J = \frac{\partial f}{\partial y}$ :
+\begin{equation}
+    \delta y' = J \delta y \implies \|\delta y(t)\| \propto \exp\left(\int \|J\| dt\right).
+\end{equation}
+Dans le système circulaire abordé ici, les valeurs propres de la Jacobienne ont une composante réelle négligeable : l'erreur n'y grimpe pas de façon irrémédiable, et on caractérise ce problème comme globalement \textbf{bien conditionné}.
+Toutefois, la manipulation informatique y imbrique de permanentes erreurs d'arrondi (dues à la précision machine limitée $u = \frac{1}{2} b^{1-t}$). Ce contexte bien conditionné n'évitera ainsi pas la perte d'exactitude si un schéma divergent (comme l'Euler explicite) est forcé sur la simulation.
 
-% Parler du conditionnement du problème ? consistance ?
-
-% notation des nombres en machine, précision finie => EN PARLER ABSOLUMENT (tout simplement car on en a beaucoup parlé dans la vulgarisation et car c'est un peu la source de tous les problèmes en qlq sorte)
-
-
-% différentes simus:
-% simus physique: euler explicite, semi-implicite et velvet (+rk4)
-% simu ml: régression linéaire et MLP (multi-layer perceptron)
+Dans le registre Machine Learning, le conditionnement trouve son équivalent dans la constante de Lipschitz de la fonction de mappage $f_\theta$. Sans régularisation plafonnant la norme de pointe spectrale (les poids $\|\mathbf{W}\|$), l'équation d'état affine $\hat{\mathbf{y}}_{n+1} = \mathbf{W}\hat{\mathbf{y}}_n + \mathbf{b}$ se révèle particulièrement volatile et mal conditionnée au moindre bruit incident.
 
 \subsection{Comparaison des méthodes d’approximation numérique}
 Plusieurs méthodes d’approximation numérique peuvent être utilisées pour résoudre les équations différentielles ordinaires associées aux différents modèles étudiés.
