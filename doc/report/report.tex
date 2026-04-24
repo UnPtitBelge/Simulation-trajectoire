@@ -519,65 +519,6 @@ trajectoire réelle.
     \end{tabular}
 \end{table}
 
-%------------------------------------------------
-
-\section{Génération et analyse des données}
-
-\subsection{Pipeline de génération}
-Pour produire les données nécessaires à l'analyse, nous avons exécuté un
-pipeline reproductible en quatre étapes:
-\begin{enumerate}[leftmargin=*, itemsep=0.2em, topsep=0.2em]
-    \item génération des trajectoires synthétiques
-    \item entraînement des modèles
-    \item exécution des benchmarks
-    \item comparaison avec les données réelles
-\end{enumerate}
-
-La génération synthétique a simulé \(1\,000\,000\) trajectoires, dont
-\(375\,266\) conservées après filtrage, pour un total de \(103\,792\,281\)
-paires d'états utilisées pour l'entraînement.
-
-\subsection{Résultats quantitatifs clés}
-\begin{table}[h]
-    \centering
-    \small
-    \setlength{\tabcolsep}{4pt}
-    \caption{Indicateurs extraits des résultats de benchmark.}
-    \begin{tabularx}{\linewidth}{|>{\raggedright\arraybackslash}p{0.36\linewidth}|>{\raggedright\arraybackslash}X|}
-        \hline
-        \textbf{Indicateur}                              & \textbf{Valeur observée}                   \\
-        \hline
-        Convergence intégrateurs (pente log-log)         &
-        Euler explicite ($\approx 1.20$), Euler semi-implicite ($\approx 1.11$), RK4 ($\approx 4.00$) \\
-        \hline
-        RMSE radial à ($\Delta t = 0.01\,\mathrm{s}$)    &
-        Euler explicite ($9.23 \times 10^{-4}\,\mathrm{m}$),
-        Euler semi-implicite ($6.47 \times 10^{-4}\,\mathrm{m}$),
-        RK4 ($1.93 \times 10^{-9}\,\mathrm{m}$)                                                       \\
-        \hline
-        Meilleur modèle ML step-by-step                  &
-        MLP (10\%) : ($\mathrm{MAE}_r = 3.55 \times 10^{-3}\,\mathrm{m}$), stabilité (71.5\%)         \\
-        \hline
-        Comparaison sur test réel                        &
-        MAE radiale normalisée : Linéaire ($0.109\,R$), MLP ($0.217\,R$)                              \\
-        \hline
-        Erreur récursive à 5 s ($|\Delta r|/R$, médiane) &
-        Linéaire ($0.0597$), MLP ($0.0525$)                                                           \\
-        \hline
-    \end{tabularx}
-\end{table}
-
-\subsection{Lecture des résultats}
-Les mesures physiques confirment la théorie: RK4 est nettement plus précis,
-mais plus coûteux; Euler semi-implicite reste un compromis robuste pour des pas
-de temps usuels. Côté ML, les performances sur données synthétiques sont
-bonnes, mais la comparaison au réel montre un écart significatif
-(\textit{sim-to-real}).
-
-L'analyse d'horizon confirme également un point important: même quand l'erreur
-au pas est faible, la prédiction récursive accumule les écarts. Ce résultat
-justifie l'usage de métriques dépendant du temps (et pas seulement d'une erreur
-moyenne globale) pour évaluer les modèles dynamiques.
 
 \section{Discussion et conclusion}
 
