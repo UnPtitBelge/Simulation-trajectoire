@@ -29,6 +29,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import KFold
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -69,7 +70,9 @@ def _generate_chunks(
 
     while total < n_trajectories:
         n_this = min(chunk_size, n_trajectories - total)
-        r0, th0, vr0, vth0 = _sample_initial_conditions(n_this, {**phys_cfg, **gen_cfg}, rng)
+        r0, th0, vr0, vth0 = _sample_initial_conditions(
+            n_this, {**phys_cfg, **gen_cfg}, rng
+        )
 
         X_parts: list[np.ndarray] = []
         y_parts: list[np.ndarray] = []
@@ -128,7 +131,9 @@ def _fit_scalers(paths: list[Path]) -> tuple[StandardScaler, StandardScaler]:
     return scaler_X, scaler_y
 
 
-def _train_linear(paths: list[Path], scaler_X: StandardScaler, scaler_y: StandardScaler) -> LinearStepModel:
+def _train_linear(
+    paths: list[Path], scaler_X: StandardScaler, scaler_y: StandardScaler
+) -> LinearStepModel:
     model = LinearStepModel()
     model.inject_scalers(scaler_X, scaler_y)
     for p in paths:
@@ -168,7 +173,7 @@ def _train_mlp_with_history(
         order = train_paths[:]
         rng.shuffle(order)
         for p in order:
-            Xf, yf = _load_chunk_features(p)
+            Xf, yf = _load_chunk_features(path=p)
             if len(Xf) == 0:
                 continue
             model.partial_fit(Xf, yf)
@@ -188,7 +193,9 @@ def _build_test_cases(
     rng = np.random.default_rng(seed)
     out: list[tuple[np.ndarray, np.ndarray]] = []
 
-    r0, th0, vr0, vth0 = _sample_initial_conditions(n_cases, {**phys_cfg, **gen_cfg}, rng)
+    r0, th0, vr0, vth0 = _sample_initial_conditions(
+        n_cases, {**phys_cfg, **gen_cfg}, rng
+    )
     for i in range(n_cases):
         traj = compute_cone(
             r0=float(r0[i]),
@@ -260,14 +267,22 @@ def _evaluate_rmse(
 
     return {
         "rmse_r": float(np.mean(rmse_r_vals)) if rmse_r_vals else float("nan"),
-        "rmse_theta": float(np.mean(rmse_theta_vals)) if rmse_theta_vals else float("nan"),
+        "rmse_theta": (
+            float(np.mean(rmse_theta_vals)) if rmse_theta_vals else float("nan")
+        ),
         "rmse_vr": float(np.mean(rmse_vr_vals)) if rmse_vr_vals else float("nan"),
-        "rmse_vtheta": float(np.mean(rmse_vtheta_vals)) if rmse_vtheta_vals else float("nan"),
-        "nrmse_state": float(np.mean(nrmse_state_vals)) if nrmse_state_vals else float("nan"),
+        "rmse_vtheta": (
+            float(np.mean(rmse_vtheta_vals)) if rmse_vtheta_vals else float("nan")
+        ),
+        "nrmse_state": (
+            float(np.mean(nrmse_state_vals)) if nrmse_state_vals else float("nan")
+        ),
     }
 
 
-def _split_train_val(paths: list[Path], val_fraction: float) -> tuple[list[Path], list[Path]]:
+def _split_train_val(
+    paths: list[Path], val_fraction: float
+) -> tuple[list[Path], list[Path]]:
     if len(paths) <= 1:
         return paths, []
     n_val = max(1, int(math.floor(len(paths) * val_fraction)))
@@ -284,14 +299,25 @@ def _plot_trajectories_for_sizes(
     sizes = [15, 45000, 90000]
     for ax, n in zip(axes, sizes):
         d = curves[n]
-        true_xy = (d["true"][:, 0] * np.cos(d["true"][:, 1]), d["true"][:, 0] * np.sin(d["true"][:, 1]))
-        lin_xy = (d["linear"][:, 0] * np.cos(d["linear"][:, 1]), d["linear"][:, 0] * np.sin(d["linear"][:, 1]))
-        mlp_xy = (d["mlp"][:, 0] * np.cos(d["mlp"][:, 1]), d["mlp"][:, 0] * np.sin(d["mlp"][:, 1]))
+        true_xy = (
+            d["true"][:, 0] * np.cos(d["true"][:, 1]),
+            d["true"][:, 0] * np.sin(d["true"][:, 1]),
+        )
+        lin_xy = (
+            d["linear"][:, 0] * np.cos(d["linear"][:, 1]),
+            d["linear"][:, 0] * np.sin(d["linear"][:, 1]),
+        )
+        mlp_xy = (
+            d["mlp"][:, 0] * np.cos(d["mlp"][:, 1]),
+            d["mlp"][:, 0] * np.sin(d["mlp"][:, 1]),
+        )
 
         t = np.linspace(0, 2 * np.pi, 200)
         ax.plot(R * np.cos(t), R * np.sin(t), "--", color="0.6", linewidth=1)
         ax.plot(*true_xy, color="black", linewidth=2, label="Vérité")
-        ax.plot(*lin_xy, color="tab:orange", linewidth=1.8, linestyle="--", label="Linéaire")
+        ax.plot(
+            *lin_xy, color="tab:orange", linewidth=1.8, linestyle="--", label="Linéaire"
+        )
         ax.plot(*mlp_xy, color="tab:blue", linewidth=1.8, linestyle=":", label="MLP")
         ax.set_title(f"{n:,} expériences")
         ax.set_aspect("equal")
@@ -299,14 +325,22 @@ def _plot_trajectories_for_sizes(
         ax.set_xlabel("x (m)")
     axes[0].set_ylabel("y (m)")
     axes[-1].legend(loc="best")
-    fig.suptitle("Différence de trajectoire : vérité vs modèles")
+    fig.suptitle("Différence entre trajectoires: vraies vs simulées avec ML")
     fig.tight_layout()
     out_file.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_file, dpi=160, bbox_inches="tight")
 
 
-def _plot_rmse_90000(out_file: Path, rmse_linear: dict[str, float], rmse_mlp: dict[str, float]) -> None:
-    labels = ["RMSE rayon (m)", "RMSE angle (rad)", "RMSE vr (m/s)", "RMSE vtheta (m/s)", "NRMSE état"]
+def _plot_rmse_90000(
+    out_file: Path, rmse_linear: dict[str, float], rmse_mlp: dict[str, float]
+) -> None:
+    labels = [
+        "RMSE rayon (m)",
+        "RMSE angle (rad)",
+        "RMSE vr (m/s)",
+        "RMSE vtheta (m/s)",
+        "NRMSE état",
+    ]
     lin_vals = [
         rmse_linear["rmse_r"],
         rmse_linear["rmse_theta"],
@@ -330,7 +364,7 @@ def _plot_rmse_90000(out_file: Path, rmse_linear: dict[str, float], rmse_mlp: di
     ax.set_xticks(x)
     ax.set_xticklabels(labels)
     ax.set_ylabel("RMSE")
-    ax.set_title("RMSE/NRMSE des modèles (entraînement 90 000 expériences)")
+    ax.set_title("RMSE/NRMSE des modèles sur 90 000 expériences")
     ax.grid(True, axis="y", alpha=0.25)
     ax.legend()
     fig.tight_layout()
@@ -338,7 +372,12 @@ def _plot_rmse_90000(out_file: Path, rmse_linear: dict[str, float], rmse_mlp: di
     fig.savefig(out_file, dpi=160, bbox_inches="tight")
 
 
-def _plot_convergence_90000(out_file: Path, traj_counts: list[int], rmse_linear: list[float], rmse_mlp: list[float]) -> None:
+def _plot_convergence_90000(
+    out_file: Path,
+    traj_counts: list[int],
+    rmse_linear: list[float],
+    rmse_mlp: list[float],
+) -> None:
     fig, ax = plt.subplots(figsize=(8, 5))
     ax.plot(traj_counts, rmse_linear, marker="o", color="tab:orange", label="Linéaire")
     ax.plot(traj_counts, rmse_mlp, marker="o", color="tab:blue", label="MLP")
@@ -389,40 +428,43 @@ def _plot_residual_losses_90000(
     )
 
     if not math.isnan(linear_train):
-        ax.axhline(linear_train, color="tab:orange", linestyle="--", label="Linéaire train")
+        ax.axhline(
+            linear_train, color="tab:orange", linestyle="--", label="Linéaire train"
+        )
     if not math.isnan(linear_val):
-        ax.axhline(linear_val, color="tab:red", linestyle=":", label="Linéaire validation")
+        ax.axhline(
+            linear_val, color="tab:red", linestyle=":", label="Linéaire validation"
+        )
 
     ax.set_xlabel("Epoch")
     ax.set_ylabel("MSE résiduelle (espace normalisé)")
-    ax.set_title("Training vs validation loss (résidus) — 90 000 expériences")
+    ax.set_title("Training vs validation loss avec 90 000 expériences")
     ax.grid(True, alpha=0.25)
     ax.legend()
     fig.tight_layout()
     out_file.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_file, dpi=160, bbox_inches="tight")
 
-
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--sizes", type=int, nargs="+", default=[15, 45000, 90000])
     parser.add_argument("--chunk-size", type=int, default=5000)
-    parser.add_argument("--workers", type=int, default=1, help="Réservé pour extension future")
     parser.add_argument("--mlp-epochs", type=int, default=50)
-    parser.add_argument("--val-fraction", type=float, default=0.1)
+    parser.add_argument("--k-folds", type=int, default=5)  
     parser.add_argument("--n-test", type=int, default=64)
-    parser.add_argument("--convergence-points", type=int, default=8)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--output-dir", type=Path, default=ROOT.parent / "figures" / "migration")
-    parser.add_argument("--work-dir", type=Path, default=ROOT.parent / "data" / "synthetic_migration")
-    parser.add_argument("--keep-data", action="store_true")
+    parser.add_argument(
+        "--output-dir", type=Path, default=ROOT.parent / "figures" / "migration"
+    )
+    parser.add_argument(
+        "--work-dir", type=Path, default=ROOT.parent / "data" / "synthetic_migration"
+    )
     parser.add_argument("--no-show", action="store_true")
     args = parser.parse_args()
 
     sizes = sorted(set(args.sizes))
-    must_have = {15, 45000, 90000}
-    if not must_have.issubset(set(sizes)):
-        raise ValueError("--sizes doit contenir 15, 45000 et 90000.")
+    if 90000 not in sizes:
+        raise ValueError("La cross-validation est faite sur 90 000 expériences.")
 
     cfg = load_config("ml")
     phys_cfg = {**cfg["physics"], **cfg["synth"]["physics"]}
@@ -435,123 +477,96 @@ def main() -> None:
     v_stop = float(phys_cfg["v_stop"])
     v_scale = float(gen_cfg.get("v_max", 1.0))
 
-    # Trajectoire de référence fixe (preset default).
-    p = cfg["preset"]["default"]
-    vr0_ref, vth0_ref = v0_dir_to_vr_vtheta(float(p["v0"]), float(p["direction_deg"]))
-    ref_init = np.array([float(p["r0"]), float(p["theta0"]), vr0_ref, vth0_ref], dtype=float)
-    ref_true = compute_cone(
-        r0=float(ref_init[0]),
-        theta0=float(ref_init[1]),
-        vr0=float(ref_init[2]),
-        vtheta0=float(ref_init[3]),
-        R=phys_cfg["R"],
-        depth=phys_cfg["depth"],
-        friction=phys_cfg["friction"],
-        g=phys_cfg["g"],
-        dt=phys_cfg["dt"],
-        n_steps=phys_cfg["n_steps"],
-        rolling=bool(phys_cfg.get("rolling", False)),
-        rolling_resistance=float(phys_cfg.get("rolling_resistance", 0.0)),
-        drag_coeff=float(phys_cfg.get("drag_coeff", 0.0)),
+    n_exp = 90000
+    data_dir = args.work_dir / f"n_{n_exp}"
+
+    paths = _generate_chunks(
+        out_dir=data_dir,
+        n_trajectories=n_exp,
+        chunk_size=args.chunk_size,
+        phys_cfg=phys_cfg,
+        gen_cfg=gen_cfg,
+        seed=args.seed,
     )
-    ref_true = ref_true[:n_steps_pred]
 
-    test_cases = _build_test_cases(args.n_test, phys_cfg, gen_cfg, seed=args.seed + 1000)
+    rng = np.random.default_rng(args.seed)
+    rng.shuffle(paths)
 
-    curves: dict[int, dict[str, np.ndarray]] = {}
-    linear_90 = None
-    mlp_90 = None
-    mlp_train_hist_90: list[float] = []
-    mlp_val_hist_90: list[float] = []
-    linear_train_loss_90 = float("nan")
-    linear_val_loss_90 = float("nan")
+    k = args.k_folds
+    folds = np.array_split(paths, k)
 
-    conv_counts: list[int] = []
-    conv_rmse_linear: list[float] = []
-    conv_rmse_mlp: list[float] = []
+    test_cases = _build_test_cases(
+        args.n_test, phys_cfg, gen_cfg, seed=args.seed + 1000
+    )
 
-    for n_exp in sizes:
-        data_dir = args.work_dir / f"n_{n_exp}"
-        paths = _generate_chunks(
-            out_dir=data_dir,
-            n_trajectories=n_exp,
-            chunk_size=args.chunk_size,
-            phys_cfg=phys_cfg,
-            gen_cfg=gen_cfg,
-            seed=args.seed,
-        )
-        train_paths, val_paths = _split_train_val(paths, args.val_fraction)
+    rmse_linear_all = []
+    rmse_mlp_all = []
+
+    # =========================
+    # K-FOLD LOOP
+    # =========================
+    for i in range(k):
+        print(f"\n=== Fold {i+1}/{k} ===")
+
+        val_paths = list(folds[i])
+        train_paths = [p for j in range(k) if j != i for p in folds[j]]
+
+        # ---- SCALERS (train only)
         scaler_X, scaler_y = _fit_scalers(train_paths)
 
+        # ---- TRAIN
         linear = _train_linear(train_paths, scaler_X, scaler_y)
-        mlp, train_hist, val_hist = _train_mlp_with_history(
+        mlp, _, _ = _train_mlp_with_history(
             train_paths, val_paths, scaler_X, scaler_y, args.mlp_epochs, seed=args.seed
         )
 
-        pred_linear = predict_trajectory(linear, ref_init, n_steps_pred, r_max=r_max, r_min=r_min, v_stop=v_stop)
-        pred_mlp = predict_trajectory(mlp, ref_init, n_steps_pred, r_max=r_max, r_min=r_min, v_stop=v_stop)
-        curves[n_exp] = {"true": ref_true, "linear": pred_linear, "mlp": pred_mlp}
+        # ---- EVAL (sur test indépendant)
+        rmse_lin = _evaluate_rmse(
+            linear, test_cases, n_steps_pred, r_max, r_min, v_stop, v_scale
+        )
+        rmse_mlp = _evaluate_rmse(
+            mlp, test_cases, n_steps_pred, r_max, r_min, v_stop, v_scale
+        )
 
-        if n_exp == 90000:
-            linear_90 = linear
-            mlp_90 = mlp
-            mlp_train_hist_90 = train_hist
-            mlp_val_hist_90 = val_hist
-            linear_train_loss_90 = _dataset_loss(linear, train_paths)
-            linear_val_loss_90 = _dataset_loss(linear, val_paths)
+        rmse_linear_all.append(rmse_lin["rmse_r"])
+        rmse_mlp_all.append(rmse_mlp["rmse_r"])
 
-            # Convergence interne sur le dataset 90k — scalers CONSTANTS depuis le dataset complet
-            geom_steps = np.geomspace(
-                1,
-                len(paths),
-                num=min(max(2, args.convergence_points), len(paths)),
-            ).round().astype(int)
-            seen = sorted(set(int(v) for v in geom_steps))
-            for k in seen:
-                sub_paths = paths[:k]
-                tr_sub, val_sub = _split_train_val(sub_paths, args.val_fraction)
-                lin_k = _train_linear(tr_sub, scaler_X, scaler_y)
-                mlp_k, _, _ = _train_mlp_with_history(tr_sub, val_sub, scaler_X, scaler_y, args.mlp_epochs, seed=args.seed)
+        print(f"Linéaire RMSE_r: {rmse_lin['rmse_r']:.6f}")
+        print(f"MLP RMSE_r:      {rmse_mlp['rmse_r']:.6f}")
 
-                rmse_lin_k = _evaluate_rmse(lin_k, test_cases, n_steps_pred, r_max, r_min, v_stop, v_scale)
-                rmse_mlp_k = _evaluate_rmse(mlp_k, test_cases, n_steps_pred, r_max, r_min, v_stop, v_scale)
+    # =========================
+    # Résultats globaux
+    # =========================
+    lin_mean = np.mean(rmse_linear_all)
+    lin_std = np.std(rmse_linear_all)
 
-                n_used = min(k * args.chunk_size, n_exp)
-                conv_counts.append(max(n_used, 1))
-                conv_rmse_linear.append(rmse_lin_k["rmse_r"])
-                conv_rmse_mlp.append(rmse_mlp_k["rmse_r"])
+    mlp_mean = np.mean(rmse_mlp_all)
+    mlp_std = np.std(rmse_mlp_all)
 
-    if linear_90 is None or mlp_90 is None:
-        raise RuntimeError("Le modèle 90 000 n'a pas été entraîné.")
+    print("\n=== CROSS-VALIDATION RESULTS ===")
+    print(f"Linéaire : mean={lin_mean:.6f}, std={lin_std:.6f}")
+    print(f"MLP      : mean={mlp_mean:.6f}, std={mlp_std:.6f}")
 
-    rmse_lin_90 = _evaluate_rmse(linear_90, test_cases, n_steps_pred, r_max, r_min, v_stop, v_scale)
-    rmse_mlp_90 = _evaluate_rmse(mlp_90, test_cases, n_steps_pred, r_max, r_min, v_stop, v_scale)
+    # =========================
+    # Plot résumé
+    # =========================
+    import matplotlib.pyplot as plt
 
-    args.output_dir.mkdir(parents=True, exist_ok=True)
-    p1 = args.output_dir / "trajectoires_15_45000_90000.png"
-    p2 = args.output_dir / "rmse_90000.png"
-    p3 = args.output_dir / "convergence_90000.png"
-    p4 = args.output_dir / "loss_residus_90000.png"
+    fig, ax = plt.subplots(figsize=(6, 4))
 
-    _plot_trajectories_for_sizes(p1, curves, r_max)
-    _plot_rmse_90000(p2, rmse_lin_90, rmse_mlp_90)
-    _plot_convergence_90000(p3, conv_counts, conv_rmse_linear, conv_rmse_mlp)
-    _plot_residual_losses_90000(
-        p4,
-        mlp_train_hist_90,
-        mlp_val_hist_90,
-        linear_train_loss_90,
-        linear_val_loss_90,
+    ax.bar(
+        ["Linéaire", "MLP"], [lin_mean, mlp_mean], yerr=[lin_std, mlp_std], capsize=5
     )
 
-    print("Figures générées :")
-    print(f"- {p1}")
-    print(f"- {p2}")
-    print(f"- {p3}")
-    print(f"- {p4}")
+    ax.set_ylabel("RMSE rayon")
+    ax.set_title(f"{k}-Fold Cross Validation avec 90 000 expériences")
+    ax.grid(True, axis="y", alpha=0.3)
 
-    if not args.keep_data and args.work_dir.exists():
-        shutil.rmtree(args.work_dir)
+    out_file = args.output_dir / "cv_results.png"
+    args.output_dir.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_file, dpi=160, bbox_inches="tight")
+
+    print(f"\nFigure sauvegardée : {out_file}")
 
     if not args.no_show:
         plt.show()
