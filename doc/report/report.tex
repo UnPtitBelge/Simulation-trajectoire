@@ -31,6 +31,7 @@
 \usepackage{amsfonts}
 \usepackage{amsmath}
 \usepackage{booktabs}
+\usepackage{graphicx}
 \addbibresource{bibliography.bib} % BibLaTeX bibliography file
 
 \runninghead{Étude et analyse de modèles} % A shortened article title to appear in the running head, leave this command empty for no running head
@@ -557,10 +558,21 @@ présentation au Printemps des Sciences. Dans ce sens, l’évaluation proposée
 doit être comprise comme qualitative et indicative: elle vise à structurer
 l’analyse et à expliciter les compromis entre modèles, sans prétendre à une
 objectivité stricte ni à une généralisation indépendante du contexte d’étude.
-%----------------------------------------------------------------------------------------
-%	 ANNEXES
-%----------------------------------------------------------------------------------------
-% On peut mettre le développement de la consistance des méthodes ? Euler dans le cours de CFN
+
+\appendix
+
+\section{Annexes}
+ 
+\begin{figure}[h]
+    \centering
+    \IfFileExists{../../figures/migration/trajectoires_15_45000_90000.png}{%
+        \includegraphics[width=\textwidth]{../../figures/migration/trajectoires_15_45000_90000.png}%
+    }{%
+        \fbox{\parbox{0.9\textwidth}{\centering Figure trajectoires\_15\_45000\_90000.png non trouv\'ee.}}%
+    }
+    \caption{Diff\'erence entre la vraie trajectoire et les mod\`eless lin\'eaire et MLP pour trois tailles de jeu de donn\'ees (15, 45000, 90000).}
+    \label{fig:trajectoires_annexe}
+\end{figure}
 
 \printbibliography % Output the bibliography
 

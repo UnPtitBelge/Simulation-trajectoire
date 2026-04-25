@@ -1,22 +1,3 @@
-"""Comparaison LinearRegression vs MLPRegressor sur données synthétiques.
-
-Ce script répond à un scénario de migration pédagogique :
-- utiliser la logique de génération de `generate_data.py` (même distribution des CI)
-- entraîner un modèle linéaire et un MLP sur des tailles de datasets imposées
-- produire les figures de comparaison demandées.
-
-Figures générées :
-1) Différence de trajectoire (vérité vs linéaire vs MLP) pour 15, 45 000, 90 000 expériences
-2) RMSE des deux modèles après entraînement sur 90 000 expériences
-3) Convergence des deux modèles vers 90 000 expériences
-4) Training vs validation loss des résidus (pour 90 000 expériences)
-
-Usage :
-    python src/scripts/benchmark_migration_models.py
-    python src/scripts/benchmark_migration_models.py --workers 8 --mlp-epochs 6
-    python src/scripts/benchmark_migration_models.py --no-show
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -289,162 +270,6 @@ def _split_train_val(
     n_val = min(n_val, len(paths) - 1)
     return paths[:-n_val], paths[-n_val:]
 
-
-def _plot_trajectories_for_sizes(
-    out_file: Path,
-    curves: dict[int, dict[str, np.ndarray]],
-    R: float,
-) -> None:
-    fig, axes = plt.subplots(1, 3, figsize=(18, 5), sharex=True, sharey=True)
-    sizes = [15, 45000, 90000]
-    for ax, n in zip(axes, sizes):
-        d = curves[n]
-        true_xy = (
-            d["true"][:, 0] * np.cos(d["true"][:, 1]),
-            d["true"][:, 0] * np.sin(d["true"][:, 1]),
-        )
-        lin_xy = (
-            d["linear"][:, 0] * np.cos(d["linear"][:, 1]),
-            d["linear"][:, 0] * np.sin(d["linear"][:, 1]),
-        )
-        mlp_xy = (
-            d["mlp"][:, 0] * np.cos(d["mlp"][:, 1]),
-            d["mlp"][:, 0] * np.sin(d["mlp"][:, 1]),
-        )
-
-        t = np.linspace(0, 2 * np.pi, 200)
-        ax.plot(R * np.cos(t), R * np.sin(t), "--", color="0.6", linewidth=1)
-        ax.plot(*true_xy, color="black", linewidth=2, label="Vérité")
-        ax.plot(
-            *lin_xy, color="tab:orange", linewidth=1.8, linestyle="--", label="Linéaire"
-        )
-        ax.plot(*mlp_xy, color="tab:blue", linewidth=1.8, linestyle=":", label="MLP")
-        ax.set_title(f"{n:,} expériences")
-        ax.set_aspect("equal")
-        ax.grid(True, alpha=0.25)
-        ax.set_xlabel("x (m)")
-    axes[0].set_ylabel("y (m)")
-    axes[-1].legend(loc="best")
-    fig.suptitle("Différence entre trajectoires: vraies vs simulées avec ML")
-    fig.tight_layout()
-    out_file.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out_file, dpi=160, bbox_inches="tight")
-
-
-def _plot_rmse_90000(
-    out_file: Path, rmse_linear: dict[str, float], rmse_mlp: dict[str, float]
-) -> None:
-    labels = [
-        "RMSE rayon (m)",
-        "RMSE angle (rad)",
-        "RMSE vr (m/s)",
-        "RMSE vtheta (m/s)",
-        "NRMSE état",
-    ]
-    lin_vals = [
-        rmse_linear["rmse_r"],
-        rmse_linear["rmse_theta"],
-        rmse_linear["rmse_vr"],
-        rmse_linear["rmse_vtheta"],
-        rmse_linear["nrmse_state"],
-    ]
-    mlp_vals = [
-        rmse_mlp["rmse_r"],
-        rmse_mlp["rmse_theta"],
-        rmse_mlp["rmse_vr"],
-        rmse_mlp["rmse_vtheta"],
-        rmse_mlp["nrmse_state"],
-    ]
-
-    x = np.arange(len(labels))
-    width = 0.35
-    fig, ax = plt.subplots(figsize=(7, 5))
-    ax.bar(x - width / 2, lin_vals, width, label="Linéaire", color="tab:orange")
-    ax.bar(x + width / 2, mlp_vals, width, label="MLP", color="tab:blue")
-    ax.set_xticks(x)
-    ax.set_xticklabels(labels)
-    ax.set_ylabel("RMSE")
-    ax.set_title("RMSE/NRMSE des modèles sur 90 000 expériences")
-    ax.grid(True, axis="y", alpha=0.25)
-    ax.legend()
-    fig.tight_layout()
-    out_file.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out_file, dpi=160, bbox_inches="tight")
-
-
-def _plot_convergence_90000(
-    out_file: Path,
-    traj_counts: list[int],
-    rmse_linear: list[float],
-    rmse_mlp: list[float],
-) -> None:
-    fig, ax = plt.subplots(figsize=(8, 5))
-    ax.plot(traj_counts, rmse_linear, marker="o", color="tab:orange", label="Linéaire")
-    ax.plot(traj_counts, rmse_mlp, marker="o", color="tab:blue", label="MLP")
-    ax.set_xscale("log")
-    ax.set_xlabel("Nombre d'expériences d'entraînement")
-    ax.set_ylabel("RMSE rayon")
-    ax.set_title("Convergence des modèles jusqu'à 90 000 expériences")
-    ax.grid(True, which="both", alpha=0.25)
-    ax.legend()
-    fig.tight_layout()
-    out_file.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out_file, dpi=160, bbox_inches="tight")
-
-
-def _plot_residual_losses_90000(
-    out_file: Path,
-    mlp_train: list[float],
-    mlp_val: list[float],
-    linear_train: float,
-    linear_val: float,
-) -> None:
-    fig, ax = plt.subplots(figsize=(8, 5))
-    epochs = np.arange(1, len(mlp_train) + 1)
-    # Validation en premier puis train au-dessus : évite de masquer la courbe train
-    # quand les deux séries sont quasi identiques.
-    ax.plot(
-        epochs,
-        mlp_val,
-        marker="o",
-        color="tab:cyan",
-        linewidth=2,
-        alpha=0.8,
-        label="MLP validation (résidus)",
-        zorder=2,
-    )
-    ax.plot(
-        epochs,
-        mlp_train,
-        marker="o",
-        markersize=5,
-        markerfacecolor="white",
-        markeredgewidth=1.5,
-        color="tab:blue",
-        linestyle="--",
-        linewidth=2,
-        label="MLP train (résidus)",
-        zorder=3,
-    )
-
-    if not math.isnan(linear_train):
-        ax.axhline(
-            linear_train, color="tab:orange", linestyle="--", label="Linéaire train"
-        )
-    if not math.isnan(linear_val):
-        ax.axhline(
-            linear_val, color="tab:red", linestyle=":", label="Linéaire validation"
-        )
-
-    ax.set_xlabel("Epoch")
-    ax.set_ylabel("MSE résiduelle (espace normalisé)")
-    ax.set_title("Training vs validation loss avec 90 000 expériences")
-    ax.grid(True, alpha=0.25)
-    ax.legend()
-    fig.tight_layout()
-    out_file.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out_file, dpi=160, bbox_inches="tight")
-
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--sizes", type=int, nargs="+", default=[15, 45000, 90000])
@@ -550,26 +375,77 @@ def main() -> None:
     # =========================
     # Plot résumé
     # =========================
-    import matplotlib.pyplot as plt
 
-    fig, ax = plt.subplots(figsize=(6, 4))
+    fig, ax = plt.subplots(figsize=(7, 5))
 
-    ax.bar(
-        ["Linéaire", "MLP"], [lin_mean, mlp_mean], yerr=[lin_std, mlp_std], capsize=5
+    # Données
+    data = [rmse_linear_all, rmse_mlp_all]
+
+    # Boxplot (distribution complète)
+    box = ax.boxplot(
+    data,
+    labels=["Linéaire", "MLP"],
+    patch_artist=True,
+    widths=0.5,
+)
+
+# Couleurs
+    colors = ["tab:orange", "tab:blue"]
+    for patch, color in zip(box["boxes"], colors):
+        patch.set_facecolor(color)
+        patch.set_alpha(0.5)
+
+# Points individuels (folds visibles)
+    for i, values in enumerate(data, start=1):
+        x = np.random.normal(i, 0.04, size=len(values))  # jitter
+        ax.scatter(x, values, color="black", s=30, zorder=3)
+
+    # Moyenne + std affichées explicitement
+    means = [np.mean(d) for d in data]
+    stds = [np.std(d) for d in data]
+
+    for i, (mean, std) in enumerate(zip(means, stds), start=1):
+        ax.errorbar(
+        i,
+        mean,
+        yerr=std,
+        fmt="o",
+        color="black",
+        capsize=6,
+        label="Moyenne ± écart-type" if i == 1 else None,
     )
 
-    ax.set_ylabel("RMSE rayon")
-    ax.set_title(f"{k}-Fold Cross Validation avec 90 000 expériences")
-    ax.grid(True, axis="y", alpha=0.3)
+# Texte statistique sur le graphe
+    textstr = (
+    f"Linéaire:\n"
+    f"  μ = {lin_mean:.5f}\n"
+    f"  σ = {lin_std:.5f}\n"
+    f"  Var = {lin_std**2:.6f}\n\n"
+    f"MLP:\n"
+    f"  μ = {mlp_mean:.5f}\n"
+    f"  σ = {mlp_std:.5f}\n"
+    f"  Var = {mlp_std**2:.6f}"
+)
 
-    out_file = args.output_dir / "cv_results.png"
+    ax.text(
+    1.55,
+    max(max(rmse_linear_all), max(rmse_mlp_all)) * 0.95,
+    textstr,
+    fontsize=10,
+    verticalalignment="top",
+    bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+)
+
+    ax.set_ylabel("RMSE rayon")
+    ax.set_title(f"{k}-Fold Cross Validation (90 000 expériences)")
+    ax.grid(True, axis="y", alpha=0.3)
+    ax.legend()
+
+    out_file = args.output_dir / "cv_results_improved.png"
     args.output_dir.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_file, dpi=160, bbox_inches="tight")
 
-    print(f"\nFigure sauvegardée : {out_file}")
-
-    if not args.no_show:
-        plt.show()
+    print(f"\nFigure améliorée sauvegardée : {out_file}")
 
 
 if __name__ == "__main__":
