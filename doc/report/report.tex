@@ -274,7 +274,7 @@ régression linéaire (LR) et le perceptron multicouche (MLP).
 \subsubsection{Regression linéaire}
 
 La régression linéaire constitue un modèle paramétrique dans lequel la sortie
-est exprimée comme une combinaison affine des variables d’entrée. Dans notre
+est exprimée comme une combinaison affine des variables d’entrée \cite{ULB:INFOF422_Practical03}. Dans notre
 cas, elle est utilisée pour approximer la fonction \( f : \mathbb{R}^4
 \rightarrow \mathbb{R}^{2N} \) reliant les conditions initiales à la
 trajectoire de la bille.
@@ -306,7 +306,7 @@ fonction \( f \) s’écrit:
 \]
 où \( \sigma \) est une fonction d’activation non linéaire. \( \sigma \) est
 représentée par la fonction ReLU (Rectified Linear Unit), définie par \(
-\sigma(z) = \max(0, z) \).
+\sigma(z) = \max(0, z) \) \cite{ULB:INFOF422_Practical03}.
 
 Les paramètres du modèle, regroupés dans \( \theta \), sont estimés en
 minimisant une fonction de coût, généralement choisie comme l’erreur
@@ -329,7 +329,7 @@ taille égale. À chaque itération, l'un des $K$ plis est réservé à la
 validation tandis que les $K-1$ plis restants servent à l'entraînement. La
 procédure est répétée $K$ fois de sorte que chaque pli joue exactement une
 fois le rôle d'ensemble de validation. La performance finale est estimée par
-la moyenne des erreurs obtenues sur chacun des plis.
+la moyenne des erreurs obtenues sur chacun des plis \cite{GeeksforGeeks:CrossValidation}.
 
 Dans cette étude, $K = 5$ a été retenu. Le MLP est entraîné sur 50 époques à
 chaque pli. La métrique d'évaluation choisie est l'erreur quadratique moyenne
