@@ -319,6 +319,9 @@ où \( M \) désigne le nombre d’échantillons d’entraînement. Pour chaque 
 conditions initiales \( \mathbf{x}^{(i)} \), et \( \hat{\mathbf{y}}^{(i)} =
 f_{\theta}(\mathbf{x}^{(i)}) \) la prédiction du modèle.
 
+\subsection{Valabilité des modèles de ML}
+
+
 \subsection{Erreurs de modélisation}
 
 La catégorie des erreurs de modélisation se décline en deux types d'erreurs.
@@ -561,6 +564,8 @@ objectivité stricte ni à une généralisation indépendante du contexte d’é
 
 \appendix
 
+\clearpage
+
 \section{Annexes}
  
 \begin{figure}[h]
@@ -573,6 +578,22 @@ objectivité stricte ni à une généralisation indépendante du contexte d’é
     \caption{Diff\'erence entre la vraie trajectoire et les mod\`eless lin\'eaire et MLP pour trois tailles de jeu de donn\'ees (15, 45000, 90000).}
     \label{fig:trajectoires_annexe}
 \end{figure}
+
+\clearpage
+
+\begin{figure}[h]
+    \centering
+    \IfFileExists{../../figures/migration/cv_results.png}{%
+        \includegraphics[width=\textwidth]{../../figures/migration/cv_results.png}%
+    }{%
+        \fbox{\parbox{0.9\textwidth}{\centering Figure cv_results.png non trouv\'ee.}}%
+    }
+    \caption{Cross-validation avec K-fold (K=5) pour les mod\`eles regression lin\'eaire et MLP.}
+    \label{fig:cv_results}
+\end{figure}
+
+\clearpage
+
 
 \nocite{*}
 \printbibliography % Output the bibliography
