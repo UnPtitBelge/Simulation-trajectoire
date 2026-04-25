@@ -1,0 +1,137 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.3 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{none/global//global/global/global}
+    \entry{Marteen:2022}{book}{}{}
+      \name{author}{4}{}{%
+        {{hash=1a22805bcac88447a661dac3d1b8c63e}{%
+           family={Jansen},
+           familyi={J\bibinitperiod},
+           given={Maarten},
+           giveni={M\bibinitperiod}}}%
+        {{hash=3bb195d6ea6db0c1df418e2f92f319fc}{%
+           family={Bontempi},
+           familyi={B\bibinitperiod},
+           given={Gianluca},
+           giveni={G\bibinitperiod}}}%
+        {{hash=72c7cd5aa7b48b514b3f77daac15c81f}{%
+           family={Silva\bibnamedelima Soares},
+           familyi={S\bibinitperiod\bibinitdelim S\bibinitperiod},
+           given={Ana},
+           giveni={A\bibinitperiod},
+           prefix={da},
+           prefixi={d\bibinitperiod}}}%
+        {{hash=74cd58fb54f16b65daec3b7605054d50}{%
+           family={Wulf},
+           familyi={W\bibinitperiod},
+           given={Martin\bibnamedelima De},
+           giveni={M\bibinitperiod\bibinitdelim D\bibinitperiod}}}%
+      }
+      \list{institution}{1}{%
+        {Université Libre de Bruxelles, ULB}%
+      }
+      \list{location}{1}{%
+        {Belgique}%
+      }
+      \strng{namehash}{129d0b8d44c2fef6dabfb93f740cc9ee}
+      \strng{fullhash}{cd0e70b594425c1077bc27823025c3e2}
+      \strng{fullhashraw}{cd0e70b594425c1077bc27823025c3e2}
+      \strng{bibnamehash}{129d0b8d44c2fef6dabfb93f740cc9ee}
+      \strng{authorbibnamehash}{129d0b8d44c2fef6dabfb93f740cc9ee}
+      \strng{authornamehash}{129d0b8d44c2fef6dabfb93f740cc9ee}
+      \strng{authorfullhash}{cd0e70b594425c1077bc27823025c3e2}
+      \strng{authorfullhashraw}{cd0e70b594425c1077bc27823025c3e2}
+      \field{sortinit}{1}
+      \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{month}{2}
+      \field{note}{INFO-F-205}
+      \field{title}{SYLLABUS Cours de Calcul Formel et Numérique}
+      \field{year}{2022}
+    \endentry
+    \entry{GeeksforGeeks:CrossValidation}{online}{}{}
+      \name{author}{1}{}{%
+        {{hash=f1e069787ece74531d112559945c6871}{%
+           family={{GeeksforGeeks}},
+           familyi={G\bibinitperiod}}}%
+      }
+      \strng{namehash}{f1e069787ece74531d112559945c6871}
+      \strng{fullhash}{f1e069787ece74531d112559945c6871}
+      \strng{fullhashraw}{f1e069787ece74531d112559945c6871}
+      \strng{bibnamehash}{f1e069787ece74531d112559945c6871}
+      \strng{authorbibnamehash}{f1e069787ece74531d112559945c6871}
+      \strng{authornamehash}{f1e069787ece74531d112559945c6871}
+      \strng{authorfullhash}{f1e069787ece74531d112559945c6871}
+      \strng{authorfullhashraw}{f1e069787ece74531d112559945c6871}
+      \field{sortinit}{7}
+      \field{sortinithash}{108d0be1b1bee9773a1173443802c0a3}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{month}{9}
+      \field{title}{Cross Validation in Machine Learning}
+      \field{year}{2025}
+      \true{nocite}
+      \verb{urlraw}
+      \verb https://www.geeksforgeeks.org/machine-learning/cross-validation-machine-learning/
+      \endverb
+      \verb{url}
+      \verb https://www.geeksforgeeks.org/machine-learning/cross-validation-machine-learning/
+      \endverb
+    \endentry
+    \entry{ULB:INFOF422_Practical03}{online}{}{}
+      \name{author}{1}{}{%
+        {{hash=5f1fb263cf55bc13c51be612f675c95d}{%
+           family={{Université Libre de Bruxelles}},
+           familyi={U\bibinitperiod}}}%
+      }
+      \list{institution}{1}{%
+        {Université Libre de Bruxelles, ULB}%
+      }
+      \list{location}{1}{%
+        {Belgique}%
+      }
+      \strng{namehash}{5f1fb263cf55bc13c51be612f675c95d}
+      \strng{fullhash}{5f1fb263cf55bc13c51be612f675c95d}
+      \strng{fullhashraw}{5f1fb263cf55bc13c51be612f675c95d}
+      \strng{bibnamehash}{5f1fb263cf55bc13c51be612f675c95d}
+      \strng{authorbibnamehash}{5f1fb263cf55bc13c51be612f675c95d}
+      \strng{authornamehash}{5f1fb263cf55bc13c51be612f675c95d}
+      \strng{authorfullhash}{5f1fb263cf55bc13c51be612f675c95d}
+      \strng{authorfullhashraw}{5f1fb263cf55bc13c51be612f675c95d}
+      \field{sortinit}{8}
+      \field{sortinithash}{a231b008ebf0ecbe0b4d96dcc159445f}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{note}{INFO-F422}
+      \field{title}{Statistical Foundations of Machine Learning}
+      \field{year}{2025}
+      \true{nocite}
+      \verb{urlraw}
+      \verb https://ulb-mlg.github.io/INFO-F422/practicals/_build/html/03.html
+      \endverb
+      \verb{url}
+      \verb https://ulb-mlg.github.io/INFO-F422/practicals/_build/html/03.html
+      \endverb
+    \endentry
+  \enddatalist
+\endrefsection
+\endinput
+

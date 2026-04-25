@@ -128,20 +128,20 @@ d’interpréter qualitativement la dynamique du système.
 
 \subsection{Équations}
 
-Dans ce modèle, la pente radiale de la surface est supposée constante :
+Dans ce modèle, la pente radiale de la surface est supposée constante:
 \[
     \frac{dz}{dr} = \tan(\alpha)
 \]
 où $\alpha$ désigne l’angle d’inclinaison de la surface.
 
-L’intégration de cette relation conduit à l’expression de la surface :
+L’intégration de cette relation conduit à l’expression de la surface:
 \[
     z(r) = r \tan(\alpha) + C
 \]
 où $C$ est une constante fixant le niveau de référence.
 
 La composante radiale de l’accélération, induite par la pente de la surface,
-s’écrit :
+s’écrit:
 \[
     a_r = g \left| \frac{dz}{dr} \right| = g \tan(\alpha)
 \]
@@ -150,7 +150,7 @@ Il en résulte une accélération constante, indépendante de la position radial
 
 \subsection{Limitations et hypothèses}
 
-Ce modèle repose sur des hypothèses fortement simplificatrices :
+Ce modèle repose sur des hypothèses fortement simplificatrices:
 
 \begin{itemize}
     \item La pente de la surface est uniforme, ce qui exclut toute variation de courbure
@@ -177,19 +177,19 @@ approche permet de capturer des effets non linéaires absents du modèle conique
 
 \subsection{Équations}
 
-Dans ce cadre, la pente de la surface est donnée par :
+Dans ce cadre, la pente de la surface est donnée par:
 \[
     \frac{dz}{dr} = \frac{K}{m g r^2}
 \]
 où $K$ est une constante caractéristique du système, $m$ la masse de la bille,
 $g$ l’accélération de la pesanteur et $r$ la distance au centre.
 
-L’intégration de cette expression conduit à :
+L’intégration de cette expression conduit à:
 \[
     z(r) = -\frac{K}{m g r} + C
 \]
 
-La composante radiale de l’accélération s’écrit alors :
+La composante radiale de l’accélération s’écrit alors:
 \[
     a_r = g \left| \frac{dz}{dr} \right| = \frac{K}{m r^2}
 \]
@@ -198,7 +198,7 @@ Cette dépendance en $1/r^2$ est caractéristique des champs centraux et induit
 une dynamique fortement non linéaire.
 
 Afin de pallier la divergence de la pente au voisinage du centre, une version
-régularisée du modèle est introduite :
+régularisée du modèle est introduite:
 \[
     \frac{dz}{dr} =
     \begin{cases}
@@ -212,7 +212,7 @@ de la pente au point de raccordement.
 
 \subsection{Limitations et hypothèses}
 
-Le modèle de Laplace repose sur plusieurs hypothèses structurantes :
+Le modèle de Laplace repose sur plusieurs hypothèses structurantes:
 
 \begin{itemize}
     \item La source centrale est assimilée à une masse ponctuelle, ce qui conduit à une
@@ -268,7 +268,7 @@ où \( N \) désigne le nombre de pas de temps considérés. Cette formulation
 permet d’exprimer la dynamique du système sous la forme d’une application entre
 vecteurs d’entrée et de sortie.
 
-Deux modèles ont été considérés pour approximer la fonction \( f \) : la
+Deux modèles ont été considérés pour approximer la fonction \( f \): la
 régression linéaire (LR) et le perceptron multicouche (MLP).
 
 \subsubsection{Regression linéaire}
@@ -279,7 +279,7 @@ cas, elle est utilisée pour approximer la fonction \( f : \mathbb{R}^4
 \rightarrow \mathbb{R}^{2N} \) reliant les conditions initiales à la
 trajectoire de la bille.
 
-Plus précisément, le modèle s’écrit :
+Plus précisément, le modèle s’écrit:
 \[
     \hat{\mathbf{y}} = \mathbf{W}\mathbf{x} + \mathbf{b},
 \]
@@ -300,7 +300,7 @@ limitée pour des dynamiques complexes.
 
 Afin de modéliser des comportements plus complexes, un perceptron multicouche a
 également été utilisé. Dans le cas d’une architecture à une couche cachée, la
-fonction \( f \) s’écrit :
+fonction \( f \) s’écrit:
 \[
     f(\mathbf{x}) = \mathbf{W}^{(2)} \, \sigma(\mathbf{W}^{(1)} \mathbf{x} + \mathbf{b}^{(1)}) + \mathbf{b}^{(2)},
 \]
@@ -310,7 +310,7 @@ représentée par la fonction ReLU (Rectified Linear Unit), définie par \(
 
 Les paramètres du modèle, regroupés dans \( \theta \), sont estimés en
 minimisant une fonction de coût, généralement choisie comme l’erreur
-quadratique moyenne (MSE) :
+quadratique moyenne (MSE):
 \[
     \mathcal{L}(\theta) = \frac{1}{M} \sum_{i=1}^{M} \left\| \mathbf{y}^{(i)} - \hat{\mathbf{y}}^{(i)} \right\|_2^2,
 \]
@@ -319,8 +319,69 @@ où \( M \) désigne le nombre d’échantillons d’entraînement. Pour chaque 
 conditions initiales \( \mathbf{x}^{(i)} \), et \( \hat{\mathbf{y}}^{(i)} =
 f_{\theta}(\mathbf{x}^{(i)}) \) la prédiction du modèle.
 
-\subsection{Valabilité des modèles de ML}
+\subsection{Validabilité des modèles de ML}
 
+Afin d'évaluer la capacité de généralisation des modèles d'apprentissage
+automatique, une procédure de validation croisée à $K$ plis (\textit{K-fold
+cross-validation}) a été mise en œuvre. Cette méthode consiste à partitionner
+aléatoirement l'ensemble des données d'entraînement en $K$ sous-ensembles de
+taille égale. À chaque itération, l'un des $K$ plis est réservé à la
+validation tandis que les $K-1$ plis restants servent à l'entraînement. La
+procédure est répétée $K$ fois de sorte que chaque pli joue exactement une
+fois le rôle d'ensemble de validation. La performance finale est estimée par
+la moyenne des erreurs obtenues sur chacun des plis.
+
+Dans cette étude, $K = 5$ a été retenu. Le MLP est entraîné sur 50 époques à
+chaque pli. La métrique d'évaluation choisie est l'erreur quadratique moyenne
+sur le rayon (\textit{RMSE rayon}), définie par:\\
+\[\text{RMSE} = \sqrt{\frac{1}{N} \sum_{i=1}^{N} \left( r_i - \hat{r}_i \right)^2}\]
+où $r_i$ désigne la valeur réelle du rayon à l'instant $i$ et $\hat{r}_i$ la
+valeur prédite par le modèle, évalués sur un ensemble de test indépendant de
+64 trajectoires générées séparément.
+
+Les résultats obtenus sont résumés dans le tableau suivant:
+
+\begin{table}[h]
+    \centering
+    \small
+    \caption{Résultats de la validation croisée 5-fold pour les modèles
+    linéaire et MLP, entraînés sur 90\,000 expériences.}
+    \label{tab:cv_results}
+    \begin{tabular}{lcc}
+        \toprule
+        Modèle   & RMSE rayon moyen $\mu$ & Écart-type $\sigma$ \\
+        \midrule
+        Linéaire & $8.41 \times 10^{-3}$ m & $1 \times 10^{-5}$ m \\
+        MLP      & $5.45 \times 10^{-3}$ m & $1.36 \times 10^{-3}$ m \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Plusieurs observations peuvent être tirées de ces résultats. D'une part, le
+MLP affiche une RMSE moyenne inférieure de 35\,\% à celle du modèle linéaire,
+ce qui témoigne d'une meilleure capacité à capturer la dynamique non linéaire
+du système. D'autre part, l'écart-type associé au modèle linéaire est
+négligeable ($\sigma \approx 10^{-5}$\,m), traduisant une très grande
+stabilité entre les plis: le modèle produit systématiquement la même
+performance quelle que soit la partition des données. Ce comportement est
+caractéristique d'un modèle à faible variance mais à biais élevé, dont la
+capacité d'expression est trop limitée pour s'adapter à la complexité des
+données.
+
+Le MLP présente quant à lui un écart-type plus marqué ($\sigma = 1.36 \times
+10^{-3}$\,m), révélant une sensibilité accrue à la composition de l'ensemble
+d'entraînement. Cette variabilité est néanmoins cohérente avec la nature d'un
+modèle à plus haute capacité, dont les performances dépendent davantage de la
+distribution des données disponibles. Il est important de noter que même dans
+le cas le moins favorable observé (RMSE $= 7.48 \times 10^{-3}$\,m), le MLP
+demeure compétitif face au modèle linéaire, et surpasse ce dernier dans tous
+les plis. La validation croisée confirme ainsi que la supériorité du MLP est
+robuste et non due à un artefact de partitionnement particulier.
+
+Ces résultats sont illustrés en annexe: la figure~\ref{fig:trajectoires_annexe}
+présente les trajectoires prédites par chaque modèle en fonction de la taille
+du jeu de données, tandis que la figure~\ref{fig:cv_results} détaille
+l'évolution de la RMSE par pli pour les deux modèles.
 
 \subsection{Erreurs de modélisation}
 
@@ -437,13 +498,13 @@ dépendant d'un paramètre $n$, où $x^{(n)}$ est la solution du sous-problème 
 La consistance traduit la capacité d'un modèle numérique à tendre vers les lois
 pures de la physique lorsque le pas de temps s'affine. Formellement
 \cite{Marteen:2022}, un schéma $F_n(x^{(n)}, d^{(n)})$ est consistant si la
-solution exacte $x$ vérifie le modèle limite :
+solution exacte $x$ vérifie le modèle limite:
 \begin{equation}
     \lim_{n \to \infty} F_n(x, d^{(n)}) = F(x, d) = 0
 \end{equation}
 
 En pratique, pour une trajectoire $y' = f(t,y)$, la méthode d'Euler (explicite
-ou semi-implicite) admet le développement de Taylor suivant :
+ou semi-implicite) admet le développement de Taylor suivant:
 \begin{equation}
     y(t_{n+1}) = y(t_n) + \Delta t f\big(t_n, y(t_n)\big) + \mathcal{O}(\Delta t^2)
 \end{equation}
@@ -461,7 +522,7 @@ Pour l'analyser, on utilise couramment l'équation de test linéaire $y' =
 récurrence dicte $y_{n+1} = G \cdot y_n$, avec $G = (1 + \lambda\Delta t)$. La
 stabilité exige impérativement $|G| \le 1$. Cependant, pour notre trajectoire
 purement inertielle (système conservatif), $\lambda$ est imaginaire pur
-($\lambda = i\omega$). Le facteur d'amplification devient :
+($\lambda = i\omega$). Le facteur d'amplification devient:
 \begin{equation}
     |G| = |1 + i\omega\Delta t| = \sqrt{1 + \omega^2\Delta t^2} > 1
 \end{equation}
@@ -485,11 +546,11 @@ Contrairement à la stabilité qui évalue l'algorithme choisi, le conditionneme
 diagnostique la susceptibilité intrinsèque du \textit{problème analytique} en
 lui-même. Pour une évolution de type $y' = f(t,y)$, la variation $\delta y(t)$
 issue d'une erreur d'entrée se dilate proportionnellement à la matrice
-Jacobienne $J = \frac{\partial f}{\partial y}$ :
+Jacobienne $J = \frac{\partial f}{\partial y}$:
 \begin{equation}
     \delta y' = J \delta y \implies \|\delta y(t)\| \propto \exp\left(\int \|J\| dt\right)
 \end{equation}
-Dans le système circulaire abordé ici, les valeurs propres de la Jacobienne ont une composante réelle négligeable : l'erreur n'y grimpe pas de façon irrémédiable, et on caractérise ce problème comme globalement \textbf{bien conditionné}.
+Dans le système circulaire abordé ici, les valeurs propres de la Jacobienne ont une composante réelle négligeable: l'erreur n'y grimpe pas de façon irrémédiable, et on caractérise ce problème comme globalement \textbf{bien conditionné}.
 Toutefois, la manipulation informatique y imbrique de permanentes erreurs d'arrondi (dues à la précision machine limitée $u = \frac{1}{2} b^{1-t}$). Ce contexte bien conditionné n'évitera ainsi pas la perte d'exactitude si un schéma divergent (comme l'Euler explicite) est forcé sur la simulation.
 
 Dans le registre Machine Learning, le conditionnement trouve son équivalent
@@ -523,8 +584,6 @@ trajectoire réelle.
     \end{tabular}
 \end{table}
 
-\section{Discussion et conclusion}
-
 \section{Conclusion et discussion}
 
 Dans le cadre de ce travail, la comparaison des différents modèles de
@@ -534,7 +593,7 @@ point de vue de la fidélité physique que des propriétés numériques ou de le
 mise en œuvre. Il apparaît ainsi nécessaire d’introduire un cadre d’analyse
 permettant de confronter ces modèles selon plusieurs dimensions pertinentes.
 
-À cette fin, une démarche d’évaluation multicritère est adoptée. Celle-ci repose sur l’identification de quatre axes principaux :
+À cette fin, une démarche d’évaluation multicritère est adoptée. Celle-ci repose sur l’identification de quatre axes principaux:
 \begin{itemize}
     \item la précision des résultats, évaluée à travers les erreurs numériques (35\%)
     \item les hypothèses simplifiantes considérées et leur quantité (35\%)
