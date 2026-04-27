@@ -91,12 +91,12 @@ la complexité du système augmente.
 La seconde famille repose sur des techniques d’apprentissage automatique,
 visant à approximer la dynamique du système à partir de données. Dans ce cadre,
 le problème est reformulé comme l’apprentissage d’une application reliant les
-conditions initiales du système à son évolution temporelle.
+conditions initiales du système à son évolution temporelle. Ces méthodes
+permettent de capturer des comportements non linéaires complexes sans
+expliciter les lois physiques sous-jacentes, au prix d’une dépendance accrue à
+la qualité des données et d’une interprétabilité plus limitée.
 
-Ces méthodes permettent de capturer des comportements non linéaires complexes
-sans expliciter les lois physiques sous-jacentes, au prix d’une dépendance
-accrue à la qualité des données et d’une interprétabilité plus limitée. Au-delà
-de la construction des modèles, une attention particulière est portée à
+Au-delà de la construction des modèles, une attention particulière est portée à
 l’analyse des erreurs affectant les simulations. Celles-ci incluent à la fois
 les erreurs de mesure, les erreurs de modélisation résultant des hypothèses
 adoptées, ainsi que les erreurs numériques introduites par les méthodes de
@@ -149,8 +149,6 @@ Ce modèle repose sur des hypothèses fortement simplificatrices:
 \begin{itemize}
     \item La pente de la surface est uniforme, ce qui exclut toute variation de courbure
           et ne permet pas de rendre compte de la géométrie réelle de la membrane.
-    \item Les effets liés à une éventuelle concentration de masse ou de contrainte au
-          voisinage du centre sont négligés.
     \item La dynamique résultante est linéarisée, l’accélération étant indépendante de la
           position.
     \item Ce modèle ne permet pas de décrire des phénomènes non linéaires ou des régimes
@@ -268,10 +266,10 @@ régression linéaire (LR) et le perceptron multicouche (MLP).
 \subsubsection{Regression linéaire}
 
 La régression linéaire constitue un modèle paramétrique dans lequel la sortie
-est exprimée comme une combinaison affine des variables d’entrée \cite{ULB:INFOF422_Practical03}. Dans notre
-cas, elle est utilisée pour approximer la fonction \( f : \mathbb{R}^4
-\rightarrow \mathbb{R}^{2N} \) reliant les conditions initiales à la
-trajectoire de la bille.
+est exprimée comme une combinaison affine des variables d’entrée
+\cite{ULB:INFOF422_Practical03}. Dans notre cas, elle est utilisée pour
+approximer la fonction \( f : \mathbb{R}^4 \rightarrow \mathbb{R}^{2N} \)
+reliant les conditions initiales à la trajectoire de la bille.
 
 Plus précisément, le modèle s’écrit:
 \[
@@ -313,25 +311,25 @@ où \( M \) désigne le nombre d’échantillons d’entraînement. Pour chaque 
 conditions initiales \( \mathbf{x}^{(i)} \), et \( \hat{\mathbf{y}}^{(i)} =
 f_{\theta}(\mathbf{x}^{(i)}) \) la prédiction du modèle.
 
-\subsection{Validabilité des modèles de ML}
+\subsection{Validabilité des modèles de ML Romain s'est branlé intellectuellement}
 
 Afin d'évaluer la capacité de généralisation des modèles d'apprentissage
 automatique, une procédure de validation croisée à $K$ plis (\textit{K-fold
-cross-validation}) a été mise en œuvre. Cette méthode consiste à partitionner
+    cross-validation}) a été mise en œuvre. Cette méthode consiste à partitionner
 aléatoirement l'ensemble des données d'entraînement en $K$ sous-ensembles de
-taille égale. À chaque itération, l'un des $K$ plis est réservé à la
-validation tandis que les $K-1$ plis restants servent à l'entraînement. La
-procédure est répétée $K$ fois de sorte que chaque pli joue exactement une
-fois le rôle d'ensemble de validation. La performance finale est estimée par
-la moyenne des erreurs obtenues sur chacun des plis \cite{GeeksforGeeks:CrossValidation}.
+taille égale. À chaque itération, l'un des $K$ plis est réservé à la validation
+tandis que les $K-1$ plis restants servent à l'entraînement. La procédure est
+répétée $K$ fois de sorte que chaque pli joue exactement une fois le rôle
+d'ensemble de validation. La performance finale est estimée par la moyenne des
+erreurs obtenues sur chacun des plis \cite{GeeksforGeeks:CrossValidation}.
 
 Dans cette étude, $K = 5$ a été retenu. Le MLP est entraîné sur 50 époques à
 chaque pli. La métrique d'évaluation choisie est l'erreur quadratique moyenne
 sur le rayon (\textit{RMSE rayon}), définie par:\\
 \[\text{RMSE} = \sqrt{\frac{1}{N} \sum_{i=1}^{N} \left( r_i - \hat{r}_i \right)^2}\]
 où $r_i$ désigne la valeur réelle du rayon à l'instant $i$ et $\hat{r}_i$ la
-valeur prédite par le modèle, évalués sur un ensemble de test indépendant de
-64 trajectoires générées séparément.
+valeur prédite par le modèle, évalués sur un ensemble de test indépendant de 64
+trajectoires générées séparément.
 
 Les résultats obtenus sont résumés dans le tableau suivant:
 
@@ -339,31 +337,30 @@ Les résultats obtenus sont résumés dans le tableau suivant:
     \centering
     \small
     \caption{Résultats de la validation croisée 5-fold pour les modèles
-    linéaire et MLP, entraînés sur 90\,000 expériences.}
+        linéaire et MLP, entraînés sur 90\,000 expériences.}
     \label{tab:cv_results}
     \begin{tabular}{lcc}
         \toprule
-        Modèle   & RMSE rayon moyen $\mu$ & Écart-type $\sigma$ \\
+        Modèle   & RMSE rayon moyen $\mu$  & Écart-type $\sigma$     \\
         \midrule
-        Linéaire & $8.41 \times 10^{-3}$ m & $1 \times 10^{-5}$ m \\
+        Linéaire & $8.41 \times 10^{-3}$ m & $1 \times 10^{-5}$ m    \\
         MLP      & $5.45 \times 10^{-3}$ m & $1.36 \times 10^{-3}$ m \\
         \bottomrule
     \end{tabular}
 \end{table}
 
-Plusieurs observations peuvent être tirées de ces résultats. D'une part, le
-MLP affiche une RMSE moyenne inférieure de 35\,\% à celle du modèle linéaire,
-ce qui témoigne d'une meilleure capacité à capturer la dynamique non linéaire
-du système. D'autre part, l'écart-type associé au modèle linéaire est
-négligeable ($\sigma \approx 10^{-5}$\,m), traduisant une très grande
-stabilité entre les plis: le modèle produit systématiquement la même
-performance quelle que soit la partition des données. Ce comportement est
-caractéristique d'un modèle à faible variance mais à biais élevé, dont la
-capacité d'expression est trop limitée pour s'adapter à la complexité des
-données.
+Plusieurs observations peuvent être tirées de ces résultats. D'une part, le MLP
+affiche une RMSE moyenne inférieure de 35\,\% à celle du modèle linéaire, ce
+qui témoigne d'une meilleure capacité à capturer la dynamique non linéaire du
+système. D'autre part, l'écart-type associé au modèle linéaire est négligeable
+($\sigma \approx 10^{-5}$\,m), traduisant une très grande stabilité entre les
+plis: le modèle produit systématiquement la même performance quelle que soit la
+partition des données. Ce comportement est caractéristique d'un modèle à faible
+variance mais à biais élevé, dont la capacité d'expression est trop limitée
+pour s'adapter à la complexité des données.
 
 Le MLP présente quant à lui un écart-type plus marqué ($\sigma = 1.36 \times
-10^{-3}$\,m), révélant une sensibilité accrue à la composition de l'ensemble
+    10^{-3}$\,m), révélant une sensibilité accrue à la composition de l'ensemble
 d'entraînement. Cette variabilité est néanmoins cohérente avec la nature d'un
 modèle à plus haute capacité, dont les performances dépendent davantage de la
 distribution des données disponibles. Il est important de noter que même dans
@@ -403,8 +400,7 @@ compte tous les paramètres pouvant entrer en jeu et potentiellement perturber
 et modifier l'expérience. Nous avons déjà abordé les erreurs de modélisation
 mais ce ne sont pas les seules entrant en jeu. En particulier, nous considérons
 les erreurs numériques qui apparaissent lorsque l'ordinateur effectue des
-calculs \cite[16]{Marteen:2022}. Elles se déclinent sous-différentes, chacune
-explicitée dans les sous-sections suivantes.
+calculs \cite[16]{Marteen:2022}.
 
 \subsubsection{Erreurs de troncature}
 
@@ -589,8 +585,8 @@ permettant de confronter ces modèles selon plusieurs dimensions pertinentes.
 
 À cette fin, une démarche d’évaluation multicritère est adoptée. Celle-ci repose sur l’identification de quatre axes principaux:
 \begin{itemize}
-    \item la précision des résultats, évaluée à travers les erreurs numériques (35\%)
-    \item les hypothèses simplifiantes considérées et leur quantité (35\%)
+    \item la précision des résultats, évaluée à travers les erreurs numériques (40\%)
+    \item les hypothèses simplifiantes considérées et leur quantité (30\%)
     \item le temps requis pour effectuer les simulations (10\%)
     \item l’accessibilité du modèle, incluant à la fois sa simplicité de mise en œuvre au
           niveau technique et sa capacité à être interprété ou vulgarisé (20\%)
@@ -620,7 +616,7 @@ objectivité stricte ni à une généralisation indépendante du contexte d’é
 \clearpage
 
 \section{Annexes}
- 
+
 \begin{figure}[h]
     \centering
     \IfFileExists{../../figures/migration/trajectoires_15_45000_90000.png}{%
@@ -646,7 +642,6 @@ objectivité stricte ni à une généralisation indépendante du contexte d’é
 \end{figure}
 
 \clearpage
-
 
 \nocite{*}
 \printbibliography % Output the bibliography
