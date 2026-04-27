@@ -56,12 +56,6 @@
 % Affiliations are output in the \date{} command
 \date{\today}
 
-% Full-width abstract
-\renewcommand{\maketitlehookd}{%
-	\begin{abstract}
-		\noindent Réalisé à l'attention des professeurs et assistants de la faculté des sciences de l'ULB.
-	\end{abstract}
-}
 
 %----------------------------------------------------------------------------------------
 
@@ -117,7 +111,7 @@ physique que numérique.
 
 \section{Modèles}
 
-\section{Modèle conique}
+\subsection{Modèle conique}
 
 Le modèle conique constitue une première approximation de la géométrie de la
 membrane, reposant sur l’hypothèse d’une pente radiale constante. Cette
@@ -126,7 +120,7 @@ de simplifier considérablement l’expression des forces en jeu. Bien que
 rudimentaire, ce modèle fournit un cadre analytique simple permettant
 d’interpréter qualitativement la dynamique du système.
 
-\subsection{Équations}
+\subsubsection{Équations}
 
 Dans ce modèle, la pente radiale de la surface est supposée constante:
 \[
@@ -148,7 +142,7 @@ s’écrit:
 
 Il en résulte une accélération constante, indépendante de la position radiale.
 
-\subsection{Limitations et hypothèses}
+\subsubsection{Limitations et hypothèses}
 
 Ce modèle repose sur des hypothèses fortement simplificatrices:
 
@@ -167,7 +161,7 @@ En conséquence, le modèle conique doit être considéré comme une approximati
 de premier ordre, pertinente pour des analyses qualitatives ou comme cas de
 référence.
 
-\section{Modèle de Laplace}
+\subsection{Modèle de Laplace}
 
 Le modèle de Laplace vise à décrire de manière plus réaliste la déformation de
 la membrane en introduisant une dépendance radiale de la pente. Il s’inspire de
@@ -175,7 +169,7 @@ systèmes physiques gouvernés par des interactions centrales, dans lesquels
 l’intensité du champ varie avec la distance à une source localisée. Cette
 approche permet de capturer des effets non linéaires absents du modèle conique.
 
-\subsection{Équations}
+\subsubsection{Équations}
 
 Dans ce cadre, la pente de la surface est donnée par:
 \[
@@ -210,7 +204,7 @@ régularisée du modèle est introduite:
 où $r_c$ désigne un rayon de coupure. Cette construction assure la continuité
 de la pente au point de raccordement.
 
-\subsection{Limitations et hypothèses}
+\subsubsection{Limitations et hypothèses}
 
 Le modèle de Laplace repose sur plusieurs hypothèses structurantes:
 
