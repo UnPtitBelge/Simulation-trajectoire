@@ -311,7 +311,7 @@ où \( M \) désigne le nombre d’échantillons d’entraînement. Pour chaque 
 conditions initiales \( \mathbf{x}^{(i)} \), et \( \hat{\mathbf{y}}^{(i)} =
 f_{\theta}(\mathbf{x}^{(i)}) \) la prédiction du modèle.
 
-\subsection{Validabilité des modèles de ML Romain s'est branlé intellectuellement}
+\subsection{Validité des modèles de ML}
 
 Afin d'évaluer la capacité de généralisation des modèles d'apprentissage
 automatique, une procédure de validation croisée à $K$ plis (\textit{K-fold
@@ -323,7 +323,7 @@ répétée $K$ fois de sorte que chaque pli joue exactement une fois le rôle
 d'ensemble de validation. La performance finale est estimée par la moyenne des
 erreurs obtenues sur chacun des plis \cite{GeeksforGeeks:CrossValidation}.
 
-Dans cette étude, $K = 5$ a été retenu. Le MLP est entraîné sur 50 époques à
+Dans cette étude, $K = 5$ a été retenu. Le MLP est entraîné sur 50 epochs à
 chaque pli. La métrique d'évaluation choisie est l'erreur quadratique moyenne
 sur le rayon (\textit{RMSE rayon}), définie par:\\
 \[\text{RMSE} = \sqrt{\frac{1}{N} \sum_{i=1}^{N} \left( r_i - \hat{r}_i \right)^2}\]
