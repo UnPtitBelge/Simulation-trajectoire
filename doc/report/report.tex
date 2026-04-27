@@ -494,7 +494,7 @@ solution exacte $x$ vérifie le modèle limite:
 \end{equation}
 
 En pratique, pour une trajectoire $y' = f(t,y)$, la méthode d'Euler (explicite
-ou semi-implicite) admet le développement de Taylor suivant:
+ou semi-implicite) admet le développement de Taylor suivant \cite{Marteen:2022}:
 \begin{equation}
     y(t_{n+1}) = y(t_n) + \Delta t f\big(t_n, y(t_n)\big) + \mathcal{O}(\Delta t^2)
 \end{equation}
@@ -508,20 +508,20 @@ perturbation initiale d'amplitude $\eta$ affecte la solution finale de moins de
 $\epsilon$.
 
 Pour l'analyser, on utilise couramment l'équation de test linéaire $y' =
-    \lambda y$ (avec $\lambda \in \mathbb{C}$). Pour l'Euler explicite, sa
-récurrence dicte $y_{n+1} = G \cdot y_n$, avec $G = (1 + \lambda\Delta t)$. La
+    \lambda y$ (avec $\lambda \in \mathbb{C}$) \cite{Marteen:2022}. Pour la méthode d'Euler explicite, sa
+récurrence dicte $y_{n+1} = G \cdot y_n$, avec $G = (1 + \lambda\Delta t)$ \cite{Strikwerda:2004}. La
 stabilité exige impérativement $|G| \le 1$. Cependant, pour notre trajectoire
 purement inertielle (système conservatif), $\lambda$ est imaginaire pur
 ($\lambda = i\omega$). Le facteur d'amplification devient:
 \begin{equation}
     |G| = |1 + i\omega\Delta t| = \sqrt{1 + \omega^2\Delta t^2} > 1
 \end{equation}
-L'Euler explicite amplifie artificiellement l'énergie du système oscillatoire et diverge de son orbite. En structurant l'intégration différemment, l'Euler semi-implicite met à jour la position depuis la vitesse future. Cette conception \textit{symplectique} préserve le volume de l'espace des phases et assure une grande stabilité à long terme pour les orbites.
+La méthode d'Euler explicite amplifie artificiellement l'énergie du système oscillatoire et diverge de son orbite. En structurant l'intégration différemment, la méthode d'Euler semi-implicite met à jour la position depuis la vitesse future. Cette conception \textit{symplectique} préserve le volume de l'espace des phases et assure une grande stabilité à long terme pour les orbites.
 
-\subsection{Convergence et Machine Learning}
-Le \textbf{théorème d'équivalence de Lax} stipule logiquement que pour un
+\subsection{Convergence}
+Le théorème d'équivalence de Lax \cite{Marteen:2022} stipule logiquement que pour un
 problème bien posé, la consistance couplée à la stabilité assure la
-\textbf{convergence} globale du modèle discret vers la vérité continue.
+convergence globale du modèle discret vers la vérité continue.
 
 Toutefois, ce théorème ne s'extrapole pas aux réseaux de neurones (MLP, LR).
 Entraînés de manière isolée pour lisser l'étape $n \to n+1$, la régression est
@@ -540,15 +540,8 @@ Jacobienne $J = \frac{\partial f}{\partial y}$:
 \begin{equation}
     \delta y' = J \delta y \implies \|\delta y(t)\| \propto \exp\left(\int \|J\| dt\right)
 \end{equation}
-Dans le système circulaire abordé ici, les valeurs propres de la Jacobienne ont une composante réelle négligeable: l'erreur n'y grimpe pas de façon irrémédiable, et on caractérise ce problème comme globalement \textbf{bien conditionné}.
+Dans le système circulaire abordé ici, les valeurs propres de la Jacobienne ont une composante réelle négligeable: l'erreur n'y grimpe pas de façon irrémédiable, et on caractérise ce problème comme globalement bien conditionné \cite{Gianluca:2024}.
 Toutefois, la manipulation informatique y imbrique de permanentes erreurs d'arrondi (dues à la précision machine limitée $u = \frac{1}{2} b^{1-t}$). Ce contexte bien conditionné n'évitera ainsi pas la perte d'exactitude si un schéma divergent (comme l'Euler explicite) est forcé sur la simulation.
-
-Dans le registre Machine Learning, le conditionnement trouve son équivalent
-dans la constante de Lipschitz de la fonction de mappage $f_\theta$. Sans
-régularisation plafonnant la norme de pointe spectrale (les poids
-$\|\mathbf{W}\|$), l'équation d'état affine $\hat{\mathbf{y}}_{n+1} =
-    \mathbf{W}\hat{\mathbf{y}}_n + \mathbf{b}$ se révèle particulièrement volatile
-et mal conditionnée au moindre bruit incident.
 
 \subsection{Comparaison des méthodes d’approximation numérique}
 Plusieurs méthodes d’approximation numérique peuvent être utilisées pour
