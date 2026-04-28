@@ -111,86 +111,76 @@ physique que numérique.
 
 \section{Modèles}
 
-\subsection{Modèle conique}
+\subsection{Modèle basé sur la physique}
 
-Le modèle conique constitue une première approximation de la géométrie de la
-membrane, reposant sur l’hypothèse d’une pente radiale constante. Cette
-approche revient à assimiler la surface à un cône de révolution, ce qui permet
-de simplifier considérablement l’expression des forces en jeu. Bien que
-rudimentaire, ce modèle fournit un cadre analytique simple permettant
-d’interpréter qualitativement la dynamique du système.
+La première classe de méthode de simulation utilise les lois et équations fondamentales de la physique. Deux approximations géométriques sont proposées, la première considère la surface comme un cône à pente constante et la seconde déforme la surface selon une masse centrale.
 
-\subsubsection{Équations}
+\subsubsection{Cadre physique commun}
 
-Dans ce modèle, la pente radiale de la surface est supposée constante:
+Les deux modèles physiques partagent la même description cinématique et reposent sur une réduction de la dynamique à la surface. La géométrie est entièrement encodée par la pente locale $dz/dr$, ce qui permet d'écrire une accélération radiale effective :
+\[
+    a_c(r) = g \left| \frac{dz}{dr} \right|
+\]
+
+Le frottement est modélisé par une force opposée à la vitesse, identique quelle que soit la direction du mouvement, et de norme proportionnelle à $g$ :
+\[
+    \vec{F}_f = - \mu_{\text{eff}}\, g \, \frac{\vec{v}}{\|\vec{v}\|}
+\]
+Ce choix permet de décrire une dissipation globale simple, sans distinguer de direction privilégiée ni introduire explicitement la réaction normale.
+
+Pour les diagnostics énergétiques, l'énergie mécanique est définie par :
+\[
+    E_m = \frac{7}{10} m v^2 + m g z(r)
+\]
+où le facteur $7/10$ correspond à une sphère pleine en roulement.
+
+\paragraph{Hypothèses}
+Les hypothèses se déclinent en deux catégories. Sur le plan physique, la bille est décrite par un mouvement contraint à la surface, la géométrie est résumée par la pente $dz/dr$, et le frottement est modélisé par une force opposée à la vitesse sans distinction directionnelle ni prise en compte explicite de la réaction normale; les effets d'air, de micro-contacts et de déformations locales sont négligés. Sur le plan numérique, l'intégration repose sur des schémas discrets à pas de temps fini, ce qui introduit des erreurs de troncature et d'arrondi; les singularités possibles (en particulier au centre) sont évitées par une régularisation ou un rayon minimal afin de garantir la stabilité des simulations.
+
+\subsubsection{Modèle conique}
+
+Le modèle conique suppose une pente constante $\alpha$ :
 \[
     \frac{dz}{dr} = \tan(\alpha)
 \]
-où $\alpha$ désigne l’angle d’inclinaison de la surface.
 
-L’intégration de cette relation conduit à l’expression de la surface:
+L’intégration donne une hauteur linéaire en $r$ :
 \[
-    z(r) = r \tan(\alpha) + C
-\]
-où $C$ est une constante fixant le niveau de référence.
-
-La composante radiale de l’accélération, induite par la pente de la surface,
-s’écrit:
-\[
-    a_r = g \left| \frac{dz}{dr} \right| = g \tan(\alpha)
+    z(r) = \tan(\alpha)\,(r - r_{\min})
 \]
 
-Il en résulte une accélération constante, indépendante de la position radiale.
+L’accélération radiale devient alors constante :
+\[
+    a_c = g \tan(\alpha)
+\]
 
-\subsubsection{Limitations et hypothèses}
-
-Ce modèle repose sur des hypothèses fortement simplificatrices:
-
+\paragraph{Hypothèses spécifiques}
 \begin{itemize}
-    \item La pente de la surface est uniforme, ce qui exclut toute variation de courbure
-          et ne permet pas de rendre compte de la géométrie réelle de la membrane.
-    \item La dynamique résultante est linéarisée, l’accélération étant indépendante de la
-          position.
-    \item Ce modèle ne permet pas de décrire des phénomènes non linéaires ou des régimes
-          dynamiques complexes.
+    \item Pente uniforme, donc absence de courbure ou de variation de géométrie.
+    \item Modèle de premier ordre, adapté aux analyses qualitatives et comme référence.
 \end{itemize}
 
-En conséquence, le modèle conique doit être considéré comme une approximation
-de premier ordre, pertinente pour des analyses qualitatives ou comme cas de
-référence.
+\subsubsection{Modèle de Laplace}
 
-\subsection{Modèle de Laplace}
-
-Le modèle de Laplace vise à décrire de manière plus réaliste la déformation de
-la membrane en introduisant une dépendance radiale de la pente. Il s’inspire de
-systèmes physiques gouvernés par des interactions centrales, dans lesquels
-l’intensité du champ varie avec la distance à une source localisée. Cette
-approche permet de capturer des effets non linéaires absents du modèle conique.
-
-\subsubsection{Équations}
-
-Dans ce cadre, la pente de la surface est donnée par:
+Le modèle de Laplace introduit une pente variable, inspirée d’un champ central :
 \[
     \frac{dz}{dr} = \frac{K}{m g r^2}
 \]
-où $K$ est une constante caractéristique du système, $m$ la masse de la bille,
-$g$ l’accélération de la pesanteur et $r$ la distance au centre.
 
-L’intégration de cette expression conduit à:
+L’intégration conduit à :
 \[
     z(r) = -\frac{K}{m g r} + C
 \]
 
-La composante radiale de l’accélération s’écrit alors:
+D’où une accélération radiale :
 \[
     a_r = g \left| \frac{dz}{dr} \right| = \frac{K}{m r^2}
 \]
 
-Cette dépendance en $1/r^2$ est caractéristique des champs centraux et induit
-une dynamique fortement non linéaire.
+Cette dépendance en $1/r^2$ implique une dynamique fortement non linéaire.
 
-Afin de pallier la divergence de la pente au voisinage du centre, une version
-régularisée du modèle est introduite:
+\paragraph{Régularisation}
+Pour éviter la divergence au centre, une pente régularisée est utilisée :
 \[
     \frac{dz}{dr} =
     \begin{cases}
@@ -199,31 +189,12 @@ régularisée du modèle est introduite:
     \end{cases}
 \]
 
-où $r_c$ désigne un rayon de coupure. Cette construction assure la continuité
-de la pente au point de raccordement.
-
-\subsubsection{Limitations et hypothèses}
-
-Le modèle de Laplace repose sur plusieurs hypothèses structurantes:
-
+\paragraph{Hypothèses spécifiques}
 \begin{itemize}
-    \item La source centrale est assimilée à une masse ponctuelle, ce qui conduit à une
-          singularité en $r = 0$ dans la formulation non régularisée.
-    \item La régularisation introduite via le paramètre $r_c$ constitue une correction ad
-          hoc, motivée par des considérations physiques et numériques.
-    \item Bien que la pente soit continue, la dérivée seconde de la surface présente une
-          discontinuité au point $r = r_c$, traduisant une rupture de courbure.
-    \item La forte variation de la pente à proximité du centre peut engendrer des
-          difficultés numériques, notamment en termes de stabilité et de précision des
-          schémas d’intégration.
-    \item Le modèle ne prend pas en compte d’éventuels effets dissipatifs ou des
-          déformations complexes de la membrane.
+    \item Singularité centrale dans la version non régularisée.
+    \item La régularisation $r_c$ est une correction ad hoc motivée numériquement.
+    \item La pente est continue, mais la courbure présente une discontinuité en $r_c$.
 \end{itemize}
-
-Malgré ces limitations, ce modèle permet de rendre compte de comportements
-dynamiques plus riches que le modèle conique, en particulier ceux associés à
-des interactions de type champ central. Il constitue ainsi une approximation
-plus fidèle du système étudié, au prix d’une complexité accrue.
 
 \subsection{Modèle basé sur du machine learning (ML)}
 
