@@ -111,90 +111,41 @@ physique que numérique.
 
 \section{Modèles}
 
-\subsection{Modèle basé sur la physique}
+\subsection{Modèles basé sur la physique}
 
 La première classe de méthode de simulation utilise les lois et équations fondamentales de la physique. Deux approximations géométriques sont proposées, la première considère la surface comme un cône à pente constante et la seconde déforme la surface selon une masse centrale.
 
-\subsubsection{Cadre physique commun}
+Le modèle conique se base sur une pente uniforme, sans variation ni courbures locales. Il se démarque par sa robustesse malgré sa simplicité. Voir l'Annexe~\ref{app:cone-phys} associée pour plus de détails sur les équations liées à la physique.
 
-Les deux modèles physiques partagent la même description cinématique et reposent sur une réduction de la dynamique à la surface. La géométrie est entièrement encodée par la pente locale $dz/dr$, ce qui permet d'écrire une accélération radiale effective :
+Le modèle de Laplace essaie de reproduire une surface plus réaliste, utilisant la masse centrale comme indice de courbure. Voir l'Annexe~\ref{app:laplace-phys} associée pour plus de détails sur les équations liées à la physique.
+
+\subsubsection{Intégration numérique des modèles}
+
+Pour pouvoir résoudre les équations différentelles des modèles basés sur la physique, nous devons intégrer notre système numériquement. Plusieurs méthodes existent, pour faire un choix, nous avons sélectionné celle qui conservait le mieux l'énergie du système, tout en restant rapide et simple. Voici les différentes méthodes étudiées:
+
+La méthode d'Euler explicite, non-simplectique d'ordre 1:
 \[
-    a_c(r) = g \left| \frac{dz}{dr} \right|
+    Placeholder
 \]
 
-Le frottement est modélisé par une force opposée à la vitesse, identique quelle que soit la direction du mouvement, et de norme proportionnelle à $g$ :
+La méthode d'Euler semi-implicite, simplectique d'ordre 1:
 \[
-    \vec{F}_f = - \mu_{\text{eff}}\, g \, \frac{\vec{v}}{\|\vec{v}\|}
+    Placeholder
 \]
-Ce choix permet de décrire une dissipation globale simple, sans distinguer de direction privilégiée ni introduire explicitement la réaction normale.
 
-Pour les diagnostics énergétiques, l'énergie mécanique est définie par :
+La méthode de velocity-Velvet, simplectique et d'ordre 2:
 \[
-    E_m = \frac{7}{10} m v^2 + m g z(r)
+    Placeholder
 \]
-où le facteur $7/10$ correspond à une sphère pleine en roulement.
 
-\paragraph{Hypothèses}
+La méthode de Runge-Kutta (RK4), non-simplectique d'ordre 4:
+\[
+    Placeholder
+\]
+
+\subsubsection{Hypothèses}
 Sur le plan numérique, l'intégration repose sur des schémas discrets à pas de temps fini, ce qui introduit des erreurs de troncature et d'arrondi; les singularités possibles (en particulier au centre) sont évitées par une régularisation ou un rayon minimal afin de garantir la stabilité des simulations.
 
-\subsubsection{Modèle conique}
-
-Le modèle conique suppose une pente constante $\alpha$ :
-\[
-    \frac{dz}{dr} = \tan(\alpha)
-\]
-
-L’intégration donne une hauteur linéaire en $r$ :
-\[
-    z(r) = \tan(\alpha)\,(r - r_{\min})
-\]
-
-L’accélération radiale devient alors constante :
-\[
-    a_c = g \tan(\alpha)
-\]
-
-\paragraph{Hypothèses spécifiques}
-\begin{itemize}
-    \item Pente uniforme, donc absence de courbure ou de variation de géométrie.
-    \item Modèle de premier ordre, adapté aux analyses qualitatives et comme référence.
-\end{itemize}
-
-\subsubsection{Modèle de Laplace}
-
-Le modèle de Laplace introduit une pente variable, inspirée d’un champ central :
-\[
-    \frac{dz}{dr} = \frac{K}{m g r^2}
-\]
-
-L’intégration conduit à :
-\[
-    z(r) = -\frac{K}{m g r} + C
-\]
-
-D’où une accélération radiale :
-\[
-    a_r = g \left| \frac{dz}{dr} \right| = \frac{K}{m r^2}
-\]
-
-Cette dépendance en $1/r^2$ implique une dynamique fortement non linéaire.
-
-\paragraph{Régularisation}
-Pour éviter la divergence au centre, une pente régularisée est utilisée :
-\[
-    \frac{dz}{dr} =
-    \begin{cases}
-        \frac{K}{m g r^2}   & \text{si } r \ge r_c \\
-        \frac{K}{m g r_c^2} & \text{si } r < r_c
-    \end{cases}
-\]
-
-\paragraph{Hypothèses spécifiques}
-\begin{itemize}
-    \item Singularité centrale dans la version non régularisée.
-    \item La régularisation $r_c$ est une correction ad hoc motivée numériquement.
-    \item La pente est continue, mais la courbure présente une discontinuité en $r_c$.
-\end{itemize}
 
 \subsection{Modèle basé sur du machine learning (ML)}
 
@@ -580,6 +531,70 @@ objectivité stricte ni à une généralisation indépendante du contexte d’é
 \clearpage
 
 \section{Annexes}
+
+\subsection{Équations physiques}
+
+\subsubsection{Cadre physique commun}
+
+Les deux modèles physiques partagent la même description cinématique et reposent sur une réduction de la dynamique à la surface. La géométrie est entièrement encodée par la pente locale $dz/dr$, ce qui permet d'écrire une accélération radiale effective :
+\[
+    a_c(r) = g \left| \frac{dz}{dr} \right|
+\]
+
+Le frottement est modélisé par une force opposée à la vitesse, identique quelle que soit la direction du mouvement, et de norme proportionnelle à $g$ :
+\[
+    \vec{F}_f = - \mu_{\text{eff}}\, g \, \frac{\vec{v}}{\|\vec{v}\|}
+\]
+Ce choix permet de décrire une dissipation globale simple, sans distinguer de direction privilégiée ni introduire explicitement la réaction normale.
+
+
+\subsubsection{Cadre physique du cône}
+\label{app:cone-phys}
+
+Le modèle conique suppose une pente constante $\alpha$ :
+\[
+    \frac{dz}{dr} = \tan(\alpha)
+\]
+
+L’intégration donne une hauteur linéaire en $r$ :
+\[
+    z(r) = \tan(\alpha)\,(r - r_{\min})
+\]
+
+L’accélération radiale devient alors constante :
+\[
+    a_c = g \tan(\alpha)
+\]
+
+\subsubsection{Cadre physique de Laplace}
+\label{app:laplace-phys}
+
+Le modèle de Laplace introduit une pente variable, inspirée d'un champ central :
+\[
+    \frac{dz}{dr} = \frac{K}{m g r^2}
+\]
+
+L’intégration conduit à :
+\[
+    z(r) = -\frac{K}{m g r} + C
+\]
+
+D’où une accélération radiale :
+\[
+    a_r = g \left| \frac{dz}{dr} \right| = \frac{K}{m r^2}
+\]
+
+Cette dépendance en $1/r^2$ implique une dynamique fortement non linéaire.
+
+\paragraph{Régularisation}
+Pour éviter la divergence au centre, une pente régularisée est utilisée :
+\[
+    \frac{dz}{dr} =
+    \begin{cases}
+        \frac{K}{m g r^2}   & \text{si } r \ge r_c \\
+        \frac{K}{m g r_c^2} & \text{si } r < r_c
+    \end{cases}
+\]
 
 \begin{figure}[h]
     \centering
