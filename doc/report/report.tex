@@ -296,7 +296,7 @@ d'hypothèse émise dans le cadre de l'expérience concerne la pression de
 l'air, supposée sans impact sur la trajectoire de la balle.
 %------------------------------------------------
 
-\section{Calcul numérique}
+\section{Calcul numérique} \label{sec:calcnum}
 
 \subsection{Erreurs numériques}
 
@@ -322,48 +322,8 @@ résultat.
 Les erreurs d'arrondi sont des erreurs causées par la représentation finie des
 nombres en machine dans les registres du processeur (généralement 32 ou 64
 bits). L'ordinateur ne peut pas représenter tous les nombres réels avec une
-précision infinie, ce qui crée alors une approximation.
-
-Pour définir formellement ce type d'erreur, notons par $\mathbb{F}(b, t, L, U)$
-l'ensemble des nombres réels qui sont représentés par une notation à virgule
-flottante en base $b$, comportant $t$ chiffres significatifs et dont l'exposant
-varie dans l'intervalle $[L, U]$. Considérons un ordinateur utilisant cette
-notation $\mathbb{F}$. Soit $x \in \mathbb{R}$ un nombre réel quelconque et
-$fl(x) \in \mathbb{F}$ la représentation machine à virgule flottante de $x$.
-Désignons par $\varepsilon_x$ son erreur relative
-\begin{equation}
-    \varepsilon_x = \frac{|fl(x) - x|}{|x|}
-\end{equation}
-
-Evaluons la borne supérieure de l'erreur relative d'arrondi. Il est
-évident que cette quantité ne peut dépasser la moitié de la distance relative
-entre les deux nombres consécutifs à virgule flottante $x_i \in
-    \mathbb{F}(b,t,L,U)$ et $x_{i+1} \in \mathbb{F}(b,t,L,U)$ tels que
-\begin{equation}
-    x_i \le x \le x_{i+1}
-\end{equation}
-
-Il vient alors que
-\begin{equation}
-    \varepsilon_x \equiv |\rho_x|
-    \le \frac{1}{2} \left| \frac{x_{i+1} - x_i}{x} \right|
-    \le \frac{1}{2} b^{1-t}
-    = \frac{1}{2} \epsilon
-    = u,
-\end{equation}
-où $u$ est dite la précision machine.
-
-Avec la notion d'écart relatif définie telle que
-\begin{equation}
-    \rho_x = \frac{\hat{x} - x}{x}
-\end{equation}
-il en résulte
-\begin{equation}
-    \hat{x} = fl(x) = x(1 + \rho_x),
-\end{equation}
-où $\varepsilon_x = |\rho_x| \le u$ est dite l'erreur d'arrondi \cite{Marteen:2022}.
-
-Il est évident que ce type d’erreur apparaît également dans les simulations.
+précision infinie, ce qui crée alors une approximation. Il est évident que ce type 
+d’erreur apparaît également dans les simulations.
 
 \subsubsection{Erreurs de propagation et génération}
 
@@ -577,6 +537,56 @@ Pour éviter la divergence au centre, une pente régularisée est utilisée :
         \frac{K}{m g r_c^2} & \text{si } r < r_c
     \end{cases}
 \]
+
+\subsection{Erreurs numériques: formellement}
+
+Cette partie de l'annexe est dédiée à définir for-mellement les types d'erreurs
+à l'aide notamment d'équations mathématiques afin d'approfondir les explications
+des sections dédiées aux erreurs numériques\ref{sec:calcnum}.
+
+\subsubsection{Erreurs d'arrondi}
+
+Pour définir formellement ce type d'erreur, notons par $\mathbb{F}(b, t, L, U)$
+l'ensemble des nombres réels qui sont représentés par une notation à virgule
+flottante en base $b$, comportant $t$ chiffres significatifs et dont l'exposant
+varie dans l'intervalle $[L, U]$. Considérons un ordinateur utilisant cette
+notation $\mathbb{F}$. Soit $x \in \mathbb{R}$ un nombre réel quelconque et
+$fl(x) \in \mathbb{F}$ la représentation machine à virgule flottante de $x$.
+Désignons par $\varepsilon_x$ son erreur relative
+\begin{equation}
+    \varepsilon_x = \frac{|fl(x) - x|}{|x|}
+\end{equation}
+
+Evaluons la borne supérieure de l'erreur relative d'arrondi. Il est
+évident que cette quantité ne peut dépasser la moitié de la distance relative
+entre les deux nombres consécutifs à virgule flottante $x_i \in
+    \mathbb{F}(b,t,L,U)$ et $x_{i+1} \in \mathbb{F}(b,t,L,U)$ tels que
+\begin{equation}
+    x_i \le x \le x_{i+1}
+\end{equation}
+
+Il vient alors que
+\begin{equation}
+    \varepsilon_x \equiv |\rho_x|
+    \le \frac{1}{2} \left| \frac{x_{i+1} - x_i}{x} \right|
+    \le \frac{1}{2} b^{1-t}
+    = \frac{1}{2} \epsilon
+    = u,
+\end{equation}
+où $u$ est dite la précision machine.
+
+Avec la notion d'écart relatif définie telle que
+\begin{equation}
+    \rho_x = \frac{\hat{x} - x}{x}
+\end{equation}
+il en résulte
+\begin{equation}
+    \hat{x} = fl(x) = x(1 + \rho_x),
+\end{equation}
+où $\varepsilon_x = |\rho_x| \le u$ est dite l'erreur d'arrondi \cite{Marteen:2022}.
+
+
+\subsubsection{}
 
 \clearpage
 
