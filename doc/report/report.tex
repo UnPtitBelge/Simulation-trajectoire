@@ -41,6 +41,7 @@
 
 \setcounter{page}{1} % The page number of the first page, set this to a higher number if the article is to be part of an issue or larger work
 \emergencystretch=2em % Reduce underfull/overfull hbox warnings by relaxing line breaking
+\hbadness=4000        % Suppress cosmetically-acceptable underfull hbox warnings
 
 %----------------------------------------------------------------------------------------
 %	TITLE SECTION
@@ -51,7 +52,8 @@
 % Authors are listed in a comma-separated list with superscript numbers indicating affiliations
 % \thanks{} is used for any text that should be placed in a footnote on the first page, such as the corresponding author's email, journal acceptance dates, a copyright/license notice, keywords, etc
 \author{%
-	Manuel Rocca, Damian Kazberuk, Matteo Morbée, Romain Liefferinckx, Martin Gouverneur
+	Manuel Rocca, Damian Kazberuk, Matteo Morbée,\\
+	Romain Liefferinckx, Martin Gouverneur
 }
 
 % Affiliations are output in the \date{} command
@@ -105,7 +107,7 @@ $(r,\theta)$ ; l'état du système est
 $\mathbf{q}=(r,\theta,\dot{r},\dot{\theta})\in\mathbb{R}^4$.
 
 \textbf{Modèle conique.} La surface est approchée par un cône de pente
-constante $\alpha = \arctan\!\bigl(h/(R-r_\text{sph})\bigr) \approx 15{,}95°$,
+constante $\alpha = \arctan\bigl(h/(R-r_\text{sph})\bigr)$,
 calée sur les dimensions du dispositif. La courbure méridienne est nulle ($z''=0$).
 
 \textbf{Modèle de Laplace.} La pente est variable : $z(r) = -K/(Mgr)+C$
@@ -440,13 +442,65 @@ doit être comprise comme qualitative et indicative: elle vise à structurer
 l’analyse et à expliciter les compromis entre modèles, sans prétendre à une
 objectivité stricte ni à une généralisation indépendante du contexte d’étude.
 
-\appendix
-
 \clearpage
 
+
+\appendix
 \section{Annexes}
+
 \subsection{Équations physiques}
 \label{app:phys}
+
+\subsubsection{Notions préliminaires}
+
+Les termes techniques suivants sont utilisés dans la modélisation.
+
+\textbf{Contrainte.} En mécanique analytique, une contrainte est une relation
+géométrique ou cinématique qui restreint les configurations accessibles d'un
+système. Elle réduit le nombre de degrés de liberté effectifs et doit être
+prise en compte dans la formulation des équations du mouvement.
+
+\textbf{Contrainte holonome.} Une contrainte est dite holonome si elle
+s'exprime uniquement en termes de coordonnées (et éventuellement du temps),
+sans faire intervenir les vitesses de façon non intégrable. Formellement :
+$f(q_1, \ldots, q_n, t) = 0$. Dans notre cas, $z = z(r)$ est holonome : la
+bille est contrainte à rester sur la surface, ce qui réduit les trois
+coordonnées cartésiennes $(x, y, z)$ à deux degrés de liberté $(r, \theta)$.
+
+\textbf{Surface de révolution.} Surface engendrée par la rotation d'une
+courbe méridienne $z = z(r)$ autour de l'axe vertical. La symétrie axiale
+implique que la dynamique ne dépend que de $r$ et $\theta$, et que le
+moment cinétique $L = mr^2\dot{\theta}$ est conservé en l'absence de frottement.
+
+\textbf{Coordonnées généralisées.} Variables indépendantes paramétrisant
+l'espace des configurations d'un système soumis à des contraintes. Pour
+notre surface de révolution, $(r, \theta)$ sont les coordonnées généralisées ;
+l'état complet du système est $\mathbf{q} = (r, \theta, \dot{r}, \dot{\theta})
+\in \mathbb{R}^4$.
+
+\textbf{Courbure méridienne.} Courbure de la courbe $z(r)$ dans le plan
+méridien (plan contenant l'axe de révolution). Elle quantifie la variation
+de pente le long de la surface et vaut :
+\[
+    \kappa = \frac{z''}{(1+z'^2)^{3/2}},
+\]
+où $z' = dz/dr$ et $z'' = d^2z/dr^2$. Pour le cône ($z''=0$), $\kappa=0$ :
+la surface est développable et n'exerce aucune force normale supplémentaire
+due à la trajectoire. Pour Laplace ($z'' < 0$), $\kappa \neq 0$ : la
+courbure modifie la réaction normale et donc le frottement.
+
+\textbf{Force généralisée.} Analogue d'une force dans l'espace des
+coordonnées généralisées. Pour une force réelle $\vec{F}$ s'appliquant en
+un point de coordonnées $(q_1,\ldots,q_n)$, la force généralisée associée
+à $q_i$ est $Q_i = \vec{F}\cdot\partial\vec{r}/\partial q_i$. Dans notre
+cas, $Q_r$ et $Q_\theta$ sont les projections du frottement de Coulomb sur
+les directions radiale et angulaire de la surface.
+
+\textbf{Intégrateur symplectique.} Schéma numérique qui préserve la
+structure symplectique de l'espace des phases (volume de l'espace
+$(q, p)$). Cette propriété garantit la conservation approchée de l'énergie
+sur de longues durées, sans dérive systématique, contrairement aux schémas
+non-symplectiques comme Euler explicite ou RK4.
 
 \subsubsection{Cadre lagrangien commun}
 
@@ -509,6 +563,7 @@ Les forces généralisées de Coulomb valent :
 \]
 
 
+
 \subsection{Métriques d'erreur en machine learning}
 \label{app:ml-metrics}
 MSE:
@@ -523,9 +578,10 @@ RMSE:
 
 \subsection{Erreurs numériques: formellement}
 
-Cette partie de l'annexe est dédiée à définir for-mellement les types d'erreurs
+Cette partie de l'annexe est dédiée à définir formellement les types d'erreurs
 à l'aide notamment d'équations mathématiques afin d'approfondir les explications
-des sections dédiées aux erreurs numériques\ref{sec:calcnum}.
+des sections dédiées aux erreurs numériques
+(voir~\hyperref[sec:calcnum]{Calcul numérique}).
 
 \subsubsection{Erreurs d'arrondi}
 
@@ -568,15 +624,14 @@ il en résulte
 \end{equation}
 où $\varepsilon_x = |\rho_x| \le u$ est dite l'erreur d'arrondi \cite{Marteen:2022}.
 
+\clearpage
+\onecolumn
 
-\subsubsection{}
-
-\subsection{Données intégration numérique}
-\label{app:intégration-numérique}
-\begin{table*}[h]
+\begin{table*}[htbp]
 	\centering
 	\small
 	\caption{Propriétés comparées des schémas d'intégration numérique.}
+    \label{app:intégration-numérique}
 	\label{tab:integrateurs}
 	\begin{tabular}{lcccc}
 		\toprule
@@ -590,8 +645,7 @@ où $\varepsilon_x = |\rho_x| \le u$ est dite l'erreur d'arrondi \cite{Marteen:2
 	\end{tabular}
 \end{table*}
 
-\subsection{Données approximation numérique}
-\begin{table}[h]
+\begin{table*}[htbp]
     \centering
     \small
     \caption{Erreur géométrique normalisée entre la trajectoire simulée et la trajectoire réelle pour chaque combinaison de modèle et de méthode numérique.}
@@ -605,14 +659,9 @@ où $\varepsilon_x = |\rho_x| \le u$ est dite l'erreur d'arrondi \cite{Marteen:2
         RK4             & 0.7682  & 0.7682  & 0.7680        \\
         \bottomrule
     \end{tabular}
-\end{table}
+\end{table*}
 
-
-
-\clearpage
-\onecolumn
-
-\begin{figure}[h]
+\begin{figure}[htbp]
     \centering
     \IfFileExists{../../figures/experimentalSetup/experimentalSetup.png}{%
         \includegraphics[width=0.8\textwidth]{../../figures/experimentalSetup/experimentalSetup.png}%
@@ -623,7 +672,7 @@ où $\varepsilon_x = |\rho_x| \le u$ est dite l'erreur d'arrondi \cite{Marteen:2
     \label{fig:cadre_experimental}
 \end{figure}
 
-\begin{figure}[h]
+\begin{figure}[htbp]
     \centering
     \IfFileExists{../../figures/migration/trajectoires_15_45000_90000.png}{%
         \includegraphics[width=\textwidth]{../../figures/migration/trajectoires_15_45000_90000.png}%
@@ -634,9 +683,7 @@ où $\varepsilon_x = |\rho_x| \le u$ est dite l'erreur d'arrondi \cite{Marteen:2
     \label{fig:trajectoires_annexe}
 \end{figure}
 
-\clearpage
-
-\begin{figure}[h]
+\begin{figure}[htbp]
     \centering
     \IfFileExists{../../figures/migration/cv_results.png}{%
         \includegraphics[width=\textwidth]{../../figures/migration/cv_results.png}%
