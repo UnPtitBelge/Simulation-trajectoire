@@ -30,6 +30,7 @@
 \usepackage{array}
 \usepackage{amsfonts}
 \usepackage{amsmath}
+\usepackage{amssymb}
 \usepackage{booktabs}
 \usepackage{graphicx}
 \addbibresource{bibliography.bib} % BibLaTeX bibliography file
@@ -87,45 +88,75 @@ L’objectif est d’évaluer les performances, les limites et le domaine de
 validité de ces approches du point de vue numérique.
 %------------------------------------------------
 
-\section{Modèles}
+\section{Modèles physiques}
 
-\subsection{Modèles basé sur la physique}
+La première classe de méthode de simulation utilise les équations fondamentales de la physique.
+La dynamique est réduite à la surface par la pente locale $dz/dr$, produisant
+une accélération radiale effective $a_c(r) = g\,|dz/dr|$ et une force de
+frottement $\vec{F}_f = -\mu_\text{eff}\,g\,\vec{v}/\|\vec{v}\|$. Les
+équations complètes figurent en \hyperref[app:phys]{Annexe}.
 
-La première classe de méthode de simulation utilise les lois et équations fondamentales de la physique. Deux approximations géométriques sont proposées, la première considère la surface comme un cône à pente constante et la seconde déforme la surface selon une masse centrale.
+\textbf{Modèle conique.} Pente constante $\alpha$ : $a_c = g\tan(\alpha)$.
+L'accélération radiale est uniforme, ce qui simplifie l'intégration mais
+ignore toute variation locale de courbure.
 
-Le modèle conique se base sur une pente uniforme, sans variation ni courbures locales. Il se démarque par sa robustesse malgré sa simplicité. Voir l'Annexe~\ref{app:cone-phys} associée pour plus de détails sur les équations liées à la physique.
+\textbf{Modèle de Laplace.} Pente en $K/(mgr^2)$, donnant $a_r = K/(mr^2)$.
+La dépendance en $1/r^2$ reproduit une dynamique non linéaire plus réaliste,
+au prix d'une singularité au centre nécessitant une régularisation pour
+$r < r_c$ (voir \hyperref[app:laplace-phys]{Annexe}).
 
-Le modèle de Laplace essaie de reproduire une surface plus réaliste, utilisant la masse centrale comme indice de courbure. Voir l'Annexe~\ref{app:laplace-phys} associée pour plus de détails sur les équations liées à la physique.
+\subsection{Intégration numérique}
 
-\subsubsection{Intégration numérique des modèles}
+Afin de résoudre les équations différentielles, il est nécessaire de procéder à une intégration numérique du système.
+Elles sont résolues par quatre méthodes. Le choix
+d'un intégrateur résulte d'un compromis entre ordre de précision, conservation
+de l'énergie à long terme et coût par pas.
 
-Afin de résoudre les équations différentielles issues de modèles physiques, il est nécessaire de procéder à une intégration numérique du système.
-Plusieurs méthodes existent, le choix s’est porté sur celle offrant le meilleur compromis entre conservation de l’énergie du système, 
-rapidité d’exécution et simplicité de mise en œuvre.
-Les différentes méthodes étudiées sont présentées ci-dessous:
+Les schémas sont définis avec $(q_n, p_n)$ désignant position et quantité
+de mouvement à $t_n$ :
 
-La méthode d'Euler explicite, non-simplectique d'ordre 1:
+\textbf{Euler explicite} (ordre 1, non-symplectique) :
 \[
-    Placeholder
+	q_{n+1} = q_n + \Delta t\, p_n/m, \qquad
+	p_{n+1} = p_n + \Delta t\, F(q_n)
 \]
 
-La méthode d'Euler semi-implicite, simplectique d'ordre 1:
+\textbf{Euler semi-implicite} (ordre 1, symplectique) :
 \[
-    Placeholder
+	p_{n+1} = p_n + \Delta t\, F(q_n), \qquad
+	q_{n+1} = q_n + \Delta t\, p_{n+1}/m
 \]
 
-La méthode de velocity-Velvet, simplectique et d'ordre 2:
-\[
-    Placeholder
-\]
+\textbf{Velocity-Verlet} (ordre 2, symplectique) :
+\begin{align*}
+	q_{n+1} &= q_n + \Delta t\,\frac{p_n}{m} + \frac{\Delta t^2}{2m}F(q_n), \\
+	p_{n+1} &= p_n + \frac{\Delta t}{2}\bigl[F(q_n)+F(q_{n+1})\bigr]
+\end{align*}
 
-La méthode de Runge-Kutta (RK4), non-simplectique d'ordre 4:
-\[
-    Placeholder
-\]
+\textbf{Runge-Kutta 4} (ordre 4, non-symplectique) : évaluation de quatre
+pentes $k_1,\ldots,k_4$ à des sous-pas intermédiaires, combinées selon
+$y_{n+1} = y_n + \tfrac{\Delta t}{6}(k_1+2k_2+2k_3+k_4)$.
 
-\subsubsection{Hypothèses}
-Sur le plan numérique, l'intégration repose sur des schémas discrets à pas de temps fini, ce qui introduit des erreurs de troncature et d'arrondi; les singularités possibles (en particulier au centre) sont évitées par une régularisation ou un rayon minimal afin de garantir la stabilité des simulations.
+Sur le plan numérique, l'intégration repose sur des systèmes discrets à pas de temps fini, ce qui introduit des erreurs de troncature et d'arrondi.
+Les singularités possibles (en particulier au centre) sont évitées par une régularisation ou un rayon minimal afin de garantir la stabilité des simulations.
+Le tableau~\ref{tab:integrateurs} synthétise les propriétés clés.
+
+\begin{table*}[t]
+	\centering
+	\small
+	\caption{Propriétés comparées des schémas d'intégration numérique.}
+	\label{tab:integrateurs}
+	\begin{tabular}{lcccc}
+		\toprule
+		Méthode          & Ordre & Symplectique & Stabilité ($\lambda=i\omega$)    & Coût (éval.\ $F$) \\
+		\midrule
+		Euler exp.       & 1     & Non          & Instable                         & 1                 \\
+		Euler semi-imp.  & 1     & Oui          & Marginale                        & 1                 \\
+		Velocity-Verlet  & 2     & Oui          & Conditionnelle                   & 2                 \\
+		RK4              & 4     & Non          & $|\lambda\Delta t|\lesssim 2.83$ & 4                 \\
+		\bottomrule
+	\end{tabular}
+\end{table*}
 
 
 \subsection{Modèle basé sur du machine learning (ML)}
@@ -300,7 +331,7 @@ l'air, supposée sans impact sur la trajectoire de la balle.
 
 Dans le cadre d'une approche scientifique, il est important de prendre en
 compte tous les paramètres pouvant entrer en jeu et potentiellement perturber
-et modifier l'expérience. 
+et modifier l'expérience.
 Les erreurs de modélisation ont déjà été abordées, toutefois, elles ne sont pas les seules à intervenir.
  En particulier, il faut considérer
 les erreurs numériques qui apparaissent lorsque l'ordinateur effectue des
@@ -373,7 +404,7 @@ courante.
 
 \subsection{Analyse numérique du problème}
 
-Les sous-sections suivantes portent sur les notions de consistance, de stabilité et de conditionnement, 
+Les sous-sections suivantes portent sur les notions de consistance, de stabilité et de conditionnement,
 afin d’analyser les propriétés des modèles considérés.
 Ces analyses permettent de prédire certains comportements des modèles lors des simulations.
 
@@ -441,7 +472,7 @@ Jacobienne $J = \frac{\partial f}{\partial y}$:
 \begin{equation}
     \delta y' = J \delta y \implies \|\delta y(t)\| \propto \exp\left(\int \|J\| dt\right)
 \end{equation}
-Dans le système circulaire abordé ici, les valeurs propres de la Jacobienne ont une composante réelle négligeable: 
+Dans le système circulaire abordé ici, les valeurs propres de la Jacobienne ont une composante réelle négligeable:
 l'erreur n'y grimpe pas de façon irrémédiable, et ce problème est caractérisé comme globalement bien conditionné \cite{Gianluca:2024}.
 Toutefois, la manipulation informatique y imbrique de permanentes erreurs d'arrondi (dues à la précision machine limitée $u = \frac{1}{2} b^{1-t}$). Ce contexte bien conditionné n'évitera ainsi pas la perte d'exactitude si un schéma divergent (comme Euler explicite) est forcé sur la simulation.
 
