@@ -149,23 +149,6 @@ Sur le plan numérique, l'intégration repose sur des systèmes discrets à pas 
 Les singularités possibles (en particulier au centre) sont évitées par une régularisation ou un rayon minimal afin de garantir la stabilité des simulations.
 Le tableau~\ref{tab:integrateurs} synthétise les propriétés clés.
 
-\begin{table*}[t]
-	\centering
-	\small
-	\caption{Propriétés comparées des schémas d'intégration numérique.}
-	\label{tab:integrateurs}
-	\begin{tabular}{lcccc}
-		\toprule
-		Méthode          & Ordre & Symplectique & Stabilité ($\lambda=i\omega$)    & Coût (éval.\ $F$) \\
-		\midrule
-		Euler exp.       & 1     & Non          & Instable                         & 1                 \\
-		Euler semi-imp.  & 1     & Oui          & Marginale                        & 1                 \\
-		Velocity-Verlet  & 2     & Oui          & Conditionnelle                   & 2                 \\
-		RK4              & 4     & Non          & $|\lambda\Delta t|\lesssim 2.83$ & 4                 \\
-		\bottomrule
-	\end{tabular}
-\end{table*}
-
 
 \section{Modèles d'apprentissage automatique}
 
@@ -410,28 +393,13 @@ modèles étudiés.
 Le tableau suivant présente, pour chaque méthode et chaque modèle, l’erreur
 géométrique normalisée mesurant l’écart entre la trajectoire simulée et la
 trajectoire réelle.
-\begin{table}[h]
-    \centering
-    \small
-    \caption{Erreur géométrique normalisée entre la trajectoire simulée et la trajectoire réelle pour chaque combinaison de modèle et de méthode numérique.}
-    \label{tab:comparaison_methodes_modeles}
-    \begin{tabular}{lccc}
-        \toprule
-        Méthode         & Conique & Laplace & Laplace $R_C$ \\
-        \midrule
-        Euler exp.      & 0.7681  & 0.7682  & 0.7680        \\
-        Euler semi-imp. & 0.7681  & 0.7682  & 0.7680        \\
-        RK4             & 0.7682  & 0.7682  & 0.7680        \\
-        \bottomrule
-    \end{tabular}
-\end{table}
 
 Nous tenons à faire certaines précisions au sujet de ces valeurs. En effet, ces dernières
 sont très similaires et les faibles différences sont de l'ordre du millionième. En plus de leur similitude, ces résultats sont très élevés indiquant ainsi des erreurs de précision numériques 
 importantes.
 
 Nous en concluons deux choses. Premièrement, les modèles physiques sont peu précis dans un cadre
-de simulation. D'autre part, ce tableau montre qu'il n'y a aucune différence à notre échelle pour le choix de l'intégrateur.
+de simulation. D'autre part, le tableau \ref{tab:comparaison_methodes_modeles} montre qu'il n'y a aucune différence à notre échelle pour le choix de l'intégrateur.
 
 
 \section{Conclusion et discussion}
@@ -601,6 +569,44 @@ où $\varepsilon_x = |\rho_x| \le u$ est dite l'erreur d'arrondi \cite{Marteen:2
 
 
 \subsubsection{}
+
+\subsection{Données intégration numérique}
+\label{app:intégration-numérique}
+\begin{table*}[h]
+	\centering
+	\small
+	\caption{Propriétés comparées des schémas d'intégration numérique.}
+	\label{tab:integrateurs}
+	\begin{tabular}{lcccc}
+		\toprule
+		Méthode          & Ordre & Symplectique & Stabilité ($\lambda=i\omega$)    & Coût (éval.\ $F$) \\
+		\midrule
+		Euler exp.       & 1     & Non          & Instable                         & 1                 \\
+		Euler semi-imp.  & 1     & Oui          & Marginale                        & 1                 \\
+		Velocity-Verlet  & 2     & Oui          & Conditionnelle                   & 2                 \\
+		RK4              & 4     & Non          & $|\lambda\Delta t|\lesssim 2.83$ & 4                 \\
+		\bottomrule
+	\end{tabular}
+\end{table*}
+
+\subsection{Données approximation numérique}
+\begin{table}[h]
+    \centering
+    \small
+    \caption{Erreur géométrique normalisée entre la trajectoire simulée et la trajectoire réelle pour chaque combinaison de modèle et de méthode numérique.}
+    \label{tab:comparaison_methodes_modeles}
+    \begin{tabular}{lccc}
+        \toprule
+        Méthode         & Conique & Laplace & Laplace $R_C$ \\
+        \midrule
+        Euler exp.      & 0.7681  & 0.7682  & 0.7680        \\
+        Euler semi-imp. & 0.7681  & 0.7682  & 0.7680        \\
+        RK4             & 0.7682  & 0.7682  & 0.7680        \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+
 
 \clearpage
 \onecolumn
