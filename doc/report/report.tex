@@ -86,6 +86,14 @@ L’analyse se penche aussi sur les erreurs de mesure, de modélisation et numé
 ainsi que sur les propriétés de consistance, stabilité et conditionnement.
 L’objectif est d’évaluer les performances, les limites et le domaine de
 validité de ces approches du point de vue numérique.
+
+%------------------------------------------------
+
+\section{Cadre expérimental}
+Le dispositif expérimental consiste en une surface élastique en latex tendue sur un cadre circulaire, déformée par une bille suffisamment lourde placée au centre.
+Une rampe de lancement permet de donner à la bille une vitesse initiale contrôlée.
+Un visuel est fourni en figure~\ref{fig:cadre_experimental}.
+
 %------------------------------------------------
 
 \section{Modèles physiques}
@@ -511,8 +519,21 @@ objectivité stricte ni à une généralisation indépendante du contexte d’é
 \appendix
 
 \clearpage
+\onecolumn
 
 \section{Annexes}
+
+\begin{figure}[h]
+    \centering
+    \IfFileExists{../../figures/experimentalSetup/experimentalSetup.png}{%
+        \includegraphics[width=0.8\textwidth]{../../figures/experimentalSetup/experimentalSetup.png}%
+    }{%
+        \fbox{\parbox{0.9\textwidth}{\centering figure experimentalSetup non trouv\'ee}}%
+    }
+    \caption{Photo du dispositif expérimental utilisé pour les lancements de la bille.}
+    \label{fig:cadre_experimental}
+\end{figure}
+\twocolumn
 
 \subsection{Équations physiques}
 
