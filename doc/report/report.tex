@@ -90,7 +90,7 @@ validité de ces approches du point de vue numérique.
 
 \section{Modèles physiques}
 
-La première classe de méthode de simulation utilise les équations fondamentales de la physique.
+La première classe de méthodes de simulation utilise les équations fondamentales de la physique.
 La dynamique est réduite à la surface par la pente locale $dz/dr$, produisant
 une accélération radiale effective $a_c(r) = g\,|dz/dr|$ et une force de
 frottement $\vec{F}_f = -\mu_\text{eff}\,g\,\vec{v}/\|\vec{v}\|$. Les
@@ -159,7 +159,7 @@ Le tableau~\ref{tab:integrateurs} synthétise les propriétés clés.
 \end{table*}
 
 
-\subsection{Modèle basé sur du machine learning (ML)}
+\section{Modèles d'apprentissage automatique}
 
 Une seconde classe de méthodes de simulation repose sur l’utilisation de
 techniques d’apprentissage automatique, visant à approximer directement la
@@ -197,7 +197,7 @@ vecteurs d’entrée et de sortie.
 Deux modèles ont été considérés pour approximer la fonction \( f \): la
 régression linéaire (LR) et le perceptron multicouche (MLP).
 
-\subsubsection{Regression linéaire}
+\textbf{Regression linéaire}
 
 La régression linéaire constitue un modèle paramétrique dans lequel la sortie
 est exprimée comme une combinaison affine des variables d’entrée
@@ -207,25 +207,21 @@ reliant les conditions initiales à la trajectoire de la bille.
 
 Plus précisément, le modèle s’écrit:
 \[
-    \hat{\mathbf{y}} = \mathbf{W}\mathbf{x} + \mathbf{b},
+    \hat{\mathbf{y}} = \mathbf{W}\mathbf{x} + \mathbf{b}, \qquad
+    \mathbf{W} \in \mathbb{R}^{2N \times 4},\; \mathbf{b} \in \mathbb{R}^{2N}.
 \]
-où \( \mathbf{W} \in \mathbb{R}^{2N \times 4} \) est une matrice de paramètres
-et \( \mathbf{b} \in \mathbb{R}^{2N} \) un vecteur de biais.
 
 Chaque composante de la trajectoire prédite est ainsi modélisée comme une
-combinaison linéaire des conditions initiales. Cette approche revient à
-supposer que la dynamique du système peut être approximée globalement par une
-transformation affine.
-
-Toutefois, un tel modèle ne permet pas de capturer des dépendances temporelles
-explicites entre les différents instants de la trajectoire, ni des
-comportements non linéaires. Par conséquent, sa capacité de modélisation reste
+combinaison linéaire des conditions initiales.
+Toutefois, un tel modèle ne permet pas de capturer les dépendances 
+temporelles entre les différents instants, ni les
+comportements non linéaires de la trajectoire. Par conséquent, 
+sa capacité de modélisation reste
 limitée pour des dynamiques complexes.
 
-\subsubsection{Multicouche perceptron}
+\textbf{Multicouche perceptron}
 
-Afin de modéliser des comportements plus complexes, un perceptron multicouche a
-également été utilisé. Dans le cas d’une architecture à une couche cachée, la
+Dans le cas d’une architecture à une couche cachée, la
 fonction \( f \) s’écrit:
 \[
     f(\mathbf{x}) = \mathbf{W}^{(2)} \, \sigma(\mathbf{W}^{(1)} \mathbf{x} + \mathbf{b}^{(1)}) + \mathbf{b}^{(2)},
@@ -245,43 +241,21 @@ où \( M \) désigne le nombre d’échantillons d’entraînement. Pour chaque 
 conditions initiales \( \mathbf{x}^{(i)} \), et \( \hat{\mathbf{y}}^{(i)} =
 f_{\theta}(\mathbf{x}^{(i)}) \) la prédiction du modèle.
 
-\subsection{Validité des modèles de ML}
+\textbf{Validité des modèles de ML}
 
 Afin d'évaluer la capacité de généralisation des modèles d'apprentissage
-automatique, une procédure de validation croisée à $K$ plis (\textit{K-fold
-    cross-validation}) a été mise en œuvre. Cette méthode consiste à partitionner
-aléatoirement l'ensemble des données d'entraînement en $K$ sous-ensembles de
-taille égale. À chaque itération, l'un des $K$ plis est réservé à la validation
-tandis que les $K-1$ plis restants servent à l'entraînement. La procédure est
-répétée $K$ fois de sorte que chaque pli joue exactement une fois le rôle
-d'ensemble de validation. La performance finale est estimée par la moyenne des
-erreurs obtenues sur chacun des plis \cite{GeeksforGeeks:CrossValidation} \cite{ULB:INFOF422_Practical03}.
+automatique, une procédure de validation croisée à $K$-folds (K = 5) a été mise en œuvre \cite{GeeksforGeeks:CrossValidation} \cite{ULB:INFOF422_Practical03}. La performance finale est estimée par la moyenne des
+erreurs obtenues sur chacun des plis.
 
-Dans cette étude, $K = 5$ a été retenu. Le MLP est entraîné sur 50 epochs à
-chaque pli. La métrique d'évaluation choisie est l'erreur quadratique moyenne
-sur le rayon (\textit{RMSE rayon}), définie par:\\
+Le MLP est entraîné sur 50 epochs à
+chaque pli. La métrique d'évaluation choisie est la RMSE sur le rayon, définie par:\\
 \[\text{RMSE} = \sqrt{\frac{1}{N} \sum_{i=1}^{N} \left( r_i - \hat{r}_i \right)^2}\]
 où $r_i$ désigne la valeur réelle du rayon à l'instant $i$ et $\hat{r}_i$ la
-valeur prédite par le modèle, évalués sur un ensemble de test indépendant de 64
-trajectoires générées séparément.
+valeur prédite par le modèle, évalués sur 64
+trajectoires de tests générées.
 
-Les résultats obtenus sont résumés dans le tableau suivant:
+Les résultats obtenus sont résumés dans \hyperref[app:cv_results]{l'annexe}.
 
-\begin{table}[h]
-    \centering
-    \small
-    \caption{Résultats de la validation croisée 5-fold pour les modèles
-        linéaire et MLP, entraînés sur 90\,000 expériences.}
-    \label{tab:cv_results}
-    \begin{tabular}{lcc}
-        \toprule
-        Modèle   & RMSE rayon moyen $\mu$  & Écart-type $\sigma$     \\
-        \midrule
-        Linéaire & $8.41 \times 10^{-3}$ m & $1 \times 10^{-5}$ m    \\
-        MLP      & $5.45 \times 10^{-3}$ m & $1.36 \times 10^{-3}$ m \\
-        \bottomrule
-    \end{tabular}
-\end{table}
 
 Plusieurs observations peuvent être tirées de ces résultats. D'une part, le MLP
 affiche une RMSE moyenne inférieure de 35\,\% à celle du modèle linéaire, ce
