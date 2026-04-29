@@ -98,20 +98,19 @@ Un visuel est fourni en figure~\ref{fig:cadre_experimental}.
 
 \section{Modèles physiques}
 
-La première classe de méthodes de simulation utilise les équations fondamentales de la physique.
-La dynamique est réduite à la surface par la pente locale $dz/dr$, produisant
-une accélération radiale effective $a_c(r) = g\,|dz/dr|$ et une force de
-frottement $\vec{F}_f = -\mu_\text{eff}\,g\,\vec{v}/\|\vec{v}\|$. Les
-équations complètes figurent en \hyperref[app:phys]{Annexe}.
+Les modèles physiques reposent sur la mécanique de Lagrange appliquée à une
+surface de révolution (voir \hyperref[app:phys]{Annexe~A} pour la dérivation
+complète). La dynamique est réduite à deux coordonnées généralisées
+$(r,\theta)$ ; l'état du système est
+$\mathbf{q}=(r,\theta,\dot{r},\dot{\theta})\in\mathbb{R}^4$.
 
-\textbf{Modèle conique.} Pente constante $\alpha$ : $a_c = g\tan(\alpha)$.
-L'accélération radiale est uniforme, ce qui simplifie l'intégration mais
-ignore toute variation locale de courbure.
+\textbf{Modèle conique.} La surface est approchée par un cône de pente
+constante $\alpha = \arctan\!\bigl(h/(R-r_\text{sph})\bigr) \approx 15{,}95°$,
+calée sur les dimensions du dispositif. La courbure méridienne est nulle ($z''=0$).
 
-\textbf{Modèle de Laplace.} Pente en $K/(mgr^2)$, donnant $a_r = K/(mr^2)$.
-La dépendance en $1/r^2$ reproduit une dynamique non linéaire plus réaliste,
-au prix d'une singularité au centre nécessitant une régularisation pour
-$r < r_c$ (voir \hyperref[app:laplace-phys]{Annexe}).
+\textbf{Modèle de Laplace.} La pente est variable : $z(r) = -K/(Mgr)+C$
+avec $K = Mgh\,/\,(1/r_\text{sph}-1/R)$. Le terme $\dot{r}^2 z'z''$
+capture la courbure méridienne, absent du modèle conique.
 
 \subsection{Intégration numérique}
 
@@ -120,30 +119,32 @@ Elles sont résolues par quatre méthodes. Le choix
 d'un intégrateur résulte d'un compromis entre ordre de précision, conservation
 de l'énergie à long terme et coût par pas.
 
-Les schémas sont définis avec $(q_n, p_n)$ désignant position et quantité
-de mouvement à $t_n$ :
+Les schémas sont définis avec $\mathbf{v}_n = (\dot{r}_n, \dot{\theta}_n)$
+et $\mathbf{a}_n = (\ddot{r}_n, \ddot{\theta}_n)$ à $t_n$ :
 
 \textbf{Euler explicite} (ordre 1, non-symplectique) :
 \[
-	q_{n+1} = q_n + \Delta t\, p_n/m, \qquad
-	p_{n+1} = p_n + \Delta t\, F(q_n)
+	\mathbf{v}_{n+1} = \mathbf{v}_n + \Delta t\,\mathbf{a}_n, \qquad
+	\mathbf{r}_{n+1} = \mathbf{r}_n + \Delta t\,\mathbf{v}_n
 \]
 
 \textbf{Euler semi-implicite} (ordre 1, symplectique) :
 \[
-	p_{n+1} = p_n + \Delta t\, F(q_n), \qquad
-	q_{n+1} = q_n + \Delta t\, p_{n+1}/m
+	\mathbf{v}_{n+1} = \mathbf{v}_n + \Delta t\,\mathbf{a}_n, \qquad
+	\mathbf{r}_{n+1} = \mathbf{r}_n + \Delta t\,\mathbf{v}_{n+1}
 \]
 
 \textbf{Velocity-Verlet} (ordre 2, symplectique) :
 \begin{align*}
-	q_{n+1} &= q_n + \Delta t\,\frac{p_n}{m} + \frac{\Delta t^2}{2m}F(q_n), \\
-	p_{n+1} &= p_n + \frac{\Delta t}{2}\bigl[F(q_n)+F(q_{n+1})\bigr]
+	\mathbf{r}_{n+1} &= \mathbf{r}_n + \Delta t\,\mathbf{v}_n
+	                    + \tfrac{\Delta t^2}{2}\mathbf{a}_n, \\
+	\mathbf{v}_{n+1} &= \mathbf{v}_n
+	                    + \tfrac{\Delta t}{2}(\mathbf{a}_n+\mathbf{a}_{n+1})
 \end{align*}
 
 \textbf{Runge-Kutta 4} (ordre 4, non-symplectique) : évaluation de quatre
 pentes $k_1,\ldots,k_4$ à des sous-pas intermédiaires, combinées selon
-$y_{n+1} = y_n + \tfrac{\Delta t}{6}(k_1+2k_2+2k_3+k_4)$.
+$\mathbf{q}_{n+1} = \mathbf{q}_n + \tfrac{\Delta t}{6}(k_1+2k_2+2k_3+k_4)$.
 
 Sur le plan numérique, l'intégration repose sur des systèmes discrets à pas de temps fini, ce qui introduit des erreurs de troncature et d'arrondi.
 Les singularités possibles (en particulier au centre) sont évitées par une régularisation ou un rayon minimal afin de garantir la stabilité des simulations.
@@ -204,9 +205,9 @@ Plus précisément, le modèle s’écrit:
 
 Chaque composante de la trajectoire prédite est ainsi modélisée comme une
 combinaison linéaire des conditions initiales.
-Toutefois, un tel modèle ne permet pas de capturer les dépendances 
+Toutefois, un tel modèle ne permet pas de capturer les dépendances
 temporelles entre les différents instants, ni les
-comportements non linéaires de la trajectoire. Par conséquent, 
+comportements non linéaires de la trajectoire. Par conséquent,
 sa capacité de modélisation reste
 limitée pour des dynamiques complexes.
 
@@ -232,7 +233,7 @@ f_{\theta}(\mathbf{x}^{(i)}) \) la prédiction du modèle.
 \textbf{Validité des modèles de ML}
 
 Afin d'évaluer la capacité de généralisation des modèles d'apprentissage
-automatique, une procédure de validation croisée à $K$-folds (K = 5) a été adoptée \cite{GeeksforGeeks:CrossValidation} \cite{ULB:INFOF422_Practical03}. 
+automatique, une procédure de validation croisée à $K$-folds (K = 5) a été adoptée \cite{GeeksforGeeks:CrossValidation} \cite{ULB:INFOF422_Practical03}.
 La performance finale est estimée par la moyenne des
 erreurs obtenues sur chacun des plis.
 
@@ -244,11 +245,11 @@ trajectoires de tests générées.
 
 Les résultats obtenus sont résumés dans l'Annexe~\ref{fig:cv_results}
 
-Les résultats montrent que le MLP surpasse nettement le modèle linéaire, avec une RMSE moyenne inférieure de 35 \%, 
-indiquant une meilleure modélisation des dynamiques non linéaires. Le modèle linéaire présente un écart-type quasi nul ($\sigma \approx 10^{-5}$ m), 
+Les résultats montrent que le MLP surpasse nettement le modèle linéaire, avec une RMSE moyenne inférieure de 35 \%,
+indiquant une meilleure modélisation des dynamiques non linéaires. Le modèle linéaire présente un écart-type quasi nul ($\sigma \approx 10^{-5}$ m),
 signe d’une grande stabilité mais d’un biais élevé limitant sa capacité d’adaptation.
-À l’inverse, le MLP affiche une variabilité plus importante ($\sigma = 1.36 \times 10^{-3}$ m), 
-reflétant une sensibilité aux données. Malgré cela, 
+À l’inverse, le MLP affiche une variabilité plus importante ($\sigma = 1.36 \times 10^{-3}$ m),
+reflétant une sensibilité aux données. Malgré cela,
 il reste performant même dans le pire cas et surpasse systématiquement le modèle linéaire, ce qui confirme la robustesse de ses performances.
 Ces résultats sont illustrés dans la figure~\ref{fig:trajectoires_annexe} et la figure~\ref{fig:cv_results}
 
@@ -295,7 +296,7 @@ résultat.
 Les erreurs d'arrondi sont des erreurs causées par la représentation finie des
 nombres en machine dans les registres du processeur (généralement 32 ou 64
 bits). L'ordinateur ne peut pas représenter tous les nombres réels avec une
-précision infinie, ce qui crée alors une approximation. Il est évident que ce type 
+précision infinie, ce qui crée alors une approximation. Il est évident que ce type
 d’erreur apparaît également dans les simulations.
 
 \subsubsection{Erreurs de propagation et génération}
@@ -334,8 +335,8 @@ ou semi-implicite) admet le développement de Taylor suivant \cite{Marteen:2022}
 \begin{equation}
     y(t_{n+1}) = y(t_n) + \Delta t f\big(t_n, y(t_n)\big) + \mathcal{O}(\Delta t^2)
 \end{equation}
-L'erreur locale de troncature par pas de temps est $\tau_{n+1} = \mathcal{O}(\Delta t)$. Ces méthodes sont donc consistantes à l'ordre 1. 
-À l'inverse, l'approche de Runge-Kutta (RK4) annule analytiquement les termes d'erreur d'ordre inférieur, 
+L'erreur locale de troncature par pas de temps est $\tau_{n+1} = \mathcal{O}(\Delta t)$. Ces méthodes sont donc consistantes à l'ordre 1.
+À l'inverse, l'approche de Runge-Kutta (RK4) annule analytiquement les termes d'erreur d'ordre inférieur,
 offrant $\tau_{n+1} = \mathcal{O}(\Delta t^4)$, soit une très haute consistance polynomiale.
 
 \subsection{Stabilité}
@@ -354,8 +355,8 @@ purement inertielle (système conservatif), $\lambda$ est imaginaire pur
 \begin{equation}
     |G| = |1 + i\omega\Delta t| = \sqrt{1 + \omega^2\Delta t^2} > 1
 \end{equation}
-La méthode d'Euler explicite amplifie artificiellement l'énergie du système oscillatoire et diverge de son orbite. 
-En structurant l'intégration différemment, la méthode d'Euler semi-implicite met à jour la position depuis la vitesse future. 
+La méthode d'Euler explicite amplifie artificiellement l'énergie du système oscillatoire et diverge de son orbite.
+En structurant l'intégration différemment, la méthode d'Euler semi-implicite met à jour la position depuis la vitesse future.
 Cette conception \textit{symplectique} préserve le volume de l'espace des phases et assure une grande stabilité à long terme pour les orbites.
 
 \subsection{Convergence}
@@ -382,7 +383,7 @@ Jacobienne $J = \frac{\partial f}{\partial y}$:
 \end{equation}
 Dans le système circulaire abordé ici, les valeurs propres de la Jacobienne ont une composante réelle négligeable:
 l'erreur n'y grimpe pas de façon irrémédiable, et ce problème est caractérisé comme globalement bien conditionné \cite{Gianluca:2024}.
-Toutefois, la manipulation informatique y imbrique de permanentes erreurs d'arrondi (dues à la précision machine limitée $u = \frac{1}{2} b^{1-t}$). 
+Toutefois, la manipulation informatique y imbrique de permanentes erreurs d'arrondi (dues à la précision machine limitée $u = \frac{1}{2} b^{1-t}$).
 Ce contexte bien conditionné n'évitera ainsi pas la perte d'exactitude si un schéma divergent (comme Euler explicite) est forcé sur la simulation.
 
 \subsection{Comparaison des méthodes d’approximation numérique}
@@ -395,7 +396,7 @@ géométrique normalisée mesurant l’écart entre la trajectoire simulée et l
 trajectoire réelle.
 
 Nous tenons à faire certaines précisions au sujet de ces valeurs. En effet, ces dernières
-sont très similaires et les faibles différences sont de l'ordre du millionième. En plus de leur similitude, ces résultats sont très élevés indiquant ainsi des erreurs de précision numériques 
+sont très similaires et les faibles différences sont de l'ordre du millionième. En plus de leur similitude, ces résultats sont très élevés indiquant ainsi des erreurs de précision numériques
 importantes.
 
 Nous en concluons deux choses. Premièrement, les modèles physiques sont peu précis dans un cadre
@@ -445,68 +446,68 @@ objectivité stricte ni à une généralisation indépendante du contexte d’é
 
 \section{Annexes}
 \subsection{Équations physiques}
+\label{app:phys}
 
-\subsubsection{Cadre physique commun}
+\subsubsection{Cadre lagrangien commun}
 
-Les deux modèles physiques partagent la même description cinématique et reposent sur une réduction de la dynamique à la surface. La géométrie est entièrement encodée par la pente locale $dz/dr$, ce qui permet d'écrire une accélération radiale effective :
+Les deux modèles partagent la même structure. La surface étant de révolution,
+la contrainte holonome $z=z(r)$ réduit la dynamique à $(r,\theta)$.
+L'énergie cinétique sur la surface vaut :
 \[
-    a_c(r) = g \left| \frac{dz}{dr} \right|
+    T = \frac{1}{2}m\!\left[\dot{r}^2(1+z'^2)+r^2\dot{\theta}^2\right].
 \]
-
-Le frottement est modélisé par une force opposée à la vitesse, identique quelle que soit la direction du mouvement, et de norme proportionnelle à $g$ :
+Les équations d'Euler-Lagrange avec forces de dissipation $Q_r$, $Q_\theta$
+donnent le système :
+\begin{align}
+    \ddot{r}      &= \frac{r\dot{\theta}^2 - gz' - \dot{r}^2 z'z'' + Q_r/m}{1+z'^2}, \label{eq:rddot}\\
+    \ddot{\theta} &= \frac{-2\dot{r}\dot{\theta}}{r} + \frac{Q_\theta}{mr^2}. \label{eq:thddot}
+\end{align}
+Sans frottement, $L=mr^2\dot{\theta}$ est une constante du mouvement.
+La conservation de l'énergie mécanique
 \[
-    \vec{F}_f = - \mu_{\text{eff}}\, g \, \frac{\vec{v}}{\|\vec{v}\|}
+    E = \frac{1}{2}m\!\left[\dot{r}^2(1+z'^2)+r^2\dot{\theta}^2\right]+mgz(r)
 \]
-Ce choix permet de décrire une dissipation globale simple, sans distinguer de direction privilégiée ni introduire explicitement la réaction normale.
-
+sert de critère de validation numérique (dérive $|\Delta E/E_0|$).
 
 \subsubsection{Cadre physique du cône}
 \label{app:cone-phys}
 
-Le modèle conique suppose une pente constante $\alpha$ :
+Pente constante calée sur les dimensions du dispositif :
 \[
-    \frac{dz}{dr} = \tan(\alpha)
+    \frac{dz}{dr} = \tan\alpha = \frac{h}{R-r_\text{sph}},\qquad
+    z(r) = \tan\alpha\,(r-r_\text{sph}),\qquad z''=0.
 \]
-
-L’intégration donne une hauteur linéaire en $r$ :
-\[
-    z(r) = \tan(\alpha)\,(r - r_{\min})
-\]
-
-L’accélération radiale devient alors constante :
-\[
-    a_c = g \tan(\alpha)
-\]
+L'accélération radiale effective est $-gz'=-g\tan\alpha$ (constante).
+La condition d'orbite stable ($\ddot{r}=0$, $\dot{r}=0$) donne
+$\dot{\theta}_\text{orb} = \sqrt{g\tan\alpha/r}$.
 
 \subsubsection{Cadre physique de Laplace}
 \label{app:laplace-phys}
 
-Le modèle de Laplace introduit une pente variable, inspirée d'un champ central :
+Pente variable calée sur $z(r_\text{sph})=0$ et $z(R)=h$ :
 \[
-    \frac{dz}{dr} = \frac{K}{m g r^2}
+    z(r) = -\frac{K}{Mgr} + C,\quad
+    z' = \frac{K}{Mgr^2},\quad
+    z'' = -\frac{2K}{Mgr^3},
+\]
+avec $K = Mgh\,/\,(1/r_\text{sph} - 1/R)$ et $C = K/(Mgr_\text{sph})$.
+La dépendance en $1/r^2$ implique une dynamique non linéaire ; le terme
+$\dot{r}^2 z'z''$ dans \eqref{eq:rddot} capture la courbure méridienne.
+
+\subsubsection{Forces généralisées de frottement de Coulomb}
+
+La vitesse sur la surface et la réaction normale sont :
+\[
+    v = \sqrt{\dot{r}^2(1+z'^2)+r^2\dot{\theta}^2},\qquad
+    N = m\sqrt{(g\cos\alpha_\text{loc})^2+(v^2\kappa)^2},
+\]
+où $\kappa = z''/(1+z'^2)^{3/2}$ est la courbure méridienne.
+Les forces généralisées de Coulomb valent :
+\[
+    Q_r = -\mu N\frac{\dot{r}\sqrt{1+z'^2}}{v},\qquad
+    Q_\theta = -\mu N\frac{r\dot{\theta}}{v}.
 \]
 
-L’intégration conduit à :
-\[
-    z(r) = -\frac{K}{m g r} + C
-\]
-
-D’où une accélération radiale :
-\[
-    a_r = g \left| \frac{dz}{dr} \right| = \frac{K}{m r^2}
-\]
-
-Cette dépendance en $1/r^2$ implique une dynamique fortement non linéaire.
-
-\paragraph{Régularisation}
-Pour éviter la divergence au centre, une pente régularisée est utilisée :
-\[
-    \frac{dz}{dr} =
-    \begin{cases}
-        \frac{K}{m g r^2}   & \text{si } r \ge r_c \\
-        \frac{K}{m g r_c^2} & \text{si } r < r_c
-    \end{cases}
-\]
 
 \subsection{Métriques d'erreur en machine learning}
 \label{app:ml-metrics}
