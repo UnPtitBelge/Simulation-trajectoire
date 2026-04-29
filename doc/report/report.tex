@@ -192,7 +192,7 @@ régression linéaire (LR) et le perceptron multicouche (MLP).
 
 La régression linéaire constitue un modèle paramétrique dans lequel la sortie
 est exprimée comme une combinaison affine des variables d’entrée
-\cite{ULB:INFOF422_Practical03}. Dans notre cas, elle est utilisée pour
+\cite{ULB:INFOF422_Practical03}. Dans ce cas, elle est utilisée pour
 approximer la fonction \( f : \mathbb{R}^4 \rightarrow \mathbb{R}^{2N} \)
 reliant les conditions initiales à la trajectoire de la bille.
 
@@ -304,7 +304,7 @@ l'évolution de la RMSE par pli pour les deux modèles.
 La catégorie des erreurs de modélisation se décline en deux types d'erreurs.
 
 Le premier type, les erreurs de mesure qui se produisent dans le cadre physique
-de notre expérience. En effet, ne disposant pas d'outils de mesure
+de l'expérience. En effet, ne disposant pas d'outils de mesure
 parfaits, des imprécisions numériques de l'ordre du
 millimètre ont été introduites lors des mesures des éléments de l'expérience, comme par
 exemple la largeur du dispositif.
@@ -330,7 +330,7 @@ calculs \cite[16]{Marteen:2022}.
 
 \subsubsection{Erreurs de troncature}
 
-Nos modèles itératifs à pas discret sont infinis. Il est donc impossible
+Les modèles itératifs à pas discret décrits ici sont infinis. Il est donc impossible
 d'obtenir une solution exacte en un temps fini même en faisant abstraction de
 tout autre type d'erreur pouvant entrer en jeu. Afin d'obtenir un résultat,
 il faut établir une variable $n\_steps$ qui limite le nombre d'itération de
@@ -433,7 +433,7 @@ $\epsilon$.
 Pour l’analyser, l’équation de test linéaire est couramment utilisée $y' =
     \lambda y$ (avec $\lambda \in \mathbb{C}$) \cite{Marteen:2022}. Pour la méthode d'Euler explicite, sa
 récurrence dicte $y_{n+1} = G \cdot y_n$, avec $G = (1 + \lambda\Delta t)$ \cite{Strikwerda:2004}. La
-stabilité exige impérativement $|G| \le 1$. Cependant, pour notre trajectoire
+stabilité exige impérativement $|G| \le 1$. Cependant, pour la trajectoire
 purement inertielle (système conservatif), $\lambda$ est imaginaire pur
 ($\lambda = i\omega$). Le facteur d'amplification devient:
 \begin{equation}
@@ -521,8 +521,8 @@ décision plutôt que dans une volonté d’établir un classement absolu.
 
 soulignons toutefois que cette pondération repose en partie sur
 des choix méthodologiques propres à ce travail subjectifs. Elle a pour but de
-regrouper tous les aspects rencontrés au cours de notre travail, notamment
-l'aspect de vulgarisation qui représentait un aspect majeur lors de notre
+regrouper tous les aspects rencontrés au cours de ce travail, notamment
+l'aspect de vulgarisation qui représentait un aspect majeur lors de la
 présentation au Printemps des Sciences. Dans ce sens, l’évaluation proposée
 doit être comprise comme qualitative et indicative: elle vise à structurer
 l’analyse et à expliciter les compromis entre modèles, sans prétendre à une
