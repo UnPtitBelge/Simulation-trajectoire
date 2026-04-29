@@ -261,27 +261,12 @@ trajectoires de tests générées.
 
 Les résultats obtenus sont résumés dans l'Annexe~\ref{fig:cv_results}
 
-
-Plusieurs observations peuvent être tirées de ces résultats. D'une part, le MLP
-affiche une RMSE moyenne inférieure de 35\,\% à celle du modèle linéaire, ce
-qui témoigne d'une meilleure capacité à capturer la dynamique non linéaire du
-système. D'autre part, l'écart-type associé au modèle linéaire est négligeable
-($\sigma \approx 10^{-5}$\,m), traduisant une très grande stabilité entre les
-plis: le modèle produit systématiquement la même performance quelle que soit la
-partition des données. Ce comportement est caractéristique d'un modèle à faible
-variance mais à biais élevé, dont la capacité d'expression est trop limitée
-pour s'adapter à la complexité des données.
-
-Le MLP présente quant à lui un écart-type plus marqué ($\sigma = 1.36 \times
-    10^{-3}$\,m), révélant une sensibilité accrue à la composition de l'ensemble
-d'entraînement. Cette variabilité est néanmoins cohérente avec la nature d'un
-modèle à plus haute capacité, dont les performances dépendent davantage de la
-distribution des données disponibles. Il est important de noter que même dans
-le cas le moins favorable observé (RMSE $= 7.48 \times 10^{-3}$\,m), le MLP
-demeure compétitif face au modèle linéaire, et surpasse ce dernier dans tous
-les plis. La validation croisée confirme ainsi que la supériorité du MLP est
-robuste et non due à un artefact de partitionnement particulier.
-
+Les résultats montrent que le MLP surpasse nettement le modèle linéaire, avec une RMSE moyenne inférieure de 35 \%, 
+indiquant une meilleure modélisation des dynamiques non linéaires. Le modèle linéaire présente un écart-type quasi nul ($\sigma \approx 10^{-5}$ m), 
+signe d’une grande stabilité mais d’un biais élevé limitant sa capacité d’adaptation.
+À l’inverse, le MLP affiche une variabilité plus importante ($\sigma = 1.36 \times 10^{-3}$ m), 
+reflétant une sensibilité aux données. Malgré cela, 
+il reste performant même dans le pire cas et surpasse systématiquement le modèle linéaire, ce qui confirme la robustesse de ses performances.
 Ces résultats sont illustrés dans la figure~\ref{fig:trajectoires_annexe} et la figure~\ref{fig:cv_results}
 
 \subsection{Erreurs de modélisation}
