@@ -121,7 +121,10 @@ Le modèle de Laplace essaie de reproduire une surface plus réaliste, utilisant
 
 \subsubsection{Intégration numérique des modèles}
 
-Pour pouvoir résoudre les équations différentelles des modèles basés sur la physique, nous devons intégrer notre système numériquement. Plusieurs méthodes existent, pour faire un choix, nous avons sélectionné celle qui conservait le mieux l'énergie du système, tout en restant rapide et simple. Voici les différentes méthodes étudiées:
+Afin de résoudre les équations différentielles issues de modèles physiques, il est nécessaire de procéder à une intégration numérique du système.
+Plusieurs méthodes existent, le choix s’est porté sur celle offrant le meilleur compromis entre conservation de l’énergie du système, 
+rapidité d’exécution et simplicité de mise en œuvre.
+Les différentes méthodes étudiées sont présentées ci-dessous:
 
 La méthode d'Euler explicite, non-simplectique d'ordre 1:
 \[
@@ -301,15 +304,15 @@ l'évolution de la RMSE par pli pour les deux modèles.
 La catégorie des erreurs de modélisation se décline en deux types d'erreurs.
 
 Le premier type, les erreurs de mesure qui se produisent dans le cadre physique
-de notre expérience. En effet, nous ne disposons pas d'outils de mesure
-parfaits, ce qui induit donc des imprécisions numériques de l'ordre du
-millimètre lorsque nous mesurons des éléments de notre expérience comme par
+de notre expérience. En effet, ne disposant pas d'outils de mesure
+parfaits, des imprécisions numériques de l'ordre du
+millimètre ont été introduites lors des mesures des éléments de l'expérience, comme par
 exemple la largeur du dispositif.
 
 Le second regroupe les erreurs de modélisation du phénomène; des erreurs qui
-apparaissent lorsque nous faisons des simplifications, des hypothèses dans
-notre modèle pour le rendre plus facile à comprendre ou à résoudre. Un exemple
-d'hypothèse émise dans le cadre de notre expérience concerne la pression de
+apparaissent lors de simplifications, ou des hypothèses dans
+le modèle pour le rendre plus facile à comprendre ou à résoudre. Un exemple
+d'hypothèse émise dans le cadre de l'expérience concerne la pression de
 l'air, supposée sans impact sur la trajectoire de la balle.
 %------------------------------------------------
 
@@ -319,8 +322,9 @@ l'air, supposée sans impact sur la trajectoire de la balle.
 
 Dans le cadre d'une approche scientifique, il est important de prendre en
 compte tous les paramètres pouvant entrer en jeu et potentiellement perturber
-et modifier l'expérience. Nous avons déjà abordé les erreurs de modélisation
-mais ce ne sont pas les seules entrant en jeu. En particulier, nous considérons
+et modifier l'expérience. 
+Les erreurs de modélisation ont déjà été abordées, toutefois, elles ne sont pas les seules à intervenir.
+ En particulier, il faut considérer
 les erreurs numériques qui apparaissent lorsque l'ordinateur effectue des
 calculs \cite[16]{Marteen:2022}.
 
@@ -329,7 +333,7 @@ calculs \cite[16]{Marteen:2022}.
 Nos modèles itératifs à pas discret sont infinis. Il est donc impossible
 d'obtenir une solution exacte en un temps fini même en faisant abstraction de
 tout autre type d'erreur pouvant entrer en jeu. Afin d'obtenir un résultat,
-nous établissons une variable $n\_steps$ qui limite le nombre d'itération de
+il faut établir une variable $n\_steps$ qui limite le nombre d'itération de
 manière à obtenir un bon équilibre entre temps d'exécution et précision du
 résultat.
 
@@ -351,7 +355,7 @@ Désignons par $\varepsilon_x$ son erreur relative
     \varepsilon_x = \frac{|fl(x) - x|}{|x|}
 \end{equation}
 
-Nous allons évaluer la borne supérieure de l'erreur relative d'arrondi. Il est
+Evaluons la borne supérieure de l'erreur relative d'arrondi. Il est
 évident que cette quantité ne peut dépasser la moitié de la distance relative
 entre les deux nombres consécutifs à virgule flottante $x_i \in
     \mathbb{F}(b,t,L,U)$ et $x_{i+1} \in \mathbb{F}(b,t,L,U)$ tels que
@@ -373,13 +377,13 @@ Avec la notion d'écart relatif définie telle que
 \begin{equation}
     \rho_x = \frac{\hat{x} - x}{x}
 \end{equation}
-nous obtenons
+il en résulte
 \begin{equation}
     \hat{x} = fl(x) = x(1 + \rho_x),
 \end{equation}
 où $\varepsilon_x = |\rho_x| \le u$ est dite l'erreur d'arrondi \cite{Marteen:2022}.
 
-Il est clair que nous retrouvons ce type d'erreur dans nos simulation.
+Il est évident que ce type d’erreur apparaît également dans les simulations.
 
 \subsubsection{Erreurs de propagation et génération}
 
@@ -387,20 +391,17 @@ Les erreurs de propagation et de génération sont des erreurs qui apparaissent
 lorsque les erreurs numériques se propagent à travers les calculs. Les erreurs
 de génération se produisent à chaque itération, étape des calculs et les erreur
 de propagation regroupent toutes les erreurs de génération jusqu'à l'étape
-courante. Par exemple, si nous simplifions $\pi$ à 3.14, nous introduisons une
-erreur d'arrondi à une certaine génération qui va se propager à travers les
-calculs ultérieurs, affectant ainsi la précision globale des résultats.
+courante.
 
 \subsection{Analyse numérique du problème}
 
-Nous étudions, dans les sous-sections suivantes, les notions de consistance,
-stabilité et de conditionnement afin d'analyser les propriétés de nos modèles.
-Par ces analyses, nous pouvons prédire certains comportements de nos modèles
-lors des simulations.
+Les sous-sections suivantes portent sur les notions de consistance, de stabilité et de conditionnement, 
+afin d’analyser les propriétés des modèles considérés.
+Ces analyses permettent de prédire certains comportements des modèles lors des simulations.
 
 Définissons d'abord la notion d'algorithme nu-mérique. Étant donné un problème
-bien posé $F(x, d) = 0$, nous définissons l’algorithme numérique pour la
-résolution du problème $F$ par la suite de problèmes approchés
+bien posé $F(x, d) = 0$, l’algorithme numérique de
+résolution du problème $F$ est défini comme une suite de problèmes approchés
 \begin{equation}
     F_1\big(x^{(1)}, d^{(1)}\big), \; F_2\big(x^{(2)}, d^{(2)}\big), \; \ldots, \; F_n\big(x^{(n)}, d^{(n)}\big)
 \end{equation}
@@ -429,7 +430,7 @@ stable si, pour tout $\epsilon > 0$, il existe $\eta > 0$ tel que toute
 perturbation initiale d'amplitude $\eta$ affecte la solution finale de moins de
 $\epsilon$.
 
-Pour l'analyser, on utilise couramment l'équation de test linéaire $y' =
+Pour l’analyser, l’équation de test linéaire est couramment utilisée $y' =
     \lambda y$ (avec $\lambda \in \mathbb{C}$) \cite{Marteen:2022}. Pour la méthode d'Euler explicite, sa
 récurrence dicte $y_{n+1} = G \cdot y_n$, avec $G = (1 + \lambda\Delta t)$ \cite{Strikwerda:2004}. La
 stabilité exige impérativement $|G| \le 1$. Cependant, pour notre trajectoire
@@ -462,7 +463,8 @@ Jacobienne $J = \frac{\partial f}{\partial y}$:
 \begin{equation}
     \delta y' = J \delta y \implies \|\delta y(t)\| \propto \exp\left(\int \|J\| dt\right)
 \end{equation}
-Dans le système circulaire abordé ici, les valeurs propres de la Jacobienne ont une composante réelle négligeable: l'erreur n'y grimpe pas de façon irrémédiable, et on caractérise ce problème comme globalement bien conditionné \cite{Gianluca:2024}.
+Dans le système circulaire abordé ici, les valeurs propres de la Jacobienne ont une composante réelle négligeable: 
+l'erreur n'y grimpe pas de façon irrémédiable, et ce problème est caractérisé comme globalement bien conditionné \cite{Gianluca:2024}.
 Toutefois, la manipulation informatique y imbrique de permanentes erreurs d'arrondi (dues à la précision machine limitée $u = \frac{1}{2} b^{1-t}$). Ce contexte bien conditionné n'évitera ainsi pas la perte d'exactitude si un schéma divergent (comme l'Euler explicite) est forcé sur la simulation.
 
 \subsection{Comparaison des méthodes d’approximation numérique}
@@ -508,7 +510,7 @@ permettant de confronter ces modèles selon plusieurs dimensions pertinentes.
 \end{itemize}
 
 En attribuant les notes correspondantes à chaque modèle selon ces critères,
-nous obtenons:
+les résultats obtenus sont les suivants:
 
 % TODO: REMPLIR AVEC LES DONNÉES
 
@@ -517,7 +519,7 @@ comparaison globale des modèles, tout en conservant une lecture structurée des
 compromis qu’ils impliquent. Elle s’inscrit dans une logique d’aide à la
 décision plutôt que dans une volonté d’établir un classement absolu.
 
-Nous tenons toutefois à souligner que cette pondération repose en partie sur
+soulignons toutefois que cette pondération repose en partie sur
 des choix méthodologiques propres à ce travail subjectifs. Elle a pour but de
 regrouper tous les aspects rencontrés au cours de notre travail, notamment
 l'aspect de vulgarisation qui représentait un aspect majeur lors de notre
