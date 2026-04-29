@@ -240,11 +240,8 @@ représentée par la fonction ReLU (Rectified Linear Unit), définie par \(
 
 Les paramètres du modèle, regroupés dans \( \theta \), sont estimés en
 minimisant une fonction de coût, généralement choisie comme l’erreur
-quadratique moyenne (MSE):
-\[
-    \mathcal{L}(\theta) = \frac{1}{M} \sum_{i=1}^{M} \left\| \mathbf{y}^{(i)} - \hat{\mathbf{y}}^{(i)} \right\|_2^2,
-\]
-où \( M \) désigne le nombre d’échantillons d’entraînement. Pour chaque exemple
+quadratique moyenne (MSE) (voir l'\hyperref[app:ml-metrics]{Annexe}).
+\( M \) désigne le nombre d’échantillons d’entraînement, pour chaque exemple
 \( i \), \( \mathbf{y}^{(i)} \) correspond à la trajectoire réelle associée aux
 conditions initiales \( \mathbf{x}^{(i)} \), et \( \hat{\mathbf{y}}^{(i)} =
 f_{\theta}(\mathbf{x}^{(i)}) \) la prédiction du modèle.
@@ -252,13 +249,13 @@ f_{\theta}(\mathbf{x}^{(i)}) \) la prédiction du modèle.
 \textbf{Validité des modèles de ML}
 
 Afin d'évaluer la capacité de généralisation des modèles d'apprentissage
-automatique, une procédure de validation croisée à $K$-folds (K = 5) a été mise en œuvre \cite{GeeksforGeeks:CrossValidation} \cite{ULB:INFOF422_Practical03}. La performance finale est estimée par la moyenne des
+automatique, une procédure de validation croisée à $K$-folds (K = 5) a été adoptée \cite{GeeksforGeeks:CrossValidation} \cite{ULB:INFOF422_Practical03}. 
+La performance finale est estimée par la moyenne des
 erreurs obtenues sur chacun des plis.
 
 Le MLP est entraîné sur 50 epochs à
-chaque pli. La métrique d'évaluation choisie est la RMSE sur le rayon, définie par:\\
-\[\text{RMSE} = \sqrt{\frac{1}{N} \sum_{i=1}^{N} \left( r_i - \hat{r}_i \right)^2}\]
-où $r_i$ désigne la valeur réelle du rayon à l'instant $i$ et $\hat{r}_i$ la
+chaque pli. La métrique d'évaluation choisie est la RMSE sur le rayon (voir l'\hyperref[app:ml-metrics]{Annexe}).
+$r_i$ désigne la valeur réelle du rayon à l'instant $i$ et $\hat{r}_i$ la
 valeur prédite par le modèle, évalués sur 64
 trajectoires de tests générées.
 
@@ -369,7 +366,9 @@ ou semi-implicite) admet le développement de Taylor suivant \cite{Marteen:2022}
 \begin{equation}
     y(t_{n+1}) = y(t_n) + \Delta t f\big(t_n, y(t_n)\big) + \mathcal{O}(\Delta t^2)
 \end{equation}
-L'erreur locale de troncature par pas de temps est $\tau_{n+1} = \mathcal{O}(\Delta t)$. Ces méthodes sont donc consistantes à l'ordre 1. À l'inverse, l'approche de Runge-Kutta (RK4) annule analytiquement les termes d'erreur d'ordre inférieur, offrant $\tau_{n+1} = \mathcal{O}(\Delta t^4)$, soit une très haute consistance polynomiale.
+L'erreur locale de troncature par pas de temps est $\tau_{n+1} = \mathcal{O}(\Delta t)$. Ces méthodes sont donc consistantes à l'ordre 1. 
+À l'inverse, l'approche de Runge-Kutta (RK4) annule analytiquement les termes d'erreur d'ordre inférieur, 
+offrant $\tau_{n+1} = \mathcal{O}(\Delta t^4)$, soit une très haute consistance polynomiale.
 
 \subsection{Stabilité}
 La stabilité garantit que les perturbations inévitables (comme les erreurs
@@ -387,7 +386,9 @@ purement inertielle (système conservatif), $\lambda$ est imaginaire pur
 \begin{equation}
     |G| = |1 + i\omega\Delta t| = \sqrt{1 + \omega^2\Delta t^2} > 1
 \end{equation}
-La méthode d'Euler explicite amplifie artificiellement l'énergie du système oscillatoire et diverge de son orbite. En structurant l'intégration différemment, la méthode d'Euler semi-implicite met à jour la position depuis la vitesse future. Cette conception \textit{symplectique} préserve le volume de l'espace des phases et assure une grande stabilité à long terme pour les orbites.
+La méthode d'Euler explicite amplifie artificiellement l'énergie du système oscillatoire et diverge de son orbite. 
+En structurant l'intégration différemment, la méthode d'Euler semi-implicite met à jour la position depuis la vitesse future. 
+Cette conception \textit{symplectique} préserve le volume de l'espace des phases et assure une grande stabilité à long terme pour les orbites.
 
 \subsection{Convergence}
 Le théorème d'équivalence de Lax \cite{Marteen:2022} stipule logiquement que pour un
@@ -413,7 +414,8 @@ Jacobienne $J = \frac{\partial f}{\partial y}$:
 \end{equation}
 Dans le système circulaire abordé ici, les valeurs propres de la Jacobienne ont une composante réelle négligeable:
 l'erreur n'y grimpe pas de façon irrémédiable, et ce problème est caractérisé comme globalement bien conditionné \cite{Gianluca:2024}.
-Toutefois, la manipulation informatique y imbrique de permanentes erreurs d'arrondi (dues à la précision machine limitée $u = \frac{1}{2} b^{1-t}$). Ce contexte bien conditionné n'évitera ainsi pas la perte d'exactitude si un schéma divergent (comme Euler explicite) est forcé sur la simulation.
+Toutefois, la manipulation informatique y imbrique de permanentes erreurs d'arrondi (dues à la précision machine limitée $u = \frac{1}{2} b^{1-t}$). 
+Ce contexte bien conditionné n'évitera ainsi pas la perte d'exactitude si un schéma divergent (comme Euler explicite) est forcé sur la simulation.
 
 \subsection{Comparaison des méthodes d’approximation numérique}
 Plusieurs méthodes d’approximation numérique peuvent être utilisées pour
@@ -552,6 +554,18 @@ Pour éviter la divergence au centre, une pente régularisée est utilisée :
         \frac{K}{m g r_c^2} & \text{si } r < r_c
     \end{cases}
 \]
+
+\subsection{Métriques d'erreur en machine learning}
+\label{app:ml-metrics}
+MSE:
+\begin{equation}
+   \mathcal{L}(\theta) = \frac{1}{M} \sum_{i=1}^{M} \left\| \mathbf{y}^{(i)} - \hat{\mathbf{y}}^{(i)} \right\|_2^2,
+\end{equation}
+
+RMSE:
+\begin{equation}
+    \mathcal{L}(\theta) = \sqrt{\frac{1}{N} \sum_{i=1}^{N} \left( r_i - \hat{r}_i \right)^2}
+\end{equation}
 
 \subsection{Erreurs numériques: formellement}
 
