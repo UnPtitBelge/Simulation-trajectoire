@@ -195,7 +195,7 @@ vecteurs d’entrée et de sortie.
 Deux modèles ont été considérés pour approximer la fonction \( f \): la
 régression linéaire (LR) et le perceptron multicouche (MLP).
 
-\textbf{Regression linéaire}
+\subsection{Regression linéaire}
 
 La régression linéaire constitue un modèle paramétrique dans lequel la sortie
 est exprimée comme une combinaison affine des variables d’entrée
@@ -217,7 +217,7 @@ comportements non linéaires de la trajectoire. Par conséquent,
 sa capacité de modélisation reste
 limitée pour des dynamiques complexes.
 
-\textbf{Multicouche perceptron}
+\subsection{Multicouche perceptron}
 
 Dans le cas d’une architecture à une couche cachée, la
 fonction \( f \) s’écrit:
@@ -228,7 +228,7 @@ où \( \sigma \) est une fonction d’activation non linéaire. \( \sigma \) est
 représentée par la fonction ReLU (Rectified Linear Unit), définie par \(
 \sigma(z) = \max(0, z) \) \cite{ULB:INFOF422_Practical03}.
 
-Les paramètres du modèle, regroupés dans \( \theta \), sont estimés en
+Les paramètres du modèle, sont estimés en
 minimisant une fonction de coût, généralement choisie comme l’erreur
 quadratique moyenne (MSE) (voir l'\hyperref[app:ml-metrics]{Annexe}).
 \( M \) désigne le nombre d’échantillons d’entraînement, pour chaque exemple
@@ -236,7 +236,7 @@ quadratique moyenne (MSE) (voir l'\hyperref[app:ml-metrics]{Annexe}).
 conditions initiales \( \mathbf{x}^{(i)} \), et \( \hat{\mathbf{y}}^{(i)} =
 f_{\theta}(\mathbf{x}^{(i)}) \) la prédiction du modèle.
 
-\textbf{Validité des modèles de ML}
+\subsection{Validité des modèles de ML}
 
 Afin d'évaluer la capacité de généralisation des modèles d'apprentissage
 automatique, une procédure de validation croisée à $K$-folds (K = 5) a été adoptée \cite{GeeksforGeeks:CrossValidation} \cite{ULB:INFOF422_Practical03}.
@@ -259,7 +259,7 @@ reflétant une sensibilité aux données. Malgré cela,
 il reste performant même dans le pire cas et surpasse systématiquement le modèle linéaire, ce qui confirme la robustesse de ses performances.
 Ces résultats sont illustrés dans la figure~\ref{fig:trajectoires_annexe} et la figure~\ref{fig:cv_results}
 
-\textbf{Importance de la taille du jeu de données}
+\subsection{Importance de la taille du jeu de données}
 
 La figure~\ref{fig:trajectoires_annexe} met en évidence l’influence de la taille du jeu de données sur la précision des modèles. 
 Pour un nombre très limité d’expériences, des écarts importants entre les trajectoires prédites et la trajectoire réelle sont observés, 
@@ -538,14 +538,12 @@ Les forces généralisées de Coulomb valent :
 
 \subsection{Métriques d'erreur en machine learning}
 \label{app:ml-metrics}
-MSE:
 \begin{equation}
-   \mathcal{L}(\theta) = \frac{1}{M} \sum_{i=1}^{M} \left\| \mathbf{y}^{(i)} - \hat{\mathbf{y}}^{(i)} \right\|_2^2,
+   MSE = \frac{1}{M} \sum_{i=1}^{M} \left\| \mathbf{y}^{(i)} - \hat{\mathbf{y}}^{(i)} \right\|_2^2,
 \end{equation}
 
-RMSE:
 \begin{equation}
-    \mathcal{L}(\theta) = \sqrt{\frac{1}{N} \sum_{i=1}^{N} \left( r_i - \hat{r}_i \right)^2}
+    RMSE = \sqrt{\frac{1}{N} \sum_{i=1}^{N} \left( r_i - \hat{r}_i \right)^2}
 \end{equation}
 
 \subsection{Erreurs numériques: formellement}
