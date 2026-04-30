@@ -363,8 +363,36 @@ Par ces analyses, nous pouvons prédire certains comportements de nos modèles l
 
 \subsubsection{Consistance}
 La consistance est la capacité d'un algorithme à produire des résultats qui convergent 
-vers la solution exacte du problème. Dans notre cas, la méthode de Euler 
-(explicite ou implicite) est consistante.
+vers la solution exacte du problème. Dans notre cas, la 
+
+% not in the right place in the code, but it is in the right place in the pdf
+\begin{table*}[!t]
+    \centering
+    \small
+    \begin{tabular}{|l|p{2.5cm}|p{2.5cm}|p{1.8cm}|p{2.5cm}|c|}
+        \hline
+        \textbf{Modèle} & 
+        \textbf{Précision des résultats (40\%)} & 
+        \textbf{Hypothèses simplifiantes (30\%)} & 
+        \textbf{Temps de simulation (10\%)} & 
+        \textbf{Accessibilité du modèle (20\%)} & 
+        \textbf{Score} \\ 
+        \hline
+        Modèle conique & & & & & \\
+        \hline
+        Modèle membrane élastique & & & & & \\
+        \hline
+        Modèle régression linéaire & & & & & \\
+        \hline
+        Modèle machine learning & & & & & \\
+        \hline
+    \end{tabular}
+    \caption{Évaluation multicritère des modèles}
+    \label{tab:multicritere}
+\end{table*}
+\FloatBarrier
+
+\noindent méthode de Euler (explicite ou implicite) est consistante.
 
 \subsubsection{Stabilité}
 La stabilité est la propriété d'un algorithme qui garantit que les erreurs apportées durant les calculs ne s'amplifient pas de manière exponentielle au fil des itérations.
@@ -373,34 +401,6 @@ La stabilité est la propriété d'un algorithme qui garantit que les erreurs ap
 \subsubsection{Convergence}
 La notion de convergence d'un algorithme numérique permet d'étudier les itérations lorsque celles-ci tendent vers l'infini. En particulier, une méthode dite convergente va
 converger vers la solution tandis qu'une méthode divergente s'en éloigne.
-
-
-% not in the right place in the code, but it is in the right place in the pdf
-\begin{table*}[!t]
-    \centering
-    \small
-    \begin{tabular}{|l|p{2.5cm}|p{2.5cm}|p{1.8cm}|p{2.5cm}|c|}
-    \hline
-    \textbf{Modèle} & 
-    \textbf{Précision des résultats (40\%)} & 
-    \textbf{Hypothèses simplifiantes (30\%)} & 
-    \textbf{Temps de simulation (10\%)} & 
-    \textbf{Accessibilité du modèle (20\%)} & 
-    \textbf{Score} \\ 
-    \hline
-    Modèle conique & & & & & \\
-    \hline
-    Modèle membrane élastique & & & & & \\
-    \hline
-    Modèle régression linéaire & & & & & \\
-    \hline
-    Modèle machine learning & & & & & \\
-    \hline
-    \end{tabular}
-    \caption{Évaluation multicritère des modèles}
-    \label{tab:multicritere}
-\end{table*}
-\FloatBarrier
 
 
 \subsubsection{Conditionnement}
