@@ -108,11 +108,11 @@ complète). La dynamique est réduite à deux coordonnées généralisées
 $(r,\theta)$ ; l'état du système est
 $\mathbf{q}=(r,\theta,\dot{r},\dot{\theta})\in\mathbb{R}^4$.
 
-\textbf{Modèle conique:} La surface est approchée par un cône de pente
+\subsubsection{Modèle conique} La surface est approchée par un cône de pente
 constante $\alpha = \arctan\bigl(h/(R-r_\text{sph})\bigr)$,
 calée sur les dimensions du dispositif. La courbure méridienne est nulle ($z''=0$).
 
-\textbf{Modèle membrane élastique:} La surface est solution de $T\Delta z=0$,
+\subsubsection{Modèle membrane élastique} La surface est solution de $T\Delta z=0$,
 donnant $z(r)=A\ln r+B$ avec $A=h/\ln(R/r_\text{sph})>0$.
 La pente $z'=A/r$ et la courbure $z''=-A/r^2\neq 0$ enrichissent
 la réaction normale par rapport au modèle conique
@@ -128,19 +128,19 @@ de l'énergie à long terme et coût par pas.
 Les schémas sont définis avec $\mathbf{v}_n = (\dot{r}_n, \dot{\theta}_n)$
 et $\mathbf{a}_n = (\ddot{r}_n, \ddot{\theta}_n)$ à $t_n$:
 
-\textbf{Euler explicite} (ordre 1, non-symplectique):
+\subsubsection{Euler explicite} (ordre 1, non-symplectique):
 \[
 	\mathbf{v}_{n+1} = \mathbf{v}_n + \Delta t\,\mathbf{a}_n, \qquad
 	\mathbf{r}_{n+1} = \mathbf{r}_n + \Delta t\,\mathbf{v}_n
 \]
 
-\textbf{Euler semi-implicite} (ordre 1, symplectique):
+\subsubsection{Euler semi-implicite} (ordre 1, symplectique):
 \[
 	\mathbf{v}_{n+1} = \mathbf{v}_n + \Delta t\,\mathbf{a}_n, \qquad
 	\mathbf{r}_{n+1} = \mathbf{r}_n + \Delta t\,\mathbf{v}_{n+1}
 \]
 
-\textbf{Velocity-Verlet} (ordre 2, symplectique):
+\subsubsection{Velocity-Verlet} (ordre 2, symplectique):
 \begin{align*}
 	\mathbf{r}_{n+1} &= \mathbf{r}_n + \Delta t\,\mathbf{v}_n
 	                    + \tfrac{\Delta t^2}{2}\mathbf{a}_n, \\
@@ -148,7 +148,7 @@ et $\mathbf{a}_n = (\ddot{r}_n, \ddot{\theta}_n)$ à $t_n$:
 	                    + \tfrac{\Delta t}{2}(\mathbf{a}_n+\mathbf{a}_{n+1})
 \end{align*}
 
-\textbf{Runge-Kutta 4} (ordre 4, non-symplectique): évaluation de quatre
+\subsubsection{Runge-Kutta 4} (ordre 4, non-symplectique): évaluation de quatre
 pentes $k_1,\ldots,k_4$ à des sous-pas intermédiaires, combinées selon
 $\mathbf{q}_{n+1} = \mathbf{q}_n + \tfrac{\Delta t}{6}(k_1+2k_2+2k_3+k_4)$.
 
