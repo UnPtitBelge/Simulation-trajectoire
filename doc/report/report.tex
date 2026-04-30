@@ -428,35 +428,37 @@ approfondir leur compréhension.
 
 Les termes techniques suivants sont utilisés dans la modélisation.
 
-\textbf{Contrainte.} En mécanique analytique, une contrainte est une relation
+\textbf{Contrainte:} En mécanique analytique, une contrainte est une relation
 géométrique ou cinématique qui restreint les configurations accessibles d'un
 système. Elle réduit le nombre de degrés de liberté effectifs et doit être
 prise en compte dans la formulation des équations du mouvement.
 
-\textbf{Contrainte holonome.} Une contrainte est dite holonome si elle
+\textbf{Contrainte holonome:} Une contrainte est dite holonome si elle
 s'exprime uniquement en termes de coordonnées (et éventuellement du temps),
 sans faire intervenir les vitesses de façon non intégrable. Formellement :
 $f(q_1, \ldots, q_n, t) = 0$. Dans notre cas, $z = z(r)$ est holonome : la
 bille est contrainte à rester sur la surface, ce qui réduit les trois
 coordonnées cartésiennes $(x, y, z)$ à deux degrés de liberté $(r, \theta)$.
 
-\textbf{Surface de révolution.} Surface engendrée par la rotation d'une
+\textbf{Surface de révolution:} Surface engendrée par la rotation d'une
 courbe méridienne $z = z(r)$ autour de l'axe vertical. La symétrie axiale
 implique que la dynamique ne dépend que de $r$ et $\theta$, et que le
 moment cinétique $L = mr^2\dot{\theta}$ est conservé en l'absence de frottement.
 
-\textbf{Coordonnées généralisées.} Variables indépendantes paramétrisant
+\textbf{Coordonnées généralisées:} Variables indépendantes paramétrisant
 l'espace des configurations d'un système soumis à des contraintes. Pour
 notre surface de révolution, $(r, \theta)$ sont les coordonnées généralisées ;
 l'état complet du système est $\mathbf{q} = (r, \theta, \dot{r}, \dot{\theta})
 \in \mathbb{R}^4$.
 
-\textbf{Courbure méridienne.} Courbure de la courbe $z(r)$ dans le plan
+\textbf{Courbure méridienne:} Courbure de la courbe $z(r)$ dans le plan
 méridien (plan contenant l'axe de révolution). Elle quantifie la variation
 de pente le long de la surface et vaut :
-\[
-    \kappa = \frac{z''}{(1+z'^2)^{3/2}},
-\]
+
+\begin{equation}
+    \kappa = \frac{z''}{(1+z'^2)^{3/2}}
+\end{equation}
+
 où $z' = dz/dr$ et $z'' = d^2z/dr^2$. Pour le cône ($z''=0$), $\kappa=0$ :
 la surface est développable et n'exerce aucune force normale supplémentaire
 due à la trajectoire. Pour la membrane élastique ($z'' < 0$), $\kappa \neq 0$ : la
@@ -480,9 +482,11 @@ non-symplectiques comme Euler explicite ou RK4.
 Les deux modèles partagent la même structure. La surface étant de révolution,
 la contrainte holonome $z=z(r)$ réduit la dynamique à $(r,\theta)$.
 L'énergie cinétique sur la surface vaut :
-\[
+
+\begin{equation}
     T = \frac{1}{2}m\!\left[\dot{r}^2(1+z'^2)+r^2\dot{\theta}^2\right].
-\]
+\end{equation}
+
 Les équations d'Euler-Lagrange avec forces de dissipation $Q_r$, $Q_\theta$
 donnent le système :
 \begin{align}
@@ -491,19 +495,29 @@ donnent le système :
 \end{align}
 Sans frottement, $L=mr^2\dot{\theta}$ est une constante du mouvement.
 La conservation de l'énergie mécanique
-\[
+\begin{equation}
     E = \frac{1}{2}m\!\left[\dot{r}^2(1+z'^2)+r^2\dot{\theta}^2\right]+mgz(r)
-\]
+\end{equation}
+
 sert de critère de validation numérique (dérive $|\Delta E/E_0|$).
 
 \subsubsection{Cadre physique du cône}
 \label{app:cone-phys}
 
 Pente constante calée sur les dimensions du dispositif :
-\[
-    \frac{dz}{dr} = \tan\alpha = \frac{h}{R-r_\text{sph}},
-    \qquad z(r) = \tan\alpha\,(r-r_\text{sph}),\qquad z''=0.
-\]
+
+\begin{equation}
+    \frac{dz}{dr} = \tan\alpha = \frac{h}{R-r_\text{sph}}
+\end{equation}
+
+\begin{equation}
+    \qquad z(r) = \tan\alpha\
+\end{equation}
+
+\begin{equation}
+    r-r_\text{sph},\qquad z''=0
+\end{equation}
+
 L'accélération radiale effective est $-gz'=-g\tan\alpha$ (constante).
 La condition d'orbite stable ($\ddot{r}=0$, $\dot{r}=0$) donne
 $\dot{\theta}_\text{orb} = \sqrt{g\tan\alpha/r}$.
@@ -513,11 +527,20 @@ $\dot{\theta}_\text{orb} = \sqrt{g\tan\alpha/r}$.
 
 Solution de $T\Delta z = 0$ en coordonnées polaires, calée sur
 $z(r_\text{sph})=0$ et $z(R)=h$ :
-\[
+
+\begin{equation}
     z(r) = A\ln r + B,\quad
+\end{equation}
+
+\begin{equation}
     z'(r) = \frac{A}{r},\quad
+\end{equation}
+
+\begin{equation}
     z''(r) = -\frac{A}{r^2},
-\]
+\end{equation}
+
+
 avec $A = h/\ln(R/r_\text{sph}) > 0$, $B = -A\ln r_\text{sph}$.
 La tension de membrane est déterminée par l'équilibre vertical en $r_\text{sph}$ :
 $T \cdot 2\pi r_\text{sph}\,|z'(r_\text{sph})| = Mg$, soit $T = Mg/(2\pi A)$.
@@ -527,17 +550,25 @@ capture la courbure méridienne $\kappa = z''/(1+z'^2)^{3/2} \neq 0$.
 
 \subsubsection{Forces généralisées de frottement de Coulomb}
 
-La vitesse sur la surface et la réaction normale sont :
-\[
-    v = \sqrt{\dot{r}^2(1+z'^2)+r^2\dot{\theta}^2},\qquad
-    N = m\sqrt{(g\cos\alpha_\text{loc})^2+(v^2\kappa)^2},
-\]
+La vitesse sur la surface et la réaction normale sont:
+\begin{equation}
+    v = \sqrt{\dot{r}^2(1+z'^2)+r^2\dot{\theta}^2}
+\end{equation}
+
+\begin{equation}
+    \qquad N = m\sqrt{(g\cos\alpha_\text{loc})^2+(v^2\kappa)^2}
+\end{equation}
+
 où $\kappa = z''/(1+z'^2)^{3/2}$ est la courbure méridienne.
-Les forces généralisées de Coulomb valent :
-\[
-    Q_r = -\mu N\frac{\dot{r}\sqrt{1+z'^2}}{v},\qquad
-    Q_\theta = -\mu N\frac{r\dot{\theta}}{v}.
-\]
+Les forces généralisées de Coulomb valent:
+
+\begin{equation}
+        Q_r = -\mu N\frac{\dot{r}\sqrt{1+z'^2}}{v},\qquad 
+\end{equation}
+
+\begin{equation}
+    Q_\theta = -\mu N\frac{r\dot{\theta}}{v}
+\end{equation}
 
 
 

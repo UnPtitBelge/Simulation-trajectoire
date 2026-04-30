@@ -1,5 +1,5 @@
 % $ biblatex auxiliary file $
-% $ biblatex bbl format version 3.3 $
+% $ biblatex bbl format version 3.2 $
 % Do not modify the above lines!
 %
 % This is an auxiliary file used by the 'biblatex' package.
@@ -18,8 +18,8 @@
 
 
 \refsection{0}
-  \datalist[entry]{none/global//global/global/global}
-    \entry{ULB:INFOF422_Practical03}{online}{}{}
+  \datalist[entry]{none/global//global/global}
+    \entry{ULB:INFOF422_Practical03}{online}{}
       \name{author}{1}{}{%
         {{hash=5f1fb263cf55bc13c51be612f675c95d}{%
            family={{Université Libre de Bruxelles}},
@@ -33,12 +33,10 @@
       }
       \strng{namehash}{5f1fb263cf55bc13c51be612f675c95d}
       \strng{fullhash}{5f1fb263cf55bc13c51be612f675c95d}
-      \strng{fullhashraw}{5f1fb263cf55bc13c51be612f675c95d}
       \strng{bibnamehash}{5f1fb263cf55bc13c51be612f675c95d}
       \strng{authorbibnamehash}{5f1fb263cf55bc13c51be612f675c95d}
       \strng{authornamehash}{5f1fb263cf55bc13c51be612f675c95d}
       \strng{authorfullhash}{5f1fb263cf55bc13c51be612f675c95d}
-      \strng{authorfullhashraw}{5f1fb263cf55bc13c51be612f675c95d}
       \field{sortinit}{1}
       \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
       \field{labelnamesource}{author}
@@ -53,7 +51,7 @@
       \verb https://ulb-mlg.github.io/INFO-F422/practicals/_build/html/03.html
       \endverb
     \endentry
-    \entry{GeeksforGeeks:CrossValidation}{online}{}{}
+    \entry{GeeksforGeeks:CrossValidation}{online}{}
       \name{author}{1}{}{%
         {{hash=f1e069787ece74531d112559945c6871}{%
            family={{GeeksforGeeks}},
@@ -61,12 +59,10 @@
       }
       \strng{namehash}{f1e069787ece74531d112559945c6871}
       \strng{fullhash}{f1e069787ece74531d112559945c6871}
-      \strng{fullhashraw}{f1e069787ece74531d112559945c6871}
       \strng{bibnamehash}{f1e069787ece74531d112559945c6871}
       \strng{authorbibnamehash}{f1e069787ece74531d112559945c6871}
       \strng{authornamehash}{f1e069787ece74531d112559945c6871}
       \strng{authorfullhash}{f1e069787ece74531d112559945c6871}
-      \strng{authorfullhashraw}{f1e069787ece74531d112559945c6871}
       \field{sortinit}{3}
       \field{sortinithash}{ad6fe7482ffbd7b9f99c9e8b5dccd3d7}
       \field{labelnamesource}{author}
@@ -81,7 +77,7 @@
       \verb https://www.geeksforgeeks.org/machine-learning/cross-validation-machine-learning/
       \endverb
     \endentry
-    \entry{Marteen:2022}{book}{}{}
+    \entry{Marteen:2022}{book}{}
       \name{author}{4}{}{%
         {{hash=1a22805bcac88447a661dac3d1b8c63e}{%
            family={Jansen},
@@ -114,12 +110,10 @@
       }
       \strng{namehash}{129d0b8d44c2fef6dabfb93f740cc9ee}
       \strng{fullhash}{cd0e70b594425c1077bc27823025c3e2}
-      \strng{fullhashraw}{cd0e70b594425c1077bc27823025c3e2}
       \strng{bibnamehash}{129d0b8d44c2fef6dabfb93f740cc9ee}
       \strng{authorbibnamehash}{129d0b8d44c2fef6dabfb93f740cc9ee}
       \strng{authornamehash}{129d0b8d44c2fef6dabfb93f740cc9ee}
       \strng{authorfullhash}{cd0e70b594425c1077bc27823025c3e2}
-      \strng{authorfullhashraw}{cd0e70b594425c1077bc27823025c3e2}
       \field{sortinit}{5}
       \field{sortinithash}{20e9b4b0b173788c5dace24730f47d8c}
       \field{labelnamesource}{author}
@@ -129,38 +123,7 @@
       \field{title}{SYLLABUS Cours de Calcul Formel et Numérique}
       \field{year}{2022}
     \endentry
-    \entry{Strikwerda:2004}{book}{}{}
-      \name{author}{1}{}{%
-        {{hash=ee799a5126b715d45c714aeda002bfbe}{%
-           family={Strikwerda},
-           familyi={S\bibinitperiod},
-           given={John\bibnamedelima C.},
-           giveni={J\bibinitperiod\bibinitdelim C\bibinitperiod}}}%
-      }
-      \list{location}{1}{%
-        {Philadelphia, PA}%
-      }
-      \list{publisher}{1}{%
-        {SIAM}%
-      }
-      \strng{namehash}{ee799a5126b715d45c714aeda002bfbe}
-      \strng{fullhash}{ee799a5126b715d45c714aeda002bfbe}
-      \strng{fullhashraw}{ee799a5126b715d45c714aeda002bfbe}
-      \strng{bibnamehash}{ee799a5126b715d45c714aeda002bfbe}
-      \strng{authorbibnamehash}{ee799a5126b715d45c714aeda002bfbe}
-      \strng{authornamehash}{ee799a5126b715d45c714aeda002bfbe}
-      \strng{authorfullhash}{ee799a5126b715d45c714aeda002bfbe}
-      \strng{authorfullhashraw}{ee799a5126b715d45c714aeda002bfbe}
-      \field{sortinit}{1}
-      \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
-      \field{labelnamesource}{author}
-      \field{labeltitlesource}{title}
-      \field{edition}{2nd}
-      \field{isbn}{0898715679}
-      \field{title}{Finite Difference Schemes and Partial Differential Equations}
-      \field{year}{2004}
-    \endentry
-    \entry{Gianluca:2024}{book}{}{}
+    \entry{Gianluca:2024}{book}{}
       \name{author}{1}{}{%
         {{hash=3bb195d6ea6db0c1df418e2f92f319fc}{%
            family={Bontempi},
@@ -176,12 +139,10 @@
       }
       \strng{namehash}{3bb195d6ea6db0c1df418e2f92f319fc}
       \strng{fullhash}{3bb195d6ea6db0c1df418e2f92f319fc}
-      \strng{fullhashraw}{3bb195d6ea6db0c1df418e2f92f319fc}
       \strng{bibnamehash}{3bb195d6ea6db0c1df418e2f92f319fc}
       \strng{authorbibnamehash}{3bb195d6ea6db0c1df418e2f92f319fc}
       \strng{authornamehash}{3bb195d6ea6db0c1df418e2f92f319fc}
       \strng{authorfullhash}{3bb195d6ea6db0c1df418e2f92f319fc}
-      \strng{authorfullhashraw}{3bb195d6ea6db0c1df418e2f92f319fc}
       \field{sortinit}{1}
       \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
       \field{labelnamesource}{author}
@@ -190,6 +151,93 @@
       \field{note}{INFO-F-305}
       \field{title}{SYLLABUS Cours de Modélisation et Simulation}
       \field{year}{2024}
+      \true{nocite}
+    \endentry
+    \entry{Strikwerda:2004}{book}{}
+      \name{author}{1}{}{%
+        {{hash=ee799a5126b715d45c714aeda002bfbe}{%
+           family={Strikwerda},
+           familyi={S\bibinitperiod},
+           given={John\bibnamedelima C.},
+           giveni={J\bibinitperiod\bibinitdelim C\bibinitperiod}}}%
+      }
+      \list{location}{1}{%
+        {Philadelphia, PA}%
+      }
+      \list{publisher}{1}{%
+        {SIAM}%
+      }
+      \strng{namehash}{ee799a5126b715d45c714aeda002bfbe}
+      \strng{fullhash}{ee799a5126b715d45c714aeda002bfbe}
+      \strng{bibnamehash}{ee799a5126b715d45c714aeda002bfbe}
+      \strng{authorbibnamehash}{ee799a5126b715d45c714aeda002bfbe}
+      \strng{authornamehash}{ee799a5126b715d45c714aeda002bfbe}
+      \strng{authorfullhash}{ee799a5126b715d45c714aeda002bfbe}
+      \field{sortinit}{1}
+      \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{edition}{2nd}
+      \field{isbn}{0898715679}
+      \field{title}{Finite Difference Schemes and Partial Differential Equations}
+      \field{year}{2004}
+      \true{nocite}
+    \endentry
+    \entry{Wikipedia:LagrangianMechanics}{online}{}
+      \name{author}{1}{}{%
+        {{hash=b6aea1a416c89509a7df1cbb69249cb6}{%
+           family={{Wikipedia contributors}},
+           familyi={W\bibinitperiod}}}%
+      }
+      \strng{namehash}{b6aea1a416c89509a7df1cbb69249cb6}
+      \strng{fullhash}{b6aea1a416c89509a7df1cbb69249cb6}
+      \strng{bibnamehash}{b6aea1a416c89509a7df1cbb69249cb6}
+      \strng{authorbibnamehash}{b6aea1a416c89509a7df1cbb69249cb6}
+      \strng{authornamehash}{b6aea1a416c89509a7df1cbb69249cb6}
+      \strng{authorfullhash}{b6aea1a416c89509a7df1cbb69249cb6}
+      \field{extraname}{1}
+      \field{sortinit}{1}
+      \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{month}{3}
+      \field{title}{Lagrangian mechanics}
+      \field{year}{2026}
+      \true{nocite}
+      \verb{urlraw}
+      \verb https://en.wikipedia.org/wiki/Lagrangian_mechanics
+      \endverb
+      \verb{url}
+      \verb https://en.wikipedia.org/wiki/Lagrangian_mechanics
+      \endverb
+    \endentry
+    \entry{Wikipedia:Euler-LagrangeEquations}{online}{}
+      \name{author}{1}{}{%
+        {{hash=b6aea1a416c89509a7df1cbb69249cb6}{%
+           family={{Wikipedia contributors}},
+           familyi={W\bibinitperiod}}}%
+      }
+      \strng{namehash}{b6aea1a416c89509a7df1cbb69249cb6}
+      \strng{fullhash}{b6aea1a416c89509a7df1cbb69249cb6}
+      \strng{bibnamehash}{b6aea1a416c89509a7df1cbb69249cb6}
+      \strng{authorbibnamehash}{b6aea1a416c89509a7df1cbb69249cb6}
+      \strng{authornamehash}{b6aea1a416c89509a7df1cbb69249cb6}
+      \strng{authorfullhash}{b6aea1a416c89509a7df1cbb69249cb6}
+      \field{extraname}{2}
+      \field{sortinit}{1}
+      \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{month}{4}
+      \field{title}{Euler-Lagrange equations}
+      \field{year}{2026}
+      \true{nocite}
+      \verb{urlraw}
+      \verb https://en.wikipedia.org/wiki/Euler%E2%80%93Lagrange_equation
+      \endverb
+      \verb{url}
+      \verb https://en.wikipedia.org/wiki/Euler%E2%80%93Lagrange_equation
+      \endverb
     \endentry
   \enddatalist
 \endrefsection
