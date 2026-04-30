@@ -259,6 +259,17 @@ reflétant une sensibilité aux données. Malgré cela,
 il reste performant même dans le pire cas et surpasse systématiquement le modèle linéaire, ce qui confirme la robustesse de ses performances.
 Ces résultats sont illustrés dans la figure~\ref{fig:trajectoires_annexe} et la figure~\ref{fig:cv_results}
 
+\textbf{Importance de la taille du jeu de données}
+
+La figure~\ref{fig:trajectoires_annexe} met en évidence l’influence de la taille du jeu de données sur la précision des modèles. 
+Pour un nombre très limité d’expériences, des écarts importants entre les trajectoires prédites et la trajectoire réelle sont observés, 
+traduisant un sous-apprentissage.
+L’augmentation du nombre d’expériences conduit à une amélioration significative de la qualité des prédictions. 
+Le MLP converge progressivement vers la trajectoire réelle et capture plus fidèlement les dynamiques non linéaires, 
+tandis que le modèle linéaire présente une amélioration plus limitée, contrainte par sa capacité de représentation.
+Ces résultats indiquent que l’accroissement du volume de données permet de réduire l’erreur de prédiction et d’améliorer la stabilité des modèles, 
+avec un effet particulièrement prononcé pour le MLP.
+
 \subsection{Erreurs de modélisation}
 
 La catégorie des erreurs de modélisation se décline en deux types d'erreurs.
