@@ -289,19 +289,23 @@ l'air, supposée sans impact sur la trajectoire de la balle.
 
 \section{Calcul numérique} \label{sec:calcnum}
 
+Les sous-sections suivantes sont dédiées à expliquer les différents types
+d'erreurs pris en compte dans nos analyses. Les formalismes mathématiques
+sont détaillés en \hyperref[annex:numerrors]{annexe}.
+
 \subsection{Erreurs numériques}
 
 Dans le cadre d'une approche scientifique, il est important de prendre en
 compte tous les paramètres pouvant entrer en jeu et potentiellement perturber
 et modifier l'expérience.
-Les erreurs de modélisation ont déjà été abordées, toutefois, elles ne sont pas les seules à intervenir.
- En particulier, il faut considérer
+Les erreurs de modélisation ont déjà été abordées, toutefois, elles ne 
+sont pas les seules à intervenir. En particulier, il faut considérer
 les erreurs numériques qui apparaissent lorsque l'ordinateur effectue des
 calculs \cite[16]{Marteen:2022}.
 
 \subsubsection{Erreurs de troncature}
 
-Les modèles itératifs à pas discret décrits ici sont infinis. Il est donc impossible
+Les modèles itératifs à pas discret utilisés sont infinis. Il est donc impossible
 d'obtenir une solution exacte en un temps fini même en faisant abstraction de
 tout autre type d'erreur pouvant entrer en jeu. Afin d'obtenir un résultat,
 il faut établir une variable $n\_steps$ qui limite le nombre d'itération de
@@ -313,7 +317,7 @@ résultat.
 Les erreurs d'arrondi sont des erreurs causées par la représentation finie des
 nombres en machine dans les registres du processeur (généralement 32 ou 64
 bits). L'ordinateur ne peut pas représenter tous les nombres réels avec une
-précision infinie, ce qui crée alors une approximation. Il est évident que ce type
+précision infinie, ce qui crée alors une approximation. Nous concluons que ce type
 d’erreur apparaît également dans les simulations.
 
 \subsubsection{Erreurs de propagation et génération}
@@ -324,66 +328,29 @@ de génération se produisent à chaque itération, étape des calculs et les er
 de propagation regroupent toutes les erreurs de génération jusqu'à l'étape
 courante.
 
-\subsection{Analyse numérique du problème}
-
-Les erreurs de propagation et de génération sont des erreurs qui apparaissent lorsque les erreurs numériques se propagent à travers les calculs. Les erreurs de génération se produisent à chaque itération, étape des calculs et les erreur de propagation regroupent toutes les erreurs de génération jusqu'à l'étape courante. Par exemple, si nous simplifions $\pi$ à 3.14, nous introduisons une erreur d'arrondi à une certaine génération qui va se propager à travers les calculs ultérieurs, affectant ainsi la précision globale des résultats.
 
 \subsection{Analyse numérique du problème}
+\label{sec:ananum}
 
-Nous étudions, dans les sous-sections suivantes, les notions de consistance, stabilité et de conditionnement afin d'analyser les propriétés de nos modèles. Par ces analyses, nous pouvons prédire certains comportements de nos modèles lors des simulations.
+Les notions de consistance, stabilité et de conditionnement sont utilisées pour analyser 
+les propriétés de nos modèles. Ce sont des propriétés souhaitées pour un algorithme numérique.
+Par ces analyses, nous pouvons prédire certains comportements de nos modèles lors des simulations. Les formalismes mathématiques sont en \hyperref[annex:ananum]{annexe}.
 
-Définissons d'abord la notion d'algorithme nu-mérique. Étant donné un problème bien posé $F(x, d) = 0$, nous définissons l’algorithme numérique pour la résolution du problème $F$ par la suite de problèmes approchés
-\begin{equation}
-    F_1\big(x^{(1)}, d^{(1)}\big), \; F_2\big(x^{(2)}, d^{(2)}\big), \; \ldots, \; F_n\big(x^{(n)}, d^{(n)}\big)
-\end{equation}
-dépendant d'un paramètre $n$, où $x^{(n)}$ est la solution du sous-problème $F_n$ \cite{Marteen:2022}.
+\subsubsection{Consistance}
+La consistance est la capacité d'un algorithme à produire des résultats qui convergent 
+vers la solution exacte du problème. Dans notre cas, la méthode de Euler 
+(explicite ou implicite) est consistante.
 
-\subsection{Consistance}
-La consistance est la capacité d'un algorithme à produire des résultats qui convergent vers la solution exacte du problème.
-Un algorithme $F_n(x^{(n)}, d^{(n)})$ est dit consistant si
-\begin{equation}
-    \lim_{n \to \infty} F_n(x, d^{(n)}) = F(x, d) = 0,
-\end{equation}
-c.-à-d., si la solution exacte $x$ du problème est une solution de
-$F_n(x^{(n)}, d^{(n)}) = 0$ pour $n \to \infty$.
-
-En d'autres termes, un algorithme est consistant si à partir d'une certaine étape
-le sous-problème approché $F_n$ a la solution $x$ parmi ses solutions \cite{Marteen:2022}.
-
-Dans notre cas, la méthode de Euler (explicite ou implicite) est consistante. % d'ordre 1. Parler des autres aussi quand on aura fait/trouver les étapes de calculs.
-
-\subsection{Stabilité}
-La stabilité est la propriété d'un algorithme qui garantit que les erreurs apportées durant les calculs ne s'amplifient pas de manière exponentielle au fil des itérations. En particulier, un algorithme numérique est dit stable (ou bien posé) si
-
-\begin{enumerate}
-\item il existe pour tout $n$ une solution unique $x^{(n)}$ ;
-\item pour tout $\epsilon > 0$, il existe $\eta > 0$ et $n_0$ tels que
-\begin{align*}
-\|\delta d^{(i)}\| &\le \eta \quad \forall i = 1,\ldots,m \\
-&\Rightarrow \|\bar{x}^{(n)} - x^{(n)}\| \le \epsilon
-\end{align*}
-\end{enumerate}
-
-En d'autres termes, un algorithme est stable si des petites perturbations des
-données du sous-problème $F_n$ entraînent de petites perturbations de sa solution
-$x^{(n)}$.
+\subsubsection{Stabilité}
+La stabilité est la propriété d'un algorithme qui garantit que les erreurs apportées durant les calculs ne s'amplifient pas de manière exponentielle au fil des itérations.
 
 
-\subsection{Convergence}
-Le théorème d'équivalence de Lax \cite{Marteen:2022} stipule logiquement que pour un
-problème bien posé, la consistance couplée à la stabilité assure la
-convergence globale du modèle discret vers la vérité continue.
+\subsubsection{Convergence}
+La notion de convergence d'un algorithme numérique permet d'étudier les itérations lorsque celles-ci tendent vers l'infini. En particulier, une méthode dite convergente va
+converger vers la solution tandis qu'une méthode divergente s'en éloigne.
 
-Toutefois, ce théorème ne s'extrapole pas aux réseaux de neurones (MLP, LR).
-Entraînés de manière isolée pour lisser l'étape $n \to n+1$, la régression est
-aveugle aux variations sur temps long. Intégrée en boucle auto-régressive
-(\textit{step-by-step}), ses légères imprécisions déplacent l'état évalué hors
-du domaine vu à l'apprentissage (un \textit{distribution shift}). Ces erreurs
-alimentent exponentiellement les futures imprécisions, déclenchant sur la durée
-une déviation divergente similaire à de l'instabilité numérique classique.
-
-\subsection{Conditionnement}
-Le conditionnement décrit la sensibilité intrinsèque du problème : une petite perturbation des données d'entrée peut produire une petite ou une grande variation de la solution exacte lors de la résolution numérique.
+\subsubsection{Conditionnement}
+Le conditionnement décrit la sensibilité intrinsèque du problème: une petite perturbation des données d'entrée peut produire une petite ou une grande variation de la solution exacte lors de la résolution numérique.
 Un problème bien conditionné est peu sensible aux perturbations, tandis qu'un problème mal conditionné les amplifie.
 
 \subsection{Comparaison des méthodes d’approximation numérique}
@@ -445,6 +412,9 @@ objectivité stricte ni à une généralisation indépendante du contexte d’é
 
 \appendix
 \section{Annexes}
+Nous détaillons ici les éléments qui ne sont pas indispensables à la compréhension 
+globale de notre travail. Ces formalismes sont dédiés aux lecteurs souhaitant
+approfondir leur compréhension.
 
 \subsection{Équations physiques}
 \label{app:phys}
@@ -579,11 +549,10 @@ RMSE:
 \end{equation}
 
 \subsection{Erreurs numériques: formellement}
+\label{annex:numerrors}
 
-Cette partie de l'annexe est dédiée à définir formellement les types d'erreurs
-à l'aide notamment d'équations mathématiques afin d'approfondir les explications
-des sections dédiées aux erreurs numériques
-(voir~\hyperref[sec:calcnum]{Calcul numérique}).
+Ici sont définis formellement les types d'erreurs à l'aide d'équations mathématiques afin d'approfondir les explications des sections dédiées aux erreurs numériques
+(voir \hyperref[sec:calcnum]{Calcul numérique}).
 
 \subsubsection{Erreurs d'arrondi}
 
@@ -625,6 +594,113 @@ il en résulte
     \hat{x} = fl(x) = x(1 + \rho_x),
 \end{equation}
 où $\varepsilon_x = |\rho_x| \le u$ est dite l'erreur d'arrondi \cite{Marteen:2022}.
+
+
+\subsection{Analyse numérique du problème: formellement}
+\label{annex:ananum}
+
+Les notions de consistance, consistance, convergence et de conditionnement décrites dans
+la section \hyperref[sec:ananum]{Analyse numérique du problème} sont détaillées dans les sous-sections suivantes.
+
+\subsubsection{La notion d'algorithme}
+Nous définissons la notion d'algorithme numérique. Étant donné un problème bien posé $F(x, d) = 0$, nous définissons l’algorithme numérique pour la résolution du problème $F$ par la suite de problèmes approchés
+\[
+    F_1\big(x^{(1)}, d^{(1)}\big), \; F_2\big(x^{(2)}, d^{(2)}\big), \; \ldots, \; F_n\big(x^{(n)}, d^{(n)}\big)
+\]
+dépendant d'un paramètre $n$, où $x^{(n)}$ est la solution du sous-problème $F_n$ \cite{Marteen:2022}.
+
+
+\subsubsection{Consistance}
+Un algorithme $F_n(x^{(n)}, d^{(n)})$ est dit consistant si
+\begin{equation}
+    \lim_{n \to \infty} F_n(x, d^{(n)}) = F(x, d) = 0,
+\end{equation}
+c.-à-d., si la solution exacte $x$ du problème est une solution de
+$F_n(x^{(n)}, d^{(n)}) = 0$ pour $n \to \infty$.
+
+En d'autres termes, un algorithme est consistant si à partir d'une certaine étape
+le sous-problème approché $F_n$ a la solution $x$ parmi ses solutions \cite{Marteen:2022}.
+
+
+\subsubsection{Stabilité}
+En particulier, un algorithme numérique est dit stable (ou bien posé) si
+
+\begin{enumerate}
+\item il existe pour tout $n$ une solution unique $x^{(n)}$ ;
+\item pour tout $\epsilon > 0$, il existe $\eta > 0$ et $n_0$ tels que
+\begin{align*}
+\|\delta d^{(i)}\| &\le \eta \quad \forall i = 1,\ldots,m \\
+&\Rightarrow \|\bar{x}^{(n)} - x^{(n)}\| \le \epsilon
+\end{align*}
+\end{enumerate}
+
+En d'autres termes, un algorithme est stable si des petites perturbations des
+données du sous-problème $F_n$ entraînent de petites perturbations de sa solution
+$x^{(n)}$.
+
+
+\subsubsection{Convergence}
+Le théorème d'équivalence de Lax \cite{Marteen:2022} stipule logiquement que pour un
+problème bien posé, la consistance couplée à la stabilité assure la
+convergence globale du modèle discret vers la vérité continue.
+
+Toutefois, ce théorème ne s'extrapole pas aux réseaux de neurones (MLP, LR).
+Entraînés de manière isolée pour lisser l'étape $n \to n+1$, la régression est
+aveugle aux variations sur temps long. Intégrée en boucle auto-régressive
+(\textit{step-by-step}), ses légères imprécisions déplacent l'état évalué hors
+du domaine vu à l'apprentissage (un \textit{distribution shift}). Ces erreurs
+alimentent exponentiellement les futures imprécisions, déclenchant sur la durée
+une déviation divergente similaire à de l'instabilité numérique classique.
+
+
+\subsubsection{Conditionnement}
+Le conditionnement d'un problème de la forme $x = F(d)$ mesure la sensibilité de la
+solution $x$ du problème aux changements des données $d$. Nous distinguons deux types
+de conditionnement:
+
+\begin{itemize}
+    \item \textbf{le conditionnement relatif:} utilisé de manière générale
+    \item \textbf{le conditionnement absolu:} utilisé lorsque les données $d = 0$ ou quand la solution $x = 0$
+\end{itemize}
+
+Nous ne détaillons ici que le conditionnement relatif.
+
+En particulier (\cite{Marteen:2022}), soient $\delta d$ une perturbation admissible des données et $\delta x$ la
+modification induite sur la solution du problème $x = F(d)$. On appelle
+conditionnement relatif de ce problème la quantité
+
+\begin{equation}
+    \kappa(d) = \lim_{|D| \to 0} \sup_{\delta d \in D}
+    \frac{\|\delta x\| / \|x\|}{\|\delta d\| / \|d\|}
+\end{equation}
+
+où $\sup$ dénote la borne supérieure et $D$ est un voisinage de l'origine.
+
+Si $F(\cdot)$ est différentiable en $d$ et si nous notons sa dérivée par
+\[
+F'(d) = \lim_{\delta d \to 0} \frac{\delta x}{\delta d},
+\]
+on obtient
+
+\begin{equation}
+    \kappa(d) = \lim_{\delta d \to 0}
+    \frac{\|\delta x\|}{\|\delta d\|}
+    \frac{\|d\|}{\|x\|}
+    = \|F'(d)\| \frac{\|d\|}{\|x\|}
+    = \|F'(d)\| \frac{\|d\|}{\|F(d)\|}
+\end{equation}
+
+où le symbole $\|\cdot\|$ désigne la norme matricielle.
+
+En outre, il est important de remarquer que:
+\begin{itemize}
+    \item un problème mal posé est forcément aussi un problème mal conditionné, mais un problème mal conditionné n'est pas forcément mal posé
+    \item le fait d'être bien conditionné est une propriété du problème qui est indépendante de la méthode choisie pour le résoudre
+\end{itemize}
+
+
+% figures
+
 
 \clearpage
 \onecolumn
