@@ -79,7 +79,7 @@ un dispositif expérimental, un système simple mais suffisamment riche
 pour comparer différentes approches.
 
 Deux familles de méthodes sont considérées. Les modèles physiques
-explicites (conique et de Laplace), résolus par intégration numérique.
+explicites (conique et élastique), résolus par intégration numérique.
 La seconde famille, quant à elle, repose sur l'apprentissage automatique (régression
 linéaire, MLP) approximent la dynamique à partir de données, sans
 hypothèses a priori, mais avec une interprétabilité réduite.
@@ -101,7 +101,7 @@ Un visuel est fourni en figure~\ref{fig:cadre_experimental}.
 \section{Modèles physiques}
 
 Les modèles physiques reposent sur la mécanique de Lagrange appliquée à une
-surface de révolution (voir \hyperref[app:phys]{Annexe~A} pour la dérivation
+surface de révolution (voir \hyperref[app:phys]{Annexe} pour la dérivation
 complète). La dynamique est réduite à deux coordonnées généralisées
 $(r,\theta)$ ; l'état du système est
 $\mathbf{q}=(r,\theta,\dot{r},\dot{\theta})\in\mathbb{R}^4$.
@@ -110,9 +110,11 @@ $\mathbf{q}=(r,\theta,\dot{r},\dot{\theta})\in\mathbb{R}^4$.
 constante $\alpha = \arctan\bigl(h/(R-r_\text{sph})\bigr)$,
 calée sur les dimensions du dispositif. La courbure méridienne est nulle ($z''=0$).
 
-\textbf{Modèle de Laplace.} La pente est variable : $z(r) = -K/(Mgr)+C$
-avec $K = Mgh\,/\,(1/r_\text{sph}-1/R)$. Le terme $\dot{r}^2 z'z''$
-capture la courbure méridienne, absent du modèle conique.
+\textbf{Modèle membrane élastique.} La surface est solution de $T\Delta z=0$,
+donnant $z(r)=A\ln r+B$ avec $A=h/\ln(R/r_\text{sph})>0$.
+La pente $z'=A/r$ et la courbure $z''=-A/r^2\neq 0$ enrichissent
+la réaction normale par rapport au modèle conique
+(voir \hyperref[app:membrane-phys]{Annexe}).
 
 \subsection{Intégration numérique}
 
@@ -148,9 +150,11 @@ et $\mathbf{a}_n = (\ddot{r}_n, \ddot{\theta}_n)$ à $t_n$ :
 pentes $k_1,\ldots,k_4$ à des sous-pas intermédiaires, combinées selon
 $\mathbf{q}_{n+1} = \mathbf{q}_n + \tfrac{\Delta t}{6}(k_1+2k_2+2k_3+k_4)$.
 
-Sur le plan numérique, l'intégration repose sur des systèmes discrets à pas de temps fini, ce qui introduit des erreurs de troncature et d'arrondi.
-Les singularités possibles (en particulier au centre) sont évitées par une régularisation ou un rayon minimal afin de garantir la stabilité des simulations.
-Le tableau~\ref{tab:integrateurs} synthétise les propriétés clés.
+Sur le plan numérique, l'intégration repose sur des systèmes discrets à
+pas de temps fini, ce qui introduit des erreurs de troncature et d'arrondi.
+La singularité en $r=0$ est évitée par une condition d'arrêt physique :
+la simulation est stoppée dès que $r \leq r_{\min}$ (collision avec la
+sphère centrale) ou $r \geq R$ (sortie du bord).
 
 
 \section{Modèles d'apprentissage automatique}
@@ -486,7 +490,7 @@ de pente le long de la surface et vaut :
 \]
 où $z' = dz/dr$ et $z'' = d^2z/dr^2$. Pour le cône ($z''=0$), $\kappa=0$ :
 la surface est développable et n'exerce aucune force normale supplémentaire
-due à la trajectoire. Pour Laplace ($z'' < 0$), $\kappa \neq 0$ : la
+due à la trajectoire. Pour la membrane élastique ($z'' < 0$), $\kappa \neq 0$ : la
 courbure modifie la réaction normale et donc le frottement.
 
 \textbf{Force généralisée.} Analogue d'une force dans l'espace des
@@ -528,25 +532,29 @@ sert de critère de validation numérique (dérive $|\Delta E/E_0|$).
 
 Pente constante calée sur les dimensions du dispositif :
 \[
-    \frac{dz}{dr} = \tan\alpha = \frac{h}{R-r_\text{sph}},\qquad
-    z(r) = \tan\alpha\,(r-r_\text{sph}),\qquad z''=0.
+    \frac{dz}{dr} = \tan\alpha = \frac{h}{R-r_\text{sph}},
+    \qquad z(r) = \tan\alpha\,(r-r_\text{sph}),\qquad z''=0.
 \]
 L'accélération radiale effective est $-gz'=-g\tan\alpha$ (constante).
 La condition d'orbite stable ($\ddot{r}=0$, $\dot{r}=0$) donne
 $\dot{\theta}_\text{orb} = \sqrt{g\tan\alpha/r}$.
 
-\subsubsection{Cadre physique de Laplace}
-\label{app:laplace-phys}
+\subsubsection{Cadre physique de la membrane élastique}
+\label{app:membrane-phys}
 
-Pente variable calée sur $z(r_\text{sph})=0$ et $z(R)=h$ :
+Solution de $T\Delta z = 0$ en coordonnées polaires, calée sur
+$z(r_\text{sph})=0$ et $z(R)=h$ :
 \[
-    z(r) = -\frac{K}{Mgr} + C,\quad
-    z' = \frac{K}{Mgr^2},\quad
-    z'' = -\frac{2K}{Mgr^3},
+    z(r) = A\ln r + B,\quad
+    z'(r) = \frac{A}{r},\quad
+    z''(r) = -\frac{A}{r^2},
 \]
-avec $K = Mgh\,/\,(1/r_\text{sph} - 1/R)$ et $C = K/(Mgr_\text{sph})$.
-La dépendance en $1/r^2$ implique une dynamique non linéaire ; le terme
-$\dot{r}^2 z'z''$ dans \eqref{eq:rddot} capture la courbure méridienne.
+avec $A = h/\ln(R/r_\text{sph}) > 0$, $B = -A\ln r_\text{sph}$.
+La tension de membrane est déterminée par l'équilibre vertical en $r_\text{sph}$ :
+$T \cdot 2\pi r_\text{sph}\,|z'(r_\text{sph})| = Mg$, soit $T = Mg/(2\pi A)$.
+La dépendance en $1/r$ (contre $1/r^2$ pour la membrane élastique) assure une pente finie
+et modérée sur tout le domaine ; le terme $\dot{r}^2 z'z''$ dans \eqref{eq:rddot}
+capture la courbure méridienne $\kappa = z''/(1+z'^2)^{3/2} \neq 0$.
 
 \subsubsection{Forces généralisées de frottement de Coulomb}
 
@@ -628,35 +636,17 @@ où $\varepsilon_x = |\rho_x| \le u$ est dite l'erreur d'arrondi \cite{Marteen:2
 \onecolumn
 
 \begin{table*}[htbp]
-	\centering
-	\small
-	\caption{Propriétés comparées des schémas d'intégration numérique.}
-    \label{app:intégration-numérique}
-	\label{tab:integrateurs}
-	\begin{tabular}{lcccc}
-		\toprule
-		Méthode          & Ordre & Symplectique & Stabilité ($\lambda=i\omega$)    & Coût (éval.\ $F$) \\
-		\midrule
-		Euler exp.       & 1     & Non          & Instable                         & 1                 \\
-		Euler semi-imp.  & 1     & Oui          & Marginale                        & 1                 \\
-		Velocity-Verlet  & 2     & Oui          & Conditionnelle                   & 2                 \\
-		RK4              & 4     & Non          & $|\lambda\Delta t|\lesssim 2.83$ & 4                 \\
-		\bottomrule
-	\end{tabular}
-\end{table*}
-
-\begin{table*}[htbp]
     \centering
     \small
     \caption{Erreur géométrique normalisée entre la trajectoire simulée et la trajectoire réelle pour chaque combinaison de modèle et de méthode numérique.}
     \label{tab:comparaison_methodes_modeles}
     \begin{tabular}{lccc}
         \toprule
-        Méthode         & Conique & Laplace & Laplace $R_C$ \\
+        Méthode         & Conique & Membrane \\
         \midrule
-        Euler exp.      & 0.7681  & 0.7682  & 0.7680        \\
-        Euler semi-imp. & 0.7681  & 0.7682  & 0.7680        \\
-        RK4             & 0.7682  & 0.7682  & 0.7680        \\
+        Euler exp.      & 0.7681  & 0.7682        \\
+        Euler semi-imp. & 0.7681  & 0.7682        \\
+        RK4             & 0.7682  & 0.7682        \\
         \bottomrule
     \end{tabular}
 \end{table*}

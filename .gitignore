@@ -253,3 +253,5 @@ doc/**/*.ind
 doc/**/*.nav
 doc/**/*.snm
 doc/**/*.vrb
+doc/**/*.bbl-SAVE-ERROR
+doc/**/*.bcf-SAVE-ERROR
