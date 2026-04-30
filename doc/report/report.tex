@@ -126,21 +126,21 @@ d'un intégrateur résulte d'un compromis entre ordre de précision, conservatio
 de l'énergie à long terme et coût par pas.
 
 Les schémas sont définis avec $\mathbf{v}_n = (\dot{r}_n, \dot{\theta}_n)$
-et $\mathbf{a}_n = (\ddot{r}_n, \ddot{\theta}_n)$ à $t_n$ :
+et $\mathbf{a}_n = (\ddot{r}_n, \ddot{\theta}_n)$ à $t_n$:
 
-\textbf{Euler explicite} (ordre 1, non-symplectique) :
+\textbf{Euler explicite} (ordre 1, non-symplectique):
 \[
 	\mathbf{v}_{n+1} = \mathbf{v}_n + \Delta t\,\mathbf{a}_n, \qquad
 	\mathbf{r}_{n+1} = \mathbf{r}_n + \Delta t\,\mathbf{v}_n
 \]
 
-\textbf{Euler semi-implicite} (ordre 1, symplectique) :
+\textbf{Euler semi-implicite} (ordre 1, symplectique):
 \[
 	\mathbf{v}_{n+1} = \mathbf{v}_n + \Delta t\,\mathbf{a}_n, \qquad
 	\mathbf{r}_{n+1} = \mathbf{r}_n + \Delta t\,\mathbf{v}_{n+1}
 \]
 
-\textbf{Velocity-Verlet} (ordre 2, symplectique) :
+\textbf{Velocity-Verlet} (ordre 2, symplectique):
 \begin{align*}
 	\mathbf{r}_{n+1} &= \mathbf{r}_n + \Delta t\,\mathbf{v}_n
 	                    + \tfrac{\Delta t^2}{2}\mathbf{a}_n, \\
@@ -148,13 +148,13 @@ et $\mathbf{a}_n = (\ddot{r}_n, \ddot{\theta}_n)$ à $t_n$ :
 	                    + \tfrac{\Delta t}{2}(\mathbf{a}_n+\mathbf{a}_{n+1})
 \end{align*}
 
-\textbf{Runge-Kutta 4} (ordre 4, non-symplectique) : évaluation de quatre
+\textbf{Runge-Kutta 4} (ordre 4, non-symplectique): évaluation de quatre
 pentes $k_1,\ldots,k_4$ à des sous-pas intermédiaires, combinées selon
 $\mathbf{q}_{n+1} = \mathbf{q}_n + \tfrac{\Delta t}{6}(k_1+2k_2+2k_3+k_4)$.
 
 Sur le plan numérique, l'intégration repose sur des systèmes discrets à
 pas de temps fini, ce qui introduit des erreurs de troncature et d'arrondi.
-La singularité en $r=0$ est évitée par une condition d'arrêt physique :
+La singularité en $r=0$ est évitée par une condition d'arrêt physique:
 la simulation est stoppée dès que $r \leq r_{\min}$ (collision avec la
 sphère centrale) ou $r \geq R$ (sortie du bord).
 
@@ -162,13 +162,6 @@ sphère centrale) ou $r \geq R$ (sortie du bord).
 Afin de rendre le problème réalisable analytiquement et numériquement, plusieurs
 hypothèses simplificatrices ont été introduites. Ces hypothèses permettent de
 réduire la complexité du système physique réel tout en conservant les mécanismes de la dynamique.
-
-Deux modèles sont considérés. Dans une première approche, la surface est
-assimilée à un cône de pente constante (angle $\alpha$), ce qui implique une
-courbure méridienne nulle ($z'' = 0$). Dans une seconde approche, elle est
-modélisée comme une membrane élastique en équilibre vérifiant $T \Delta z = 0$,
-conduisant à un profil logarithmique $z(r) = A \ln r + B$, avec une courbure non
-nulle.
 
 Par ailleurs, plusieurs effets physiques sont négligés dans les deux modèles:
 les frottements, les pertes d’énergie, ainsi que les éventuelles déformations
@@ -473,8 +466,8 @@ prise en compte dans la formulation des équations du mouvement.
 
 \textbf{Contrainte holonome:} Une contrainte est dite holonome si elle
 s'exprime uniquement en termes de coordonnées (et éventuellement du temps),
-sans faire intervenir les vitesses de façon non intégrable. Formellement :
-$f(q_1, \ldots, q_n, t) = 0$. Dans notre cas, $z = z(r)$ est holonome : la
+sans faire intervenir les vitesses de façon non intégrable. Formellement:
+$f(q_1, \ldots, q_n, t) = 0$. Dans notre cas, $z = z(r)$ est holonome: la
 bille est contrainte à rester sur la surface, ce qui réduit les trois
 coordonnées cartésiennes $(x, y, z)$ à deux degrés de liberté $(r, \theta)$.
 
@@ -491,15 +484,15 @@ l'état complet du système est $\mathbf{q} = (r, \theta, \dot{r}, \dot{\theta})
 
 \textbf{Courbure méridienne:} Courbure de la courbe $z(r)$ dans le plan
 méridien (plan contenant l'axe de révolution). Elle quantifie la variation
-de pente le long de la surface et vaut :
+de pente le long de la surface et vaut:
 
 \begin{equation}
     \kappa = \frac{z''}{(1+z'^2)^{3/2}}
 \end{equation}
 
-où $z' = dz/dr$ et $z'' = d^2z/dr^2$. Pour le cône ($z''=0$), $\kappa=0$ :
+où $z' = dz/dr$ et $z'' = d^2z/dr^2$. Pour le cône ($z''=0$), $\kappa=0$:
 la surface est développable et n'exerce aucune force normale supplémentaire
-due à la trajectoire. Pour la membrane élastique ($z'' < 0$), $\kappa \neq 0$ : la
+due à la trajectoire. Pour la membrane élastique ($z'' < 0$), $\kappa \neq 0$: la
 courbure modifie la réaction normale et donc le frottement.
 
 \textbf{Force généralisée.} Analogue d'une force dans l'espace des
@@ -519,14 +512,14 @@ non-symplectiques comme Euler explicite ou RK4.
 
 Les deux modèles partagent la même structure. La surface étant de révolution,
 la contrainte holonome $z=z(r)$ réduit la dynamique à $(r,\theta)$.
-L'énergie cinétique sur la surface vaut :
+L'énergie cinétique sur la surface vaut:
 
 \begin{equation}
     T = \frac{1}{2}m\!\left[\dot{r}^2(1+z'^2)+r^2\dot{\theta}^2\right].
 \end{equation}
 
 Les équations d'Euler-Lagrange avec forces de dissipation $Q_r$, $Q_\theta$
-donnent le système :
+donnent le système:
 \begin{align}
     \ddot{r}      &= \frac{r\dot{\theta}^2 - gz' - \dot{r}^2 z'z'' + Q_r/m}{1+z'^2}, \label{eq:rddot}\\
     \ddot{\theta} &= \frac{-2\dot{r}\dot{\theta}}{r} + \frac{Q_\theta}{mr^2}. \label{eq:thddot}
@@ -542,7 +535,7 @@ sert de critère de validation numérique (dérive $|\Delta E/E_0|$).
 \subsubsection{Cadre physique du cône}
 \label{app:cone-phys}
 
-Pente constante calée sur les dimensions du dispositif :
+Pente constante calée sur les dimensions du dispositif:
 
 \begin{equation}
     \frac{dz}{dr} = \tan\alpha = \frac{h}{R-r_\text{sph}}
@@ -564,7 +557,7 @@ $\dot{\theta}_\text{orb} = \sqrt{g\tan\alpha/r}$.
 \label{app:membrane-phys}
 
 Solution de $T\Delta z = 0$ en coordonnées polaires, calée sur
-$z(r_\text{sph})=0$ et $z(R)=h$ :
+$z(r_\text{sph})=0$ et $z(R)=h$:
 
 \begin{equation}
     z(r) = A\ln r + B,\quad
@@ -580,7 +573,7 @@ $z(r_\text{sph})=0$ et $z(R)=h$ :
 
 
 avec $A = h/\ln(R/r_\text{sph}) > 0$, $B = -A\ln r_\text{sph}$.
-La tension de membrane est déterminée par l'équilibre vertical en $r_\text{sph}$ :
+La tension de membrane est déterminée par l'équilibre vertical en $r_\text{sph}$:
 $T \cdot 2\pi r_\text{sph}\,|z'(r_\text{sph})| = Mg$, soit $T = Mg/(2\pi A)$.
 La dépendance en $1/r$ (contre $1/r^2$ pour la membrane élastique) assure une pente finie
 et modérée sur tout le domaine ; le terme $\dot{r}^2 z'z''$ dans \eqref{eq:rddot}
