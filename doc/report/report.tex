@@ -157,10 +157,28 @@ la simulation est stoppée dès que $r \leq r_{\min}$ (collision avec la
 sphère centrale) ou $r \geq R$ (sortie du bord).
 
 \subsection{Hypothèses}
-Les modèles physiques reposent sur différentes hypothèses nécessaires pour simplifier la modélisation. 
-Décrits précédemment, les modèles physiques reposent en résumé sur une modélisation d'un corps subissant les effets d'une force induite par la surface (conique ou élastique). 
-Toute complexité supplémentaire a été volontairement ignorée dans les équations.
-Ce choix a été fait car étants satisfaits des modèles et de leur concordance avec la réalité il n'y était d'aucune utilité de les complexifier davantage
+Afin de rendre le problème réalisable analytiquement et numériquement, plusieurs
+hypothèses simplificatrices ont été introduites. Ces hypothèses permettent de
+réduire la complexité du système physique réel tout en conservant les mécanismes de la dynamique.
+
+Deux modèles sont considérés. Dans une première approche, la surface est
+assimilée à un cône de pente constante (angle $\alpha$), ce qui implique une
+courbure méridienne nulle ($z'' = 0$). Dans une seconde approche, elle est
+modélisée comme une membrane élastique en équilibre vérifiant $T \Delta z = 0$,
+conduisant à un profil logarithmique $z(r) = A \ln r + B$, avec une courbure non
+nulle.
+
+Par ailleurs, plusieurs effets physiques sont négligés dans les deux modèles:
+les frottements, les pertes d’énergie, ainsi que les éventuelles déformations
+dynamiques de la surface. La masse du mobile est supposée ponctuelle et la
+surface parfaitement symétrique autour de l'axe de révolution.
+
+Ces hypothèses constituent un compromis entre fidélité physique et simplicité
+mathématique. Elles permettent de comparer deux niveaux de modélisation: une
+approximation géométrique simple (modèle conique) et une description plus riche
+intégrant la courbure (modèle de membrane élastique).
+
+
 
 \section{Modèles d'apprentissage automatique}
 
